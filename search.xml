@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>hello,</title>
+    <url>/2021/02/28/hello/</url>
+    <content><![CDATA[<p>这里是文章的开头部分，在设置了“阅读全文”功能后，首页只显示该部分的文字</p>
+<span id="more"></span>
+<p>这里是文章的剩下部分，点击“文章标题”或者“阅读全文”后才能看见。</p>
+]]></content>
+      <tags>
+        <tag>thinking</tag>
+      </tags>
+  </entry>
+</search>
