@@ -41,4 +41,62 @@
         <tag>分布式事务</tag>
       </tags>
   </entry>
+  <entry>
+    <title>分布式事务-基于可靠消息的最终一致性实现</title>
+    <url>/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1-%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/</url>
+    <content><![CDATA[<h2 id="CAP与BASE"><a href="#CAP与BASE" class="headerlink" title="CAP与BASE"></a>CAP与BASE</h2><p>我们都知道，传统数据库事务具有ACID的特性，但在分布式环境下，追求强一致性在大多数情况下无法满足高性能需求。<br>分布式系统的CAP理论告诉我们，一致性、可用性、分区容忍性无法同时满足，最多只能满足其他两项。CAP理论描述如下：</p>
+<ul>
+<li>一致性（Consistency）：所有节点在同一时间读到同样的数据；</li>
+<li>可用性（Availability）：无论是成功还是失败，每个请求都能收到一个反馈。可用性强调的是服务可用，不保证数据的正确性；</li>
+<li>分区容忍性（Partition-Tolerance）：即使系统中有部分问题或者有消息的丢失，但系统仍然能够继续运行。分区容忍性强调的是集群对分区故障的容错能力；</li>
+</ul>
+<p>对于分布式系统而言，分区故障无法避免，因而分区容忍性在一个分布式系统中是必须要考虑的，这也意味着，设计一个分布式系统，我们只能在CAP中的C、A中作出选择，而BASE就是在C和A的选择中作出的一种权衡。<br>BASE可以说是AP系统的一种延伸，其描述如下：</p>
+<ul>
+<li>基本可用（Basically Available）：基本可用，允许分区失败；</li>
+<li>软状态（Soft state）：软状态，一种中间状态，接受一段时间的状态不同步；</li>
+<li>最终一致（Eventually consistent）：最终一致，系统在短暂时间内可能是不一致的，但能够保证最终的数据是一致的；<br>BASE通过牺牲了强一致性来获取高可用性，允许数据存在短暂的不一致，到这里其实我们可以发现，ACID强调的是数据一致性，而BASE强调的则是服务可用；</li>
+</ul>
+<h2 id="基于可靠消息的最终一致性"><a href="#基于可靠消息的最终一致性" class="headerlink" title="基于可靠消息的最终一致性"></a>基于可靠消息的最终一致性</h2><p>基于可靠消息实现的分布式事务遵循了BASE理论，它通过引入消息中间件，在基于可靠消息的前提下，协商多个节点异步完成整个分布式事务，如果某一步骤出现失败时，则进行一定次数的重试，必要情况下需要人工介入处理。<br>以下单为例，用户下单后，会给用户增加一定的积分，在这个流程中涉及了订单服务以及积分服务，如下图所示：</p>
+<p><img src="http://storage.laixiaoming.space/blog/add-order.jpg" alt="add-order"></p>
+<p>但这个流程其实存在3个问题：</p>
+<ol>
+<li>如果在订单服务的订单创建事务（1.2）执行成功了，在发送订单创建消息（1.3）后，由于网络不可达等因素，订单服务无法收到来自消息中间件的响应时，订单服务的本地事务是应该继续提交还是回滚呢；</li>
+<li>如果订单创建消息发送成功，得到了消息中间件的正确响应，但订单服务的本地事务却提交失败了，但消息却已经投递出去了，这种情况又应该怎么处理呢；</li>
+<li>订单创建消息已经成功投递到下游应用（积分服务），但积分服务的本地事务却执行失败了，又应该怎么处理呢<br>以上第1和第2个问题，其实可以归结于同一个问题，即如何保证消息发送的一致性，而第3个问题，即是如何确保消息一定能够消息成功；</li>
+</ol>
+<h3 id="如何保证消息发送的一致性"><a href="#如何保证消息发送的一致性" class="headerlink" title="如何保证消息发送的一致性"></a>如何保证消息发送的一致性</h3><p>我们可以采用两阶段提交的方式，但并不是所有的消息中间件都支持XA，况且，出现问题的概率不大，为此引入了两阶段提交，性能方面就需要有所妥协，这样的方案实现是否有点得不偿失？<br>这个问题其实RocketMQ有了实现方案，RocketMQ支持事务消息，其通过引入了“半消息”的概念（半消息对下游系统不可见），保证了本地事务执行与消息发送的一致性。其发送的正向流程如下：</p>
+<ol>
+<li>业务系统发送“半消息”；</li>
+<li>消息中间件将“半消息”进行持久化；</li>
+<li>业务系统得到消息发送结果，成功的话则执行本地事务，失败则结束流程；</li>
+<li>本地事务执行，并将业务操作结果发送给消息中间件；</li>
+<li>消息中间件根据业务系统的事务执行结果，选择将消息投放或者删除；</li>
+</ol>
+<p>但实际上仅凭以上这个流程其实还是没有办法保证消息发送的一致性的，比如<br>(1) 在业务系统接收消息中间件对“半消息”的处理结果时，由于网络、或者业务系统和消息中间件自身故障时，业务系统无法得知消息中间件的处理结果时，就会按照消息发送失败来处理，这个时候，就有可能存在，’本地事务未执行，但“半消息”却发送成功的不一致情况’；<br>(2) 本地事务执行后，将业务操作结果返回到消息中间件时，如果出现问题，那么消息中间件将不知道如何处理已经存在的“半消息”；<br>为应对以上两种不一致情况，RocketMQ在消息中间件一方引入了“事务回查”的反向流程，其执行流程如下：</p>
+<ol>
+<li>对于超过一定时长未处理的“半消息”，消息中间件将会回调业务系统询问本地事务的处理结果；</li>
+<li>业务系统在检查事务操作结果，将结果返回给消息中间件；</li>
+<li>消息中间件根据业务系统的事务执行结果，选择将消息投放或者删除；</li>
+</ol>
+<p>发送消息的正向流程和反向流程结合起来，就是解决消息发送一致性的整个方案。</p>
+<p>以上面的下单流程为例，在引入了RocketMQ事务消息后，基本流程可以表示为：</p>
+<p><img src="http://storage.laixiaoming.space/blog/add-order-rocketmq.jpg" alt="add-order-rocketmq"></p>
+<h3 id="如何保证消息一定会被消费"><a href="#如何保证消息一定会被消费" class="headerlink" title="如何保证消息一定会被消费"></a>如何保证消息一定会被消费</h3><p>确保消息一定能够被消息的流程比较简单，我们只需要保证消息的持久化，并引入消息确认机制，只有在消息被明确消费完成后，将确认消息返回到消息中间时，消息才能够被丢弃，否则则进行一定次数的重试，需要注意的是，引入重试操作后，消费方的操作需要保证幂等性。</p>
+<h2 id="RocketMQ整合实例"><a href="#RocketMQ整合实例" class="headerlink" title="RocketMQ整合实例"></a>RocketMQ整合实例</h2><p>该例子基于Spring Boot构建：</p>
+<h3 id="引入依赖"><a href="#引入依赖" class="headerlink" title="引入依赖"></a>引入依赖</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">     &lt;groupId&gt;org.springframework.boot&lt;&#x2F;groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-starter&lt;&#x2F;artifactId&gt;</span><br><span class="line">  &lt;&#x2F;dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">     &lt;groupId&gt;org.springframework.boot&lt;&#x2F;groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-starter-web&lt;&#x2F;artifactId&gt;</span><br><span class="line">  &lt;&#x2F;dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">      &lt;groupId&gt;org.projectlombok&lt;&#x2F;groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;lombok&lt;&#x2F;artifactId&gt;</span><br><span class="line">      &lt;optional&gt;true&lt;&#x2F;optional&gt;</span><br><span class="line">  &lt;&#x2F;dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">      &lt;groupId&gt;org.apache.rocketmq&lt;&#x2F;groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;rocketmq-spring-boot-starter&lt;&#x2F;artifactId&gt;</span><br><span class="line">      &lt;version&gt;2.1.0&lt;&#x2F;version&gt;</span><br><span class="line">  &lt;&#x2F;dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="applition-yml配置"><a href="#applition-yml配置" class="headerlink" title="applition.yml配置"></a>applition.yml配置</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">rocketmq:</span><br><span class="line">  name-server: localhost:9876</span><br><span class="line">  producer:</span><br><span class="line">    group: default-group</span><br><span class="line">    sendMessageTimeout: 5000</span><br><span class="line"></span><br><span class="line">demo:</span><br><span class="line">  rocketmq:</span><br><span class="line">    orderTopic: order-paid-topic</span><br></pre></td></tr></table></figure>
+
+<h3 id="构建订单服务"><a href="#构建订单服务" class="headerlink" title="构建订单服务"></a>构建订单服务</h3><h4 id="发送半消息"><a href="#发送半消息" class="headerlink" title="发送半消息"></a>发送半消息</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@Service</span><br><span class="line">@Slf4j</span><br><span class="line">public class OrderServiceImpl implements OrderService &#123;</span><br><span class="line"></span><br><span class="line">    @Value(&quot;$&#123;demo.rocketmq.orderTopic&#125;&quot;)</span><br><span class="line">    private String orderTopic;</span><br><span class="line"></span><br><span class="line">    @Autowired</span><br><span class="line">    private RocketMQTemplate rocketMQTemplate;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void addOrder() &#123;</span><br><span class="line">        int orderId &#x3D; new Random().nextInt(3) + 1;</span><br><span class="line">        Message message &#x3D; MessageBuilder.withPayload(orderId).build();</span><br><span class="line">        log.info(&quot;发送半消息, orderId &#x3D; &#123;&#125;&quot;, orderId);</span><br><span class="line">        rocketMQTemplate.sendMessageInTransaction(orderTopic, message, null);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="本地事务执行回调与事务状态回查"><a href="#本地事务执行回调与事务状态回查" class="headerlink" title="本地事务执行回调与事务状态回查"></a>本地事务执行回调与事务状态回查</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@RocketMQTransactionListener</span><br><span class="line">@Slf4j</span><br><span class="line">public class OrderTransactionListener implements RocketMQLocalTransactionListener &#123;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public RocketMQLocalTransactionState executeLocalTransaction(Message msg, Object arg) &#123;</span><br><span class="line">        &#x2F;&#x2F;执行本地事务</span><br><span class="line">        Integer orderId &#x3D; Integer.valueOf(new String((byte[])msg.getPayload()));</span><br><span class="line">        int status &#x3D; new Random().nextInt(3);</span><br><span class="line">        if (status &#x3D;&#x3D; 0) &#123;</span><br><span class="line">            log.info(&quot;提交事务消息, orderId &#x3D; &#123;&#125;&quot;, orderId);</span><br><span class="line">            return RocketMQLocalTransactionState.COMMIT;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        if (status &#x3D;&#x3D; 1) &#123;</span><br><span class="line">            log.info(&quot;回滚事务消息, orderId &#x3D; &#123;&#125;&quot;, orderId);</span><br><span class="line">            return RocketMQLocalTransactionState.ROLLBACK;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        log.info(&quot;事务消息中间状态, MQ需要回查事务状态&quot;);</span><br><span class="line">        return RocketMQLocalTransactionState.UNKNOWN;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public RocketMQLocalTransactionState checkLocalTransaction(Message msg) &#123;</span><br><span class="line">        Integer orderId &#x3D; Integer.valueOf(new String((byte[])msg.getPayload()));</span><br><span class="line">        RocketMQLocalTransactionState retState;</span><br><span class="line">        int status &#x3D; new Random().nextInt(3);</span><br><span class="line">        switch (status) &#123;</span><br><span class="line">            case 0:</span><br><span class="line">                retState &#x3D; RocketMQLocalTransactionState.UNKNOWN;</span><br><span class="line">                break;</span><br><span class="line">            case 1:</span><br><span class="line">                retState &#x3D; RocketMQLocalTransactionState.COMMIT;</span><br><span class="line">                break;</span><br><span class="line">            case 2:</span><br><span class="line">            default:</span><br><span class="line">                retState &#x3D; RocketMQLocalTransactionState.ROLLBACK;</span><br><span class="line">                break;</span><br><span class="line">        &#125;</span><br><span class="line">        log.info(&quot;回查事务状态, orderId &#x3D; &#123;&#125;, status &#x3D; &#123;&#125;, retState &#x3D; &#123;&#125;&quot;,</span><br><span class="line">                orderId, status, retState);</span><br><span class="line">        return retState;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="构建积分服务"><a href="#构建积分服务" class="headerlink" title="构建积分服务"></a>构建积分服务</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@Service</span><br><span class="line">@RocketMQMessageListener(topic &#x3D; &quot;$&#123;demo.rocketmq.orderTopic&#125;&quot;, consumerGroup &#x3D; &quot;order_paid_consumer_default_group&quot;)</span><br><span class="line">@Slf4j</span><br><span class="line">public class OrderPaidConsumer implements RocketMQListener&lt;MessageExt&gt; &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void onMessage(MessageExt message) &#123;</span><br><span class="line">        Integer orderId &#x3D; Integer.valueOf(new String((byte[])message.getBody()));</span><br><span class="line">        log.info(&quot;orderId &#x3D; &#123;&#125;, 增加积分&quot;, orderId);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>参考：<br>《大型网站系统与Java中间件实践》</p>
+]]></content>
+      <tags>
+        <tag>分布式事务</tag>
+      </tags>
+  </entry>
 </search>
