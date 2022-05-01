@@ -4,6 +4,8 @@
     <title>分布式事务 -两阶段提交及Atomikos在Spring Boot的使用</title>
     <url>/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/</url>
     <content><![CDATA[<h2 id="基于XA规范的两阶段提交方式"><a href="#基于XA规范的两阶段提交方式" class="headerlink" title="基于XA规范的两阶段提交方式"></a>基于XA规范的两阶段提交方式</h2><p>事务在业务的开发中有着至关重要的作用，事务具有的ACID的特性能保证业务处理前后数据的一致性：<br><strong>原子性（Atomicity）：</strong> 事务执行的所有操作，要么全部执行，要么全部不执行；<br><strong>一致性（Consistency）：</strong> 事务的执行前后，数据的完整性保持一致；<br><strong>隔离性（Isolation）：</strong> 两个或多个事务并行执行时是互不干扰的；<br><strong>持久性（Durability）：</strong> 事务执行完成后，其对数据库数据的更改会被永久保存下来；<br>在单机环境下，数据库系统对事务的支持是比较完善的；但当对数据进行水平或垂直拆分，一个数据库节点变为多个数据库节点时，分布式事务就出现了。</p>
+<span id="more"></span>
+
 <h3 id="XA规范"><a href="#XA规范" class="headerlink" title="XA规范"></a>XA规范</h3><p>XA是X/Open组织提出的一个分布式事务的规范，其定义了一个分布式事务的处理模型——DTP。在DTP中定义了三个组件：<br>Application Program（AP）：应用程序，即业务层，它定义了事务的边界，以及构成该事务的特定操作；<br>Resource Manager（RM）：资源管理器，可以理解为一个DBMS系统，或者消息服务器管理系统；<br>Transaction Manager（TM）：事务管理器，也称为协调者，负责协调和管理事务；</p>
 <p>AP与RM之间，AP通过RM提供的API进行交互，当需要进行分布式事务时，则向TM发起一个全局事务，TM与RM之间则通过XA接口进行交互，TM管理了到RM的链接，并实现了两阶段提交。</p>
 <h3 id="两阶段提交流程（2PC）"><a href="#两阶段提交流程（2PC）" class="headerlink" title="两阶段提交流程（2PC）"></a>两阶段提交流程（2PC）</h3><p>XA规范中，多个RM状态之间的协调通过TM进行，而这个资源协调的过程采用了两阶段提交协议（2PC），2PC实际上是一种在多节点之间实现事务原子提交的算法，它用来确保所有节点要么全部提交，要么全部中止。</p>
@@ -50,6 +52,8 @@
 <li>可用性（Availability）：无论是成功还是失败，每个请求都能收到一个反馈。可用性强调的是服务可用，不保证数据的正确性；</li>
 <li>分区容忍性（Partition-Tolerance）：即使系统中有部分问题或者有消息的丢失，但系统仍然能够继续运行。分区容忍性强调的是集群对分区故障的容错能力；</li>
 </ul>
+<span id="more"></span>
+
 <p>对于分布式系统而言，分区故障无法避免，因而分区容忍性在一个分布式系统中是必须要考虑的，这也意味着，设计一个分布式系统，我们只能在CAP中的C、A中作出选择，而BASE就是在C和A的选择中作出的一种权衡。<br>BASE可以说是AP系统的一种延伸，其描述如下：</p>
 <ul>
 <li>基本可用（Basically Available）：基本可用，允许分区失败；</li>
