@@ -195,7 +195,7 @@
 
 
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ol>
-<li>Spring Boot通过 AutoConfigurationImportSelector，并扫描所有jar包目录中<strong>META-INF/spring.factories</strong>配置文件，并加载```org.springframework.boot.autoconfigure.EnableutoConfiguration``配置项中对应的自动配置类，这也是自动配置生效的原理；</li>
+<li>Spring Boot通过 AutoConfigurationImportSelector，并扫描所有jar包目录中<strong>META-INF/spring.factories</strong>配置文件，并加载<code>org.springframework.boot.autoconfigure.EnableutoConfiguration</code>配置项中对应的自动配置类，这也是自动配置生效的原理；</li>
 <li>主启动类也是一个配置类，而**@ComponentScan**会默认扫描当前配置类所在包及子包的所有组件；</li>
 </ol>
 ]]></content>
