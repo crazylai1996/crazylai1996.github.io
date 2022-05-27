@@ -23,7 +23,7 @@
   <meta name="description" content="CAP与BASE我们都知道，传统数据库事务具有ACID的特性，但在分布式环境下，追求强一致性在大多数情况下无法满足高性能需求。分布式系统的CAP理论告诉我们，一致性、可用性、分区容忍性无法同时满足，最多只能满足其他两项。CAP理论描述如下：  一致性（Consistency）：所有节点在同一时间读到同样的数据； 可用性（Availability）：无论是成功还是失败，每个请求都能收到一个反馈。可用">
 <meta property="og:type" content="article">
 <meta property="og:title" content="分布式事务-基于可靠消息的最终一致性实现">
-<meta property="og:url" content="http://laixiaoming.space/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1-%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:url" content="http://laixiaoming.space/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/index.html">
 <meta property="og:site_name" content="赖小明">
 <meta property="og:description" content="CAP与BASE我们都知道，传统数据库事务具有ACID的特性，但在分布式环境下，追求强一致性在大多数情况下无法满足高性能需求。分布式系统的CAP理论告诉我们，一致性、可用性、分区容忍性无法同时满足，最多只能满足其他两项。CAP理论描述如下：  一致性（Consistency）：所有节点在同一时间读到同样的数据； 可用性（Availability）：无论是成功还是失败，每个请求都能收到一个反馈。可用">
 <meta property="og:locale" content="zh_CN">
@@ -36,7 +36,7 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://storage.laixiaoming.space/blog/add-order.jpg">
 
-<link rel="canonical" href="http://laixiaoming.space/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1-%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/">
+<link rel="canonical" href="http://laixiaoming.space/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/">
 
 
 <script id="page-configurations">
@@ -184,7 +184,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1-%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -292,7 +292,7 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/" rel="prev" title="分布式事务 -两阶段提交及Atomikos在Spring Boot的使用">
+    <a href="/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/" rel="prev" title="分布式事务 -两阶段提交及Atomikos在Spring Boot的使用">
       <i class="fa fa-chevron-left"></i> 分布式事务 -两阶段提交及Atomikos在Spring Boot的使用
     </a></div>
       <div class="post-nav-item">
@@ -373,7 +373,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-count">6</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
