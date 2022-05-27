@@ -177,7 +177,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAutowire%E7%9A%84%E8%A7%A3%E6%9E%90/">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -191,7 +191,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAutowire%E7%9A%84%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：@Autowire的解析</a>
+            <a href="/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：@Autowired的解析</a>
         </h2>
 
         <div class="post-meta">
@@ -208,7 +208,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-28 00:06:52" itemprop="dateModified" datetime="2022-05-28T00:06:52+08:00">2022-05-28</time>
+                <time title="修改时间：2022-05-28 00:26:29" itemprop="dateModified" datetime="2022-05-28T00:26:29+08:00">2022-05-28</time>
               </span>
 
           
@@ -223,10 +223,9 @@
 
       
           <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？</p>
-<p>理解这个之前，我们需要先了解一下<strong>BeanPostProcessor</strong>概念。</p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAutowire%E7%9A%84%E8%A7%A3%E6%9E%90/#more" rel="contents">
+              <a class="btn" href="/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -250,7 +249,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AConfiguration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -264,7 +263,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AConfiguration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：@Configuration类的解析</a>
+            <a href="/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：@Configuration类的解析</a>
         </h2>
 
         <div class="post-meta">
@@ -298,7 +297,7 @@
           <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>使用@Configuration注解可以为一个类声明为配置类，一个配置类声明了一个或多个@Bean方法，这些方法返回值将作为bean定义注册到Spring IoC容器中，并允许在配置类中通过调用同一类中的其他@Bean方法来定义bean之间的依赖关系。</p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AConfiguration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/#more" rel="contents">
+              <a class="btn" href="/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
