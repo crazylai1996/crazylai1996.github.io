@@ -2,7 +2,7 @@
 <search>
   <entry>
     <title>认识高性能队列——Disruptor</title>
-    <url>/2022/05/01/%E8%AE%A4%E8%AF%86%E9%AB%98%E6%80%A7%E8%83%BD%E9%98%9F%E5%88%97%E2%80%94%E2%80%94Disruptor/</url>
+    <url>/2023/05/01/%E8%AE%A4%E8%AF%86%E9%AB%98%E6%80%A7%E8%83%BD%E9%98%9F%E5%88%97%E2%80%94%E2%80%94Disruptor/</url>
     <content><![CDATA[<h2 id="Disruptor是什么"><a href="#Disruptor是什么" class="headerlink" title="Disruptor是什么"></a>Disruptor是什么</h2><p>Disruptor是一个由英国外汇交易公司LMAX研发并开源的高性能的有界内存队列，其主要用于在线程之间完成数据的传递。<a href="https://github.com/LMAX-Exchange/disruptor">github地址</a><br>那么，以高性能著称的Disruptor到底有多快呢？</p>
 <span id="more"></span>
 
@@ -34,7 +34,7 @@
   </entry>
   <entry>
     <title>Spring Boot源码学习：自动配置原理</title>
-    <url>/2022/05/02/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/</url>
+    <url>/2023/05/02/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/</url>
     <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>“约定优于配置”是Spring Boot倡导的一个思想，而其自动配置的特性则恰好体现了这一思想。而有了自动配置，不仅简化了Maven的依赖配置，更重要的是摆脱了以往使用Spring框架开发时，所必须编写的一堆繁琐的xml配置文件。</p>
 <span id="more"></span>
 
@@ -103,7 +103,7 @@
   </entry>
   <entry>
     <title>分布式事务 -两阶段提交及Atomikos在Spring Boot的使用</title>
-    <url>/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/</url>
+    <url>/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/</url>
     <content><![CDATA[<h2 id="基于XA规范的两阶段提交方式"><a href="#基于XA规范的两阶段提交方式" class="headerlink" title="基于XA规范的两阶段提交方式"></a>基于XA规范的两阶段提交方式</h2><p>事务在业务的开发中有着至关重要的作用，事务具有的ACID的特性能保证业务处理前后数据的一致性：<br><strong>原子性（Atomicity）：</strong> 事务执行的所有操作，要么全部执行，要么全部不执行；<br><strong>一致性（Consistency）：</strong> 事务的执行前后，数据的完整性保持一致；<br><strong>隔离性（Isolation）：</strong> 两个或多个事务并行执行时是互不干扰的；<br><strong>持久性（Durability）：</strong> 事务执行完成后，其对数据库数据的更改会被永久保存下来；<br>在单机环境下，数据库系统对事务的支持是比较完善的；但当对数据进行水平或垂直拆分，一个数据库节点变为多个数据库节点时，分布式事务就出现了。</p>
 <span id="more"></span>
 
@@ -146,7 +146,7 @@
   </entry>
   <entry>
     <title>分布式事务-基于可靠消息的最终一致性实现</title>
-    <url>/2022/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/</url>
+    <url>/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/</url>
     <content><![CDATA[<h2 id="CAP与BASE"><a href="#CAP与BASE" class="headerlink" title="CAP与BASE"></a>CAP与BASE</h2><p>我们都知道，传统数据库事务具有ACID的特性，但在分布式环境下，追求强一致性在大多数情况下无法满足高性能需求。<br>分布式系统的CAP理论告诉我们，一致性、可用性、分区容忍性无法同时满足，最多只能满足其他两项。CAP理论描述如下：</p>
 <ul>
 <li>一致性（Consistency）：所有节点在同一时间读到同样的数据；</li>
@@ -206,7 +206,7 @@
   </entry>
   <entry>
     <title>Spring Boot源码学习：@Configuration类的解析</title>
-    <url>/2022/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/</url>
+    <url>/2023/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/</url>
     <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>使用@Configuration注解可以为一个类声明为配置类，一个配置类声明了一个或多个@Bean方法，这些方法返回值将作为bean定义注册到Spring IoC容器中，并允许在配置类中通过调用同一类中的其他@Bean方法来定义bean之间的依赖关系。</p>
 <span id="more"></span>
 
@@ -279,7 +279,7 @@
   </entry>
   <entry>
     <title>Spring Boot源码学习：@Autowired的解析</title>
-    <url>/2022/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/</url>
+    <url>/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/</url>
     <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？</p>
 <span id="more"></span>
 
@@ -333,7 +333,7 @@
   </entry>
   <entry>
     <title>Spring Boot源码学习：getBean方法解析</title>
-    <url>/2022/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/</url>
+    <url>/2023/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/</url>
     <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>getBean方法是BeanFactory定义的一系列方法，用于从Spring容器中获取bean实例。</p>
 <p><img src="http://storage.laixiaoming.space/blog/image-20220531064102379.png" alt="image-20220531064102379"></p>
 <p>这些方法在AbstractBeanFactory均得到了具体实现，而这几个getBean方法最终都是调用了doGetBean方法，本文一起来看下</p>
@@ -368,6 +368,7 @@
 <li>populateBean：依赖注入；</li>
 <li>initializeBean：bean后置处理器的调用，bean的初始化等；</li>
 </ol>
+<p>这里有一个细节点，那就是三级缓存的放入是在bean的实例化之后的，而三级缓存是用于解决循环依赖的，这也是为什么当构造函数注入存在循环依赖时而无法解决的原因。</p>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>最后以A实例及B实例循环场景为例，bean的创建流程如下：</p>
 <p><img src="http://storage.laixiaoming.space/blog/circular_dependency.jpg" alt="circular_dependency"></p>
 ]]></content>
@@ -377,7 +378,7 @@
   </entry>
   <entry>
     <title>实现延时任务可以有几种方式</title>
-    <url>/2022/06/13/%E5%AE%9E%E7%8E%B0%E5%BB%B6%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%8F%AF%E4%BB%A5%E6%9C%89%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
+    <url>/2023/06/13/%E5%AE%9E%E7%8E%B0%E5%BB%B6%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%8F%AF%E4%BB%A5%E6%9C%89%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
     <content><![CDATA[<p>在开发中，延时任务属于比较常见的需求，比如，订单在限定时间内未支付则自动取消并释放库存；外卖的商家端在设置特定时间后仍未接单时则自动接单等这都需要延时任务来完成。<br>实现延时任务的方式可以有许多种：<br> 1 DelayQueue(JDK提供实现)<br> 2 ScheduledExecutorService(JDK提供实现)<br> 3 Redis(使用ZSET数据结构实现)<br> 4 RabbitMQ实现<br> 5 ……</p>
 <span id="more"></span>
 
@@ -419,7 +420,7 @@
   </entry>
   <entry>
     <title>Spring Boot源码学习：AOP代理对象的创建</title>
-    <url>/2022/06/14/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAOP%E4%BB%A3%E7%90%86%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%88%9B%E5%BB%BA/</url>
+    <url>/2023/06/14/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAOP%E4%BB%A3%E7%90%86%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%88%9B%E5%BB%BA/</url>
     <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>AOP是Spring中的核心功能之一，使用AOP，可以让关注点代码与业务代码分离，并且动态地添加和删除在切面上的逻辑而不影响原来的执行代码，从而可以在不修改源代码的情况下，实现对功能的增强。</p>
 <p>AOP的应用场景很多，日志记录、性能监控、事务管理等都可以通过AOP去实现。</p>
 <p>AOP的原理就是动态代理，在 Spring 中，存在两种实现机制， JDK 动态代理以及 CGLIB 动态代理。</p>
@@ -437,7 +438,7 @@
 <p>由类注释可以看出，<strong>AspectJAutoProxyRegistrar</strong>的作用是向IOC容器注册<strong>AnnotationAwareAspectJAutoProxyCreator</strong>。那么<strong>AnnotationAwareAspectJAutoProxyCreator</strong>是什么呢?</p>
 <h2 id="AnnotationAwareAspectJAutoProxyCreator"><a href="#AnnotationAwareAspectJAutoProxyCreator" class="headerlink" title="AnnotationAwareAspectJAutoProxyCreator"></a>AnnotationAwareAspectJAutoProxyCreator</h2><p>我们先来看下<strong>AnnotationAwareAspectJAutoProxyCreator</strong>的类继承关系图：</p>
 <p><img src="http://storage.laixiaoming.space/blog/AnnotationAwareAspectJAutoProxyCreator.jpg" alt="AnnotationAwareAspectJAutoProxyCreator"></p>
-<p>可以找不到，<strong>AnnotationAwareAspectJAutoProxyCreator</strong>：</p>
+<p>可以发现，<strong>AnnotationAwareAspectJAutoProxyCreator</strong>：</p>
 <ol>
 <li>实现了<strong>BeanPostProcessor **接口，其关键方法</strong>postProcessBeforeInitialization<strong>和</strong>postProcessAfterInitialization<strong>将会在bean创建过程中的初始化流程中</strong>AbstractAutowireCapableBeanFactory#initializeBean<strong>被调用，而AOP代理代理对象也是通过</strong>postProcessAfterInitialization**得到；</li>
 <li>实现了<strong>InstantiationAwareBeanPostProcessor</strong>接口，其关键方法<strong>postProcessBeforeInstantiation</strong>会在bean实例化前尝试被调用；</li>
