@@ -582,7 +582,7 @@
 
 
 <h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
-<li>Spring事务也是通过AOP实现，相关逻辑由<strong>BeanFactoryTransactionAttributeSourceAdvisor、</strong>TransactionAttributeSource**<strong>、</strong>TransactionInterceptor**实现；</li>
+<li>Spring事务也是通过AOP实现，相关逻辑由<strong>BeanFactoryTransactionAttributeSourceAdvisor</strong>、<strong>TransactionAttributeSource</strong>、<strong>TransactionInterceptor</strong>实现；</li>
 <li>事务的挂起与恢复，实际是通过线程本地变量对当前事务信息的保存、清除和恢复；</li>
 </ol>
 ]]></content>
