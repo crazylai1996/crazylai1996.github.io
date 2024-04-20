@@ -591,9 +591,11 @@
       </tags>
   </entry>
   <entry>
-    <title></title>
+    <title>Spring Boot源码学习：事务生效原理</title>
     <url>/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。</p>
+<span id="more"></span>
+
 <h3 id="DeferredResult是什么"><a href="#DeferredResult是什么" class="headerlink" title="DeferredResult是什么"></a>DeferredResult是什么</h3><p>DeferredResult是Spring基于Servlet 3.0的异步请求处理功能实现的，它可以迟早地释放Tomcat的请求线程，由业务线程去处理业务逻辑，处理完成再把结果返回到客户端，这可以使得服务端能够处理更多请求，以提升服务端的并发处理能力。</p>
 <p>使用示例：</p>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/test&quot;)</span></span><br><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DeferredResultTestController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@GetMapping(&quot;/deferredResult&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title">deferredResult</span><span class="params">(<span class="meta">@RequestParam(defaultValue = &quot;1000&quot;)</span> <span class="keyword">long</span> sleepMills)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//3s超时时间</span></span><br><span class="line">        DeferredResult&lt;String&gt; deferredResult = <span class="keyword">new</span> DeferredResult&lt;&gt;(<span class="number">3000L</span>);</span><br><span class="line">        deferredResult.onCompletion(() -&gt; &#123;</span><br><span class="line">            log.info(<span class="string">&quot;请求完成&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line">        deferredResult.onTimeout(() -&gt; &#123;</span><br><span class="line">            deferredResult.setResult(<span class="string">&quot;请求超时了&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用新的业务线程去处理</span></span><br><span class="line">        <span class="keyword">new</span> Thread(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                Thread.sleep(sleepMills);</span><br><span class="line">                deferredResult.setResult(<span class="string">&quot;处理成功&quot;</span>);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                log.error(<span class="string">&quot;&quot;</span>, e);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;).start();</span><br><span class="line">        <span class="keyword">return</span> deferredResult;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -638,5 +640,8 @@
 </li>
 </ol>
 ]]></content>
+      <tags>
+        <tag>Spring Boot</tag>
+      </tags>
   </entry>
 </search>
