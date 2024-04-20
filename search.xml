@@ -591,7 +591,7 @@
       </tags>
   </entry>
   <entry>
-    <title>Spring Boot源码学习：事务生效原理</title>
+    <title>Spring Boot源码学习：DeferredResult的处理流程</title>
     <url>/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。</p>
 <span id="more"></span>
