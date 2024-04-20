@@ -20,30 +20,34 @@
     var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"98870b25028b6803f2e798b0d7e939f8","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-<meta property="og:type" content="website">
+  <meta name="description" content="前言业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。 DeferredResult是什么DeferredResult是Spring基于Servlet 3.0的异步请求处理功能实现的，它可以迟早地释放To">
+<meta property="og:type" content="article">
 <meta property="og:title" content="赖小明">
-<meta property="og:url" content="http://laixiaoming.space/index.html">
+<meta property="og:url" content="http://laixiaoming.space/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/index.html">
 <meta property="og:site_name" content="赖小明">
-<meta property="og:description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+<meta property="og:description" content="前言业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。 DeferredResult是什么DeferredResult是Spring基于Servlet 3.0的异步请求处理功能实现的，它可以迟早地释放To">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20240420181952931.png">
+<meta property="article:published_time" content="2024-04-20T12:24:45.950Z">
+<meta property="article:modified_time" content="2024-04-20T10:59:56.000Z">
 <meta property="article:author" content="laixiaoming">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://storage.laixiaoming.space/blog/image-20240420181952931.png">
 
-<link rel="canonical" href="http://laixiaoming.space/">
+<link rel="canonical" href="http://laixiaoming.space/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>赖小明</title>
+  <title> | 赖小明</title>
   
 
 
@@ -171,9 +175,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
+
+    
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -189,10 +194,9 @@
       <meta itemprop="name" content="赖小明">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
+        <h1 class="post-title" itemprop="name headline">
           
-            <a href="/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/" class="post-title-link" itemprop="url">未命名</a>
-        </h2>
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -216,7 +220,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。</p>
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。</p>
 <h3 id="DeferredResult是什么"><a href="#DeferredResult是什么" class="headerlink" title="DeferredResult是什么"></a>DeferredResult是什么</h3><p>DeferredResult是Spring基于Servlet 3.0的异步请求处理功能实现的，它可以迟早地释放Tomcat的请求线程，由业务线程去处理业务逻辑，处理完成再把结果返回到客户端，这可以使得服务端能够处理更多请求，以提升服务端的并发处理能力。</p>
 <p>使用示例：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/test&quot;)</span></span><br><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DeferredResultTestController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@GetMapping(&quot;/deferredResult&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title">deferredResult</span><span class="params">(<span class="meta">@RequestParam(defaultValue = &quot;1000&quot;)</span> <span class="keyword">long</span> sleepMills)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//3s超时时间</span></span><br><span class="line">        DeferredResult&lt;String&gt; deferredResult = <span class="keyword">new</span> DeferredResult&lt;&gt;(<span class="number">3000L</span>);</span><br><span class="line">        deferredResult.onCompletion(() -&gt; &#123;</span><br><span class="line">            log.info(<span class="string">&quot;请求完成&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line">        deferredResult.onTimeout(() -&gt; &#123;</span><br><span class="line">            deferredResult.setResult(<span class="string">&quot;请求超时了&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用新的业务线程去处理</span></span><br><span class="line">        <span class="keyword">new</span> Thread(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                Thread.sleep(sleepMills);</span><br><span class="line">                deferredResult.setResult(<span class="string">&quot;处理成功&quot;</span>);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                log.error(<span class="string">&quot;&quot;</span>, e);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;).start();</span><br><span class="line">        <span class="keyword">return</span> deferredResult;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -261,681 +265,31 @@
 </li>
 </ol>
 
-      
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/04/13/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BA%8B%E5%8A%A1%E7%94%9F%E6%95%88%E5%8E%9F%E7%90%86/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2024/04/13/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BA%8B%E5%8A%A1%E7%94%9F%E6%95%88%E5%8E%9F%E7%90%86/" class="post-title-link" itemprop="url">Spring Boot源码学习：事务生效原理</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2024-04-13 13:50:43 / 修改时间：23:32:28" itemprop="dateCreated datePublished" datetime="2024-04-13T13:50:43+08:00">2024-04-13</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>我们都知道，在使用Spring进行项目开发时，开启事务只需要在类或者上标注一个**@Transactional**注解即可实现，那么这个是怎么做到的呢？</p>
-<blockquote>
-<p>以下内容基于Spring Boot 2.1.9.RELEASE版本</p>
-</blockquote>
-<p>探究其实现原理之前，我们先来看一个**@EnableTransactionManagement**注解。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2024/04/13/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BA%8B%E5%8A%A1%E7%94%9F%E6%95%88%E5%8E%9F%E7%90%86/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
-    </div>
 
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/06/14/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAOP%E4%BB%A3%E7%90%86%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%88%9B%E5%BB%BA/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/06/14/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAOP%E4%BB%A3%E7%90%86%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%88%9B%E5%BB%BA/" class="post-title-link" itemprop="url">Spring Boot源码学习：AOP代理对象的创建</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-06-14 23:17:31" itemprop="dateCreated datePublished" datetime="2023-06-14T23:17:31+08:00">2023-06-14</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:20:27" itemprop="dateModified" datetime="2024-02-16T20:20:27+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>AOP是Spring中的核心功能之一，使用AOP，可以让关注点代码与业务代码分离，并且动态地添加和删除在切面上的逻辑而不影响原来的执行代码，从而可以在不修改源代码的情况下，实现对功能的增强。</p>
-<p>AOP的应用场景很多，日志记录、性能监控、事务管理等都可以通过AOP去实现。</p>
-<p>AOP的原理就是动态代理，在 Spring 中，存在两种实现机制， JDK 动态代理以及 CGLIB 动态代理。</p>
-<p>在Spring Boot中，AOP可以通过**@EnableAspectJAutoProxy**注解开启，那该注解是怎么起作用的呢，代理对象又是如何被创建的呢？</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/06/14/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AAOP%E4%BB%A3%E7%90%86%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%88%9B%E5%BB%BA/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/04/13/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BA%8B%E5%8A%A1%E7%94%9F%E6%95%88%E5%8E%9F%E7%90%86/" rel="prev" title="Spring Boot源码学习：事务生效原理">
+      <i class="fa fa-chevron-left"></i> Spring Boot源码学习：事务生效原理
+    </a></div>
+      <div class="post-nav-item"></div>
     </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
       </footer>
+    
   </article>
   
   
   
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/06/13/%E5%AE%9E%E7%8E%B0%E5%BB%B6%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%8F%AF%E4%BB%A5%E6%9C%89%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/06/13/%E5%AE%9E%E7%8E%B0%E5%BB%B6%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%8F%AF%E4%BB%A5%E6%9C%89%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/" class="post-title-link" itemprop="url">实现延时任务可以有几种方式</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-06-13 22:42:15" itemprop="dateCreated datePublished" datetime="2023-06-13T22:42:15+08:00">2023-06-13</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:19:27" itemprop="dateModified" datetime="2024-02-16T20:19:27+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>在开发中，延时任务属于比较常见的需求，比如，订单在限定时间内未支付则自动取消并释放库存；外卖的商家端在设置特定时间后仍未接单时则自动接单等这都需要延时任务来完成。<br>实现延时任务的方式可以有许多种：<br> 1 DelayQueue(JDK提供实现)<br> 2 ScheduledExecutorService(JDK提供实现)<br> 3 Redis(使用ZSET数据结构实现)<br> 4 RabbitMQ实现<br> 5 ……</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/06/13/%E5%AE%9E%E7%8E%B0%E5%BB%B6%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%8F%AF%E4%BB%A5%E6%9C%89%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：getBean方法解析</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-30 06:50:01" itemprop="dateCreated datePublished" datetime="2023-05-30T06:50:01+08:00">2023-05-30</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:20:21" itemprop="dateModified" datetime="2024-02-16T20:20:21+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>getBean方法是BeanFactory定义的一系列方法，用于从Spring容器中获取bean实例。</p>
-<p><img src="http://storage.laixiaoming.space/blog/image-20220531064102379.png" alt="image-20220531064102379"></p>
-<p>这些方法在AbstractBeanFactory均得到了具体实现，而这几个getBean方法最终都是调用了doGetBean方法，本文一起来看下</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：@Autowired的解析</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-18 08:49:43" itemprop="dateCreated datePublished" datetime="2023-05-18T08:49:43+08:00">2023-05-18</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:20:39" itemprop="dateModified" datetime="2024-02-16T20:20:39+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">Spring Boot源码学习：@Configuration类的解析</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-04 23:34:20" itemprop="dateCreated datePublished" datetime="2023-05-04T23:34:20+08:00">2023-05-04</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:20:33" itemprop="dateModified" datetime="2024-02-16T20:20:33+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>使用@Configuration注解可以为一个类声明为配置类，一个配置类声明了一个或多个@Bean方法，这些方法返回值将作为bean定义注册到Spring IoC容器中，并允许在配置类中通过调用同一类中的其他@Bean方法来定义bean之间的依赖关系。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/02/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/02/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/" class="post-title-link" itemprop="url">Spring Boot源码学习：自动配置原理</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-02 20:23:31" itemprop="dateCreated datePublished" datetime="2023-05-02T20:23:31+08:00">2023-05-02</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:19:58" itemprop="dateModified" datetime="2024-02-16T20:19:58+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>“约定优于配置”是Spring Boot倡导的一个思想，而其自动配置的特性则恰好体现了这一思想。而有了自动配置，不仅简化了Maven的依赖配置，更重要的是摆脱了以往使用Spring框架开发时，所必须编写的一堆繁琐的xml配置文件。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/02/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/01/%E8%AE%A4%E8%AF%86%E9%AB%98%E6%80%A7%E8%83%BD%E9%98%9F%E5%88%97%E2%80%94%E2%80%94Disruptor/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/01/%E8%AE%A4%E8%AF%86%E9%AB%98%E6%80%A7%E8%83%BD%E9%98%9F%E5%88%97%E2%80%94%E2%80%94Disruptor/" class="post-title-link" itemprop="url">认识高性能队列——Disruptor</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-01 19:55:00" itemprop="dateCreated datePublished" datetime="2023-05-01T19:55:00+08:00">2023-05-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:19:38" itemprop="dateModified" datetime="2024-02-16T20:19:38+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="Disruptor是什么"><a href="#Disruptor是什么" class="headerlink" title="Disruptor是什么"></a>Disruptor是什么</h2><p>Disruptor是一个由英国外汇交易公司LMAX研发并开源的高性能的有界内存队列，其主要用于在线程之间完成数据的传递。<a target="_blank" rel="noopener" href="https://github.com/LMAX-Exchange/disruptor">github地址</a><br>那么，以高性能著称的Disruptor到底有多快呢？</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/01/%E8%AE%A4%E8%AF%86%E9%AB%98%E6%80%A7%E8%83%BD%E9%98%9F%E5%88%97%E2%80%94%E2%80%94Disruptor/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/" class="post-title-link" itemprop="url">分布式事务-基于可靠消息的最终一致性实现</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-01 18:30:30" itemprop="dateCreated datePublished" datetime="2023-05-01T18:30:30+08:00">2023-05-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:19:51" itemprop="dateModified" datetime="2024-02-16T20:19:51+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="CAP与BASE"><a href="#CAP与BASE" class="headerlink" title="CAP与BASE"></a>CAP与BASE</h2><p>我们都知道，传统数据库事务具有ACID的特性，但在分布式环境下，追求强一致性在大多数情况下无法满足高性能需求。<br>分布式系统的CAP理论告诉我们，一致性、可用性、分区容忍性无法同时满足，最多只能满足其他两项。CAP理论描述如下：</p>
-<ul>
-<li>一致性（Consistency）：所有节点在同一时间读到同样的数据；</li>
-<li>可用性（Availability）：无论是成功还是失败，每个请求都能收到一个反馈。可用性强调的是服务可用，不保证数据的正确性；</li>
-<li>分区容忍性（Partition-Tolerance）：即使系统中有部分问题或者有消息的丢失，但系统仍然能够继续运行。分区容忍性强调的是集群对分区故障的容错能力；</li>
-</ul>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-
-  
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
-  </nav>
 
 
 
@@ -987,6 +341,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DeferredResult%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-number">2.</span> <span class="nav-text">DeferredResult是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">DeferredResult的处理流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">小结</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
