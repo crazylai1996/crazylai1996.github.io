@@ -498,99 +498,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Spring Boot源码学习：事务生效原理</title>
-    <url>/2024/04/13/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BA%8B%E5%8A%A1%E7%94%9F%E6%95%88%E5%8E%9F%E7%90%86/</url>
-    <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>我们都知道，在使用Spring进行项目开发时，开启事务只需要在类或者上标注一个**@Transactional**注解即可实现，那么这个是怎么做到的呢？</p>
-<blockquote>
-<p>以下内容基于Spring Boot 2.1.9.RELEASE版本</p>
-</blockquote>
-<p>探究其实现原理之前，我们先来看一个**@EnableTransactionManagement**注解。</p>
-<span id="more"></span>
-
-<h3 id="从-EnableTransactionManagement说起"><a href="#从-EnableTransactionManagement说起" class="headerlink" title="从@EnableTransactionManagement说起"></a>从@EnableTransactionManagement说起</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Target(ElementType.TYPE)</span></span><br><span class="line"><span class="meta">@Retention(RetentionPolicy.RUNTIME)</span></span><br><span class="line"><span class="meta">@Documented</span></span><br><span class="line"><span class="meta">@Import(TransactionManagementConfigurationSelector.class)</span></span><br><span class="line"><span class="keyword">public</span> <span class="meta">@interface</span> EnableTransactionManagement &#123;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">boolean</span> <span class="title">proxyTargetClass</span><span class="params">()</span> <span class="keyword">default</span> <span class="keyword">false</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="function">AdviceMode <span class="title">mode</span><span class="params">()</span> <span class="keyword">default</span> AdviceMode.PROXY</span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span> <span class="title">order</span><span class="params">()</span> <span class="keyword">default</span> Ordered.LOWEST_PRECEDENCE</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>可以看到，该注解导入了<strong>TransactionManagementConfigurationSelector</strong>类：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public class TransactionManagementConfigurationSelector extends AdviceModeImportSelector&lt;EnableTransactionManagement&gt; &#123;</span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	protected String[] selectImports(AdviceMode adviceMode) &#123;</span><br><span class="line">		switch (adviceMode) &#123;</span><br><span class="line">			case PROXY:</span><br><span class="line">				return new String[] &#123;AutoProxyRegistrar.class.getName(),</span><br><span class="line">						ProxyTransactionManagementConfiguration.class.getName()&#125;;</span><br><span class="line">			case ASPECTJ:</span><br><span class="line">				return new String[] &#123;determineTransactionAspectClass()&#125;;</span><br><span class="line">			default:</span><br><span class="line">				return null;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F;...</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>而在默认的PROXY模式下，<strong>TransactionManagementConfigurationSelector</strong>类注册了<strong>AutoProxyRegistrar</strong>和<strong>ProxyTransactionManagementConfiguration</strong>类：</p>
-<h4 id="AutoProxyRegistrar"><a href="#AutoProxyRegistrar" class="headerlink" title="AutoProxyRegistrar"></a>AutoProxyRegistrar</h4><p>通过深入<strong>AutoProxyRegistrar</strong>可以看到，该类最终又调用了<strong>AopConfigUtils#registerAutoProxyCreatorIfNecessary</strong>注册了<strong>InfrastructureAdvisorAutoProxyCreator</strong>：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public abstract class AopConfigUtils &#123;</span><br><span class="line">	private static final List&lt;Class&lt;?&gt;&gt; APC_PRIORITY_LIST &#x3D; new ArrayList&lt;&gt;(3);</span><br><span class="line"></span><br><span class="line">	static &#123;</span><br><span class="line">		&#x2F;&#x2F; Set up the escalation list...</span><br><span class="line">		APC_PRIORITY_LIST.add(InfrastructureAdvisorAutoProxyCreator.class);</span><br><span class="line">		APC_PRIORITY_LIST.add(AspectJAwareAdvisorAutoProxyCreator.class);</span><br><span class="line">		APC_PRIORITY_LIST.add(AnnotationAwareAspectJAutoProxyCreator.class);</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F;...</span><br><span class="line">	@Nullable</span><br><span class="line">	public static BeanDefinition registerAutoProxyCreatorIfNecessary(BeanDefinitionRegistry registry) &#123;</span><br><span class="line">		return registerAutoProxyCreatorIfNecessary(registry, null);</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	public static BeanDefinition registerAutoProxyCreatorIfNecessary(</span><br><span class="line">			BeanDefinitionRegistry registry, @Nullable Object source) &#123;</span><br><span class="line"></span><br><span class="line">		return registerOrEscalateApcAsRequired(InfrastructureAdvisorAutoProxyCreator.class, registry, source);</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	@Nullable</span><br><span class="line">	private static BeanDefinition registerOrEscalateApcAsRequired(</span><br><span class="line">			Class&lt;?&gt; cls, BeanDefinitionRegistry registry, @Nullable Object source) &#123;</span><br><span class="line"></span><br><span class="line">		Assert.notNull(registry, &quot;BeanDefinitionRegistry must not be null&quot;);</span><br><span class="line"></span><br><span class="line">		&#x2F;&#x2F;如果该bean已存在，将根据APC_PRIORITY_LIST中定义的优先级进行加载&#x2F;替换</span><br><span class="line">		if (registry.containsBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME)) &#123;</span><br><span class="line">			BeanDefinition apcDefinition &#x3D; registry.getBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME);</span><br><span class="line">			if (!cls.getName().equals(apcDefinition.getBeanClassName())) &#123;</span><br><span class="line">				int currentPriority &#x3D; findPriorityForClass(apcDefinition.getBeanClassName());</span><br><span class="line">				int requiredPriority &#x3D; findPriorityForClass(cls);</span><br><span class="line">				if (currentPriority &lt; requiredPriority) &#123;</span><br><span class="line">					apcDefinition.setBeanClassName(cls.getName());</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			return null;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		RootBeanDefinition beanDefinition &#x3D; new RootBeanDefinition(cls);</span><br><span class="line">		beanDefinition.setSource(source);</span><br><span class="line">		beanDefinition.getPropertyValues().add(&quot;order&quot;, Ordered.HIGHEST_PRECEDENCE);</span><br><span class="line">		beanDefinition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);</span><br><span class="line">		registry.registerBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME, beanDefinition);</span><br><span class="line">		return beanDefinition;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>那么，<strong>InfrastructureAdvisorAutoProxyCreator</strong>有什么作用呢</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line"> * Auto-proxy creator that considers infrastructure Advisor beans only,</span><br><span class="line"> * ignoring any application-defined Advisors.</span><br><span class="line"> *</span><br><span class="line"> * @author Juergen Hoeller</span><br><span class="line"> * @since 2.0.7</span><br><span class="line"> *&#x2F;</span><br><span class="line">@SuppressWarnings(&quot;serial&quot;)</span><br><span class="line">public class InfrastructureAdvisorAutoProxyCreator extends AbstractAdvisorAutoProxyCreator &#123;</span><br><span class="line"></span><br><span class="line">	@Nullable</span><br><span class="line">	private ConfigurableListableBeanFactory beanFactory;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	protected void initBeanFactory(ConfigurableListableBeanFactory beanFactory) &#123;</span><br><span class="line">		super.initBeanFactory(beanFactory);</span><br><span class="line">		this.beanFactory &#x3D; beanFactory;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	protected boolean isEligibleAdvisorBean(String beanName) &#123;</span><br><span class="line">		return (this.beanFactory !&#x3D; null &amp;&amp; this.beanFactory.containsBeanDefinition(beanName) &amp;&amp;</span><br><span class="line">				this.beanFactory.getBeanDefinition(beanName).getRole() &#x3D;&#x3D; BeanDefinition.ROLE_INFRASTRUCTURE);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>从代码注释中可以看出，这是一个代理对象创建器。</p>
-<p>了解过**@EnableAspectJAutoProxy<strong>注解原理的可能会发现，这俩走的是同一个注册方法，而对于同时开启</strong>EnableAspectJAutoProxy<strong>和</strong>EnableTransactionManagement<strong>的情况下，在注册的时候会根据定义的优先级</strong>AnnotationAwareAspectJAutoProxyCreator &gt; AspectJAwareAdvisorAutoProxyCreator &gt; InfrastructureAdvisorAutoProxyCreator<strong>，保留其中一个，通过对比其实现可以知道，</strong>AnnotationAwareAspectJAutoProxyCreator**具有的功能更全面。</p>
-<h4 id="ProxyTransactionManagementConfiguration"><a href="#ProxyTransactionManagementConfiguration" class="headerlink" title="ProxyTransactionManagementConfiguration"></a>ProxyTransactionManagementConfiguration</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@Configuration</span><br><span class="line">public class ProxyTransactionManagementConfiguration extends AbstractTransactionManagementConfiguration &#123;</span><br><span class="line"></span><br><span class="line">	@Bean(name &#x3D; TransactionManagementConfigUtils.TRANSACTION_ADVISOR_BEAN_NAME)</span><br><span class="line">	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)</span><br><span class="line">	public BeanFactoryTransactionAttributeSourceAdvisor transactionAdvisor() &#123;</span><br><span class="line">		BeanFactoryTransactionAttributeSourceAdvisor advisor &#x3D; new BeanFactoryTransactionAttributeSourceAdvisor();</span><br><span class="line">		advisor.setTransactionAttributeSource(transactionAttributeSource());</span><br><span class="line">		advisor.setAdvice(transactionInterceptor());</span><br><span class="line">		if (this.enableTx !&#x3D; null) &#123;</span><br><span class="line">			advisor.setOrder(this.enableTx.&lt;Integer&gt;getNumber(&quot;order&quot;));</span><br><span class="line">		&#125;</span><br><span class="line">		return advisor;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)</span><br><span class="line">	public TransactionAttributeSource transactionAttributeSource() &#123;</span><br><span class="line">		return new AnnotationTransactionAttributeSource();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Bean</span><br><span class="line">	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)</span><br><span class="line">	public TransactionInterceptor transactionInterceptor() &#123;</span><br><span class="line">		TransactionInterceptor interceptor &#x3D; new TransactionInterceptor();</span><br><span class="line">		interceptor.setTransactionAttributeSource(transactionAttributeSource());</span><br><span class="line">		if (this.txManager !&#x3D; null) &#123;</span><br><span class="line">			interceptor.setTransactionManager(this.txManager);</span><br><span class="line">		&#125;</span><br><span class="line">		return interceptor;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>ProxyTransactionManagementConfiguration</strong>注册了3个bean。</p>
-<h5 id="transactionAdvisor"><a href="#transactionAdvisor" class="headerlink" title="transactionAdvisor"></a>transactionAdvisor</h5><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public class BeanFactoryTransactionAttributeSourceAdvisor extends AbstractBeanFactoryPointcutAdvisor &#123;</span><br><span class="line"></span><br><span class="line">	@Nullable</span><br><span class="line">	private TransactionAttributeSource transactionAttributeSource;</span><br><span class="line"></span><br><span class="line">	private final TransactionAttributeSourcePointcut pointcut &#x3D; new TransactionAttributeSourcePointcut() &#123;</span><br><span class="line">		@Override</span><br><span class="line">		@Nullable</span><br><span class="line">		protected TransactionAttributeSource getTransactionAttributeSource() &#123;</span><br><span class="line">			return transactionAttributeSource;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	&#x2F;**</span><br><span class="line">	 * Set the transaction attribute source which is used to find transaction</span><br><span class="line">	 * attributes. This should usually be identical to the source reference</span><br><span class="line">	 * set on the transaction interceptor itself.</span><br><span class="line">	 * @see TransactionInterceptor#setTransactionAttributeSource</span><br><span class="line">	 *&#x2F;</span><br><span class="line">	public void setTransactionAttributeSource(TransactionAttributeSource transactionAttributeSource) &#123;</span><br><span class="line">		this.transactionAttributeSource &#x3D; transactionAttributeSource;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	&#x2F;**</span><br><span class="line">	 * Set the &#123;@link ClassFilter&#125; to use for this pointcut.</span><br><span class="line">	 * Default is &#123;@link ClassFilter#TRUE&#125;.</span><br><span class="line">	 *&#x2F;</span><br><span class="line">	public void setClassFilter(ClassFilter classFilter) &#123;</span><br><span class="line">		this.pointcut.setClassFilter(classFilter);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	public Pointcut getPointcut() &#123;</span><br><span class="line">		return this.pointcut;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">TransactionAttributeSourcePointcut</span> <span class="keyword">extends</span> <span class="title">StaticMethodMatcherPointcut</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">matches</span><span class="params">(Method method, Class&lt;?&gt; targetClass)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span> (TransactionalProxy.class.isAssignableFrom(targetClass) ||</span><br><span class="line">				PlatformTransactionManager.class.isAssignableFrom(targetClass) ||</span><br><span class="line">				PersistenceExceptionTranslator.class.isAssignableFrom(targetClass)) &#123;</span><br><span class="line">			<span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		TransactionAttributeSource tas = getTransactionAttributeSource();</span><br><span class="line">		<span class="keyword">return</span> (tas == <span class="keyword">null</span> || tas.getTransactionAttribute(method, targetClass) != <span class="keyword">null</span>);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>从<strong>BeanFactoryTransactionAttributeSourceAdvisor</strong>的类继承关系图可以看出，它是一个事务增强器，并且其切入点实现依赖于<strong>TransactionAttributeSource</strong>，在这里的具体实现是<strong>AnnotationTransactionAttributeSource</strong>，其关键的方法是<strong>TransactionAttributeSource#getTransactionAttribute</strong>。</p>
-<h5 id="AnnotationTransactionAttributeSource"><a href="#AnnotationTransactionAttributeSource" class="headerlink" title="AnnotationTransactionAttributeSource"></a>AnnotationTransactionAttributeSource</h5><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line">This class reads Spring&#39;s JDK 1.5+ Transactional annotation and exposes corresponding transaction attributes to Spring&#39;s transaction infrastructure. Also supports JTA 1.2&#39;s javax.transaction.Transactional and EJB3&#39;s javax.ejb.TransactionAttribute annotation (if present). This class may also serve as base class for a custom TransactionAttributeSource, or get customized through TransactionAnnotationParser strategies.</span><br><span class="line">**&#x2F;</span><br><span class="line">public class AnnotationTransactionAttributeSource extends AbstractFallbackTransactionAttributeSource</span><br><span class="line">		implements Serializable &#123;</span><br><span class="line">		&#x2F;&#x2F;...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>从该类的注释可以看出，该类主要用于解析**@Transactional<strong>注解，并将其属性提供给事务框架使用，而从其构造函数可以知道，它使用了</strong>SpringTransactionAnnotationParser**作为事务属性配置的解析器。</p>
-<h5 id="transactionInterceptor"><a href="#transactionInterceptor" class="headerlink" title="transactionInterceptor"></a>transactionInterceptor</h5><p><img src="http://storage.laixiaoming.space/blog/image-20240413174621857.png" alt="image-20240413174621857"></p>
-<p>从该类的继承关系图可以看出，<strong>TransactionInterceptor</strong>实现了<strong>MethodInterceptor</strong>，是一个方法拦截器，不验证猜出事务是行为是在这个类中实现的，接下来我们具体看下<strong>TransactionInterceptor</strong> 到底做了什么。</p>
-<h3 id="TransactionInterceptor工作原理"><a href="#TransactionInterceptor工作原理" class="headerlink" title="TransactionInterceptor工作原理"></a>TransactionInterceptor工作原理</h3><p><strong>invoke</strong>是<strong>MethodInterceptor</strong>的核心方法，其主要逻辑在<strong>invokeWithinTransaction</strong>体现：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="meta">@Nullable</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Object <span class="title">invoke</span><span class="params">(MethodInvocation invocation)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">	<span class="comment">// Work out the target class: may be &#123;@code null&#125;.</span></span><br><span class="line">	<span class="comment">// The TransactionAttributeSource should be passed the target class</span></span><br><span class="line">	<span class="comment">// as well as the method, which may be from an interface.</span></span><br><span class="line">	Class&lt;?&gt; targetClass = (invocation.getThis() != <span class="keyword">null</span> ? AopUtils.getTargetClass(invocation.getThis()) : <span class="keyword">null</span>);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Adapt to TransactionAspectSupport&#x27;s invokeWithinTransaction...</span></span><br><span class="line">	<span class="keyword">return</span> invokeWithinTransaction(invocation.getMethod(), targetClass, invocation::proceed);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-<h4 id="invokeWithinTransaction事务整体流程"><a href="#invokeWithinTransaction事务整体流程" class="headerlink" title="invokeWithinTransaction事务整体流程"></a>invokeWithinTransaction事务整体流程</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@Nullable</span><br><span class="line">protected Object invokeWithinTransaction(Method method, @Nullable Class&lt;?&gt; targetClass,</span><br><span class="line">		final InvocationCallback invocation) throws Throwable &#123;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; If the transaction attribute is null, the method is non-transactional.</span><br><span class="line">	TransactionAttributeSource tas &#x3D; getTransactionAttributeSource();</span><br><span class="line">	&#x2F;&#x2F;获取@Transaction属性配置</span><br><span class="line">	final TransactionAttribute txAttr &#x3D; (tas !&#x3D; null ? tas.getTransactionAttribute(method, targetClass) : null);</span><br><span class="line">	&#x2F;&#x2F;获取事务管理器</span><br><span class="line">	final PlatformTransactionManager tm &#x3D; determineTransactionManager(txAttr);</span><br><span class="line">	final String joinpointIdentification &#x3D; methodIdentification(method, targetClass, txAttr);</span><br><span class="line"></span><br><span class="line">	if (txAttr &#x3D;&#x3D; null || !(tm instanceof CallbackPreferringPlatformTransactionManager)) &#123;</span><br><span class="line">		&#x2F;&#x2F; Standard transaction demarcation with getTransaction and commit&#x2F;rollback calls.</span><br><span class="line">		&#x2F;&#x2F;创建事务</span><br><span class="line">		TransactionInfo txInfo &#x3D; createTransactionIfNecessary(tm, txAttr, joinpointIdentification);</span><br><span class="line"></span><br><span class="line">		Object retVal;</span><br><span class="line">		try &#123;</span><br><span class="line">			&#x2F;&#x2F; This is an around advice: Invoke the next interceptor in the chain.</span><br><span class="line">			&#x2F;&#x2F; This will normally result in a target object being invoked.</span><br><span class="line">			retVal &#x3D; invocation.proceedWithInvocation();</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Throwable ex) &#123;</span><br><span class="line">			&#x2F;&#x2F; target invocation exception</span><br><span class="line">			&#x2F;&#x2F;回滚事务</span><br><span class="line">			completeTransactionAfterThrowing(txInfo, ex);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">		finally &#123;</span><br><span class="line">			cleanupTransactionInfo(txInfo);</span><br><span class="line">		&#125;</span><br><span class="line">		&#x2F;&#x2F;提交事务</span><br><span class="line">		commitTransactionAfterReturning(txInfo);</span><br><span class="line">		return retVal;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	else &#123;</span><br><span class="line">		&#x2F;&#x2F;...</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>可以看出，这里使用的是环绕通知处理器，事务的开启-提交-回滚操作均在这体现。</p>
-<h4 id="createTransactionIfNecessary开启事务"><a href="#createTransactionIfNecessary开启事务" class="headerlink" title="createTransactionIfNecessary开启事务"></a>createTransactionIfNecessary开启事务</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransactionManager tm,</span><br><span class="line">		@Nullable TransactionAttribute txAttr, final String joinpointIdentification) &#123;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; If no name specified, apply method identification as transaction name.</span><br><span class="line">	if (txAttr !&#x3D; null &amp;&amp; txAttr.getName() &#x3D;&#x3D; null) &#123;</span><br><span class="line">		txAttr &#x3D; new DelegatingTransactionAttribute(txAttr) &#123;</span><br><span class="line">			@Override</span><br><span class="line">			public String getName() &#123;</span><br><span class="line">				return joinpointIdentification;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	TransactionStatus status &#x3D; null;</span><br><span class="line">	if (txAttr !&#x3D; null) &#123;</span><br><span class="line">		if (tm !&#x3D; null) &#123;</span><br><span class="line">			&#x2F;&#x2F;获取事务状态</span><br><span class="line">			status &#x3D; tm.getTransaction(txAttr);</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			if (logger.isDebugEnabled()) &#123;</span><br><span class="line">				logger.debug(&quot;Skipping transactional joinpoint [&quot; + joinpointIdentification +</span><br><span class="line">						&quot;] because no transaction manager has been configured&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	return prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h5 id="事务的传播机制"><a href="#事务的传播机制" class="headerlink" title="事务的传播机制"></a>事务的传播机制</h5><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public final TransactionStatus getTransaction(@Nullable TransactionDefinition definition) throws TransactionException &#123;</span><br><span class="line">	Object transaction &#x3D; doGetTransaction();</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; Cache debug flag to avoid repeated checks.</span><br><span class="line">	boolean debugEnabled &#x3D; logger.isDebugEnabled();</span><br><span class="line"></span><br><span class="line">	if (definition &#x3D;&#x3D; null) &#123;</span><br><span class="line">		&#x2F;&#x2F; Use defaults if no transaction definition given.</span><br><span class="line">		definition &#x3D; new DefaultTransactionDefinition();</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	&#x2F;&#x2F;是否存在当前事务</span><br><span class="line">	if (isExistingTransaction(transaction)) &#123;</span><br><span class="line">		&#x2F;&#x2F; Existing transaction found -&gt; check propagation behavior to find out how to behave.</span><br><span class="line">		return handleExistingTransaction(definition, transaction, debugEnabled);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; Check definition settings for new transaction.</span><br><span class="line">	if (definition.getTimeout() &lt; TransactionDefinition.TIMEOUT_DEFAULT) &#123;</span><br><span class="line">		throw new InvalidTimeoutException(&quot;Invalid transaction timeout&quot;, definition.getTimeout());</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F;当前事务不存在，则根据事务传播行为做不同处理</span><br><span class="line">	&#x2F;&#x2F; No existing transaction found -&gt; check propagation behavior to find out how to proceed.</span><br><span class="line">	if (definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_MANDATORY) &#123;</span><br><span class="line">		throw new IllegalTransactionStateException(</span><br><span class="line">				&quot;No existing transaction found for transaction marked with propagation &#39;mandatory&#39;&quot;);</span><br><span class="line">	&#125;</span><br><span class="line">	else if (definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_REQUIRED ||</span><br><span class="line">			definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_REQUIRES_NEW ||</span><br><span class="line">			definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_NESTED) &#123;</span><br><span class="line">		&#x2F;&#x2F;挂起当前事务，当前事务为不存在，不需要挂起</span><br><span class="line">		SuspendedResourcesHolder suspendedResources &#x3D; suspend(null);</span><br><span class="line">		if (debugEnabled) &#123;</span><br><span class="line">			logger.debug(&quot;Creating new transaction with name [&quot; + definition.getName() + &quot;]: &quot; + definition);</span><br><span class="line">		&#125;</span><br><span class="line">		try &#123;</span><br><span class="line">			boolean newSynchronization &#x3D; (getTransactionSynchronization() !&#x3D; SYNCHRONIZATION_NEVER);</span><br><span class="line">			DefaultTransactionStatus status &#x3D; newTransactionStatus(</span><br><span class="line">					definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);</span><br><span class="line">			doBegin(transaction, definition);</span><br><span class="line">			prepareSynchronization(status, definition);</span><br><span class="line">			return status;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (RuntimeException | Error ex) &#123;</span><br><span class="line">			resume(null, suspendedResources);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	else &#123;</span><br><span class="line">		&#x2F;&#x2F; Create &quot;empty&quot; transaction: no actual transaction, but potentially synchronization.</span><br><span class="line">		if (definition.getIsolationLevel() !&#x3D; TransactionDefinition.ISOLATION_DEFAULT &amp;&amp; logger.isWarnEnabled()) &#123;</span><br><span class="line">			logger.warn(&quot;Custom isolation level specified but no actual transaction initiated; &quot; +</span><br><span class="line">					&quot;isolation level will effectively be ignored: &quot; + definition);</span><br><span class="line">		&#125;</span><br><span class="line">		boolean newSynchronization &#x3D; (getTransactionSynchronization() &#x3D;&#x3D; SYNCHRONIZATION_ALWAYS);</span><br><span class="line">		return prepareTransactionStatus(definition, null, true, newSynchronization, debugEnabled, null);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>从getTransaction代码处理上看，在不存在当前事务的情况下，事务传播行为：</p>
-<ol>
-<li><p>是<strong>MANDATORY</strong>类型时，则直接抛出异常，因为此时还没有事务</p>
-</li>
-<li><p>是<strong>REQUIRED</strong>、<strong>REQUIRES_NEW</strong>、<strong>NESTED</strong>类型时，则创建一个新的事务</p>
-</li>
-<li><p>其余情况，返回空事务</p>
-</li>
-</ol>
-<p>而在存在当前事务的情况下，<strong>handleExistingTransaction</strong>方法将被执行：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private TransactionStatus handleExistingTransaction(</span><br><span class="line">		TransactionDefinition definition, Object transaction, boolean debugEnabled)</span><br><span class="line">		throws TransactionException &#123;</span><br><span class="line">	&#x2F;&#x2F;传播行为是NEVER，则不允许执行</span><br><span class="line">	if (definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_NEVER) &#123;</span><br><span class="line">		throw new IllegalTransactionStateException(</span><br><span class="line">				&quot;Existing transaction found for transaction marked with propagation &#39;never&#39;&quot;);</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F;传播行为是NOT_SUPPORTED，挂起当前事务</span><br><span class="line">	if (definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_NOT_SUPPORTED) &#123;</span><br><span class="line">		if (debugEnabled) &#123;</span><br><span class="line">			logger.debug(&quot;Suspending current transaction&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		Object suspendedResources &#x3D; suspend(transaction);</span><br><span class="line">		boolean newSynchronization &#x3D; (getTransactionSynchronization() &#x3D;&#x3D; SYNCHRONIZATION_ALWAYS);</span><br><span class="line">		return prepareTransactionStatus(</span><br><span class="line">				definition, null, false, newSynchronization, debugEnabled, suspendedResources);</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F;传播行为是REQUIRED_NEW，挂起当前事务，并新建一个事务</span><br><span class="line">	if (definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_REQUIRES_NEW) &#123;</span><br><span class="line">		if (debugEnabled) &#123;</span><br><span class="line">			logger.debug(&quot;Suspending current transaction, creating new transaction with name [&quot; +</span><br><span class="line">					definition.getName() + &quot;]&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		SuspendedResourcesHolder suspendedResources &#x3D; suspend(transaction);</span><br><span class="line">		try &#123;</span><br><span class="line">			boolean newSynchronization &#x3D; (getTransactionSynchronization() !&#x3D; SYNCHRONIZATION_NEVER);</span><br><span class="line">			DefaultTransactionStatus status &#x3D; newTransactionStatus(</span><br><span class="line">					definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);</span><br><span class="line">			doBegin(transaction, definition);</span><br><span class="line">			prepareSynchronization(status, definition);</span><br><span class="line">			return status;</span><br><span class="line">		&#125;</span><br><span class="line">		catch (RuntimeException | Error beginEx) &#123;</span><br><span class="line">			resumeAfterBeginException(transaction, suspendedResources, beginEx);</span><br><span class="line">			throw beginEx;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F;传播行为是NESTED，创建一个保存点</span><br><span class="line">	if (definition.getPropagationBehavior() &#x3D;&#x3D; TransactionDefinition.PROPAGATION_NESTED) &#123;</span><br><span class="line">		if (!isNestedTransactionAllowed()) &#123;</span><br><span class="line">			throw new NestedTransactionNotSupportedException(</span><br><span class="line">					&quot;Transaction manager does not allow nested transactions by default - &quot; +</span><br><span class="line">					&quot;specify &#39;nestedTransactionAllowed&#39; property with value &#39;true&#39;&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		if (debugEnabled) &#123;</span><br><span class="line">			logger.debug(&quot;Creating nested transaction with name [&quot; + definition.getName() + &quot;]&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		if (useSavepointForNestedTransaction()) &#123;</span><br><span class="line">			&#x2F;&#x2F; Create savepoint within existing Spring-managed transaction,</span><br><span class="line">			&#x2F;&#x2F; through the SavepointManager API implemented by TransactionStatus.</span><br><span class="line">			&#x2F;&#x2F; Usually uses JDBC 3.0 savepoints. Never activates Spring synchronization.</span><br><span class="line">			DefaultTransactionStatus status &#x3D;</span><br><span class="line">					prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);</span><br><span class="line">			status.createAndHoldSavepoint();</span><br><span class="line">			return status;</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			&#x2F;&#x2F; Nested transaction through nested begin and commit&#x2F;rollback calls.</span><br><span class="line">			&#x2F;&#x2F; Usually only for JTA: Spring synchronization might get activated here</span><br><span class="line">			&#x2F;&#x2F; in case of a pre-existing JTA transaction.</span><br><span class="line">			boolean newSynchronization &#x3D; (getTransactionSynchronization() !&#x3D; SYNCHRONIZATION_NEVER);</span><br><span class="line">			DefaultTransactionStatus status &#x3D; newTransactionStatus(</span><br><span class="line">					definition, transaction, true, newSynchronization, debugEnabled, null);</span><br><span class="line">			doBegin(transaction, definition);</span><br><span class="line">			prepareSynchronization(status, definition);</span><br><span class="line">			return status;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; Assumably PROPAGATION_SUPPORTS or PROPAGATION_REQUIRED.</span><br><span class="line">	if (debugEnabled) &#123;</span><br><span class="line">		logger.debug(&quot;Participating in existing transaction&quot;);</span><br><span class="line">	&#125;</span><br><span class="line">	if (isValidateExistingTransaction()) &#123;</span><br><span class="line">		if (definition.getIsolationLevel() !&#x3D; TransactionDefinition.ISOLATION_DEFAULT) &#123;</span><br><span class="line">			Integer currentIsolationLevel &#x3D; TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();</span><br><span class="line">			if (currentIsolationLevel &#x3D;&#x3D; null || currentIsolationLevel !&#x3D; definition.getIsolationLevel()) &#123;</span><br><span class="line">				Constants isoConstants &#x3D; DefaultTransactionDefinition.constants;</span><br><span class="line">				throw new IllegalTransactionStateException(&quot;Participating transaction with definition [&quot; +</span><br><span class="line">						definition + &quot;] specifies isolation level which is incompatible with existing transaction: &quot; +</span><br><span class="line">						(currentIsolationLevel !&#x3D; null ?</span><br><span class="line">								isoConstants.toCode(currentIsolationLevel, DefaultTransactionDefinition.PREFIX_ISOLATION) :</span><br><span class="line">								&quot;(unknown)&quot;));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		if (!definition.isReadOnly()) &#123;</span><br><span class="line">			if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) &#123;</span><br><span class="line">				throw new IllegalTransactionStateException(&quot;Participating transaction with definition [&quot; +</span><br><span class="line">						definition + &quot;] is not marked as read-only but existing transaction is&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	boolean newSynchronization &#x3D; (getTransactionSynchronization() !&#x3D; SYNCHRONIZATION_NEVER);</span><br><span class="line">	return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到，在存在当前事务的情况下，事务传播行为：</p>
-<ol>
-<li>是<strong>NEVER</strong>时，不允许继续执行；</li>
-<li>是<strong>NOT_SUPPORTED</strong>时，挂起当前事务；</li>
-<li>是<strong>REQUIRED_NEW</strong>是时，挂起当前事务，并新建一个新事务；</li>
-<li>是<strong>NESTED</strong>时，创建一个保存点；</li>
-</ol>
-<h5 id="事务的挂起和恢复"><a href="#事务的挂起和恢复" class="headerlink" title="事务的挂起和恢复"></a>事务的挂起和恢复</h5><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected final SuspendedResourcesHolder suspend(@Nullable Object transaction) throws TransactionException &#123;</span><br><span class="line">	if (TransactionSynchronizationManager.isSynchronizationActive()) &#123;</span><br><span class="line">		&#x2F;&#x2F;记录当前的事务同步管理器信息</span><br><span class="line">		List&lt;TransactionSynchronization&gt; suspendedSynchronizations &#x3D; doSuspendSynchronization();</span><br><span class="line">		try &#123;</span><br><span class="line">			Object suspendedResources &#x3D; null;</span><br><span class="line">			if (transaction !&#x3D; null) &#123;</span><br><span class="line">				&#x2F;&#x2F;挂起当前事务</span><br><span class="line">				suspendedResources &#x3D; doSuspend(transaction);</span><br><span class="line">			&#125;</span><br><span class="line">			String name &#x3D; TransactionSynchronizationManager.getCurrentTransactionName();</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionName(null);</span><br><span class="line">			boolean readOnly &#x3D; TransactionSynchronizationManager.isCurrentTransactionReadOnly();</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionReadOnly(false);</span><br><span class="line">			Integer isolationLevel &#x3D; TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionIsolationLevel(null);</span><br><span class="line">			boolean wasActive &#x3D; TransactionSynchronizationManager.isActualTransactionActive();</span><br><span class="line">			TransactionSynchronizationManager.setActualTransactionActive(false);</span><br><span class="line">			return new SuspendedResourcesHolder(</span><br><span class="line">					suspendedResources, suspendedSynchronizations, name, readOnly, isolationLevel, wasActive);</span><br><span class="line">		&#125;</span><br><span class="line">		catch (RuntimeException | Error ex) &#123;</span><br><span class="line">			&#x2F;&#x2F; doSuspend failed - original transaction is still active...</span><br><span class="line">			doResumeSynchronization(suspendedSynchronizations);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	else if (transaction !&#x3D; null) &#123;</span><br><span class="line">		&#x2F;&#x2F; Transaction active but no synchronization active.</span><br><span class="line">		Object suspendedResources &#x3D; doSuspend(transaction);</span><br><span class="line">		return new SuspendedResourcesHolder(suspendedResources);</span><br><span class="line">	&#125;</span><br><span class="line">	else &#123;</span><br><span class="line">		&#x2F;&#x2F; Neither transaction nor synchronization active.</span><br><span class="line">		return null;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected Object doSuspend(Object transaction) &#123;</span><br><span class="line">	DataSourceTransactionObject txObject &#x3D; (DataSourceTransactionObject) transaction;</span><br><span class="line">	txObject.setConnectionHolder(null);</span><br><span class="line">	return TransactionSynchronizationManager.unbindResource(obtainDataSource());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public static Object unbindResource(Object key) throws IllegalStateException &#123;</span><br><span class="line">	Object actualKey &#x3D; TransactionSynchronizationUtils.unwrapResourceIfNecessary(key);</span><br><span class="line">	Object value &#x3D; doUnbindResource(actualKey);</span><br><span class="line">	if (value &#x3D;&#x3D; null) &#123;</span><br><span class="line">		throw new IllegalStateException(</span><br><span class="line">				&quot;No value for key [&quot; + actualKey + &quot;] bound to thread [&quot; + Thread.currentThread().getName() + &quot;]&quot;);</span><br><span class="line">	&#125;</span><br><span class="line">	return value;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private static Object doUnbindResource(Object actualKey) &#123;</span><br><span class="line">	Map&lt;Object, Object&gt; map &#x3D; resources.get();</span><br><span class="line">	if (map &#x3D;&#x3D; null) &#123;</span><br><span class="line">		return null;</span><br><span class="line">	&#125;</span><br><span class="line">	Object value &#x3D; map.remove(actualKey);</span><br><span class="line">	&#x2F;&#x2F; Remove entire ThreadLocal if empty...</span><br><span class="line">	if (map.isEmpty()) &#123;</span><br><span class="line">		resources.remove();</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F; Transparently suppress a ResourceHolder that was marked as void...</span><br><span class="line">	if (value instanceof ResourceHolder &amp;&amp; ((ResourceHolder) value).isVoid()) &#123;</span><br><span class="line">		value &#x3D; null;</span><br><span class="line">	&#125;</span><br><span class="line">	if (value !&#x3D; null &amp;&amp; logger.isTraceEnabled()) &#123;</span><br><span class="line">		logger.trace(&quot;Removed value [&quot; + value + &quot;] for key [&quot; + actualKey + &quot;] from thread [&quot; +</span><br><span class="line">				Thread.currentThread().getName() + &quot;]&quot;);</span><br><span class="line">	&#125;</span><br><span class="line">	return value;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到，事务的挂起实际是对当前事务的状态信息和数据源连接对象封装到<strong>SuspendedResourcesHolder</strong>对象中，并将线程本地变量保存的事务状态清除。</p>
-<p>那什么时候进行恢复呢？通过查看代码可以发现，在事务提交或者回滚后，org.springframework.transaction.support.AbstractPlatformTransactionManager#cleanupAfterCompletion，会进行挂起事务的恢复：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private void cleanupAfterCompletion(DefaultTransactionStatus status) &#123;</span><br><span class="line">	status.setCompleted();</span><br><span class="line">	if (status.isNewSynchronization()) &#123;</span><br><span class="line">		TransactionSynchronizationManager.clear();</span><br><span class="line">	&#125;</span><br><span class="line">	if (status.isNewTransaction()) &#123;</span><br><span class="line">		doCleanupAfterCompletion(status.getTransaction());</span><br><span class="line">	&#125;</span><br><span class="line">	if (status.getSuspendedResources() !&#x3D; null) &#123;</span><br><span class="line">		if (status.isDebug()) &#123;</span><br><span class="line">			logger.debug(&quot;Resuming suspended transaction after completion of inner transaction&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">		Object transaction &#x3D; (status.hasTransaction() ? status.getTransaction() : null);</span><br><span class="line">		resume(transaction, (SuspendedResourcesHolder) status.getSuspendedResources());</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected final void resume(@Nullable Object transaction, @Nullable SuspendedResourcesHolder resourcesHolder)</span><br><span class="line">		throws TransactionException &#123;</span><br><span class="line"></span><br><span class="line">	if (resourcesHolder !&#x3D; null) &#123;</span><br><span class="line">		Object suspendedResources &#x3D; resourcesHolder.suspendedResources;</span><br><span class="line">		if (suspendedResources !&#x3D; null) &#123;</span><br><span class="line">			doResume(transaction, suspendedResources);</span><br><span class="line">		&#125;</span><br><span class="line">		List&lt;TransactionSynchronization&gt; suspendedSynchronizations &#x3D; resourcesHolder.suspendedSynchronizations;</span><br><span class="line">		if (suspendedSynchronizations !&#x3D; null) &#123;</span><br><span class="line">			TransactionSynchronizationManager.setActualTransactionActive(resourcesHolder.wasActive);</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionIsolationLevel(resourcesHolder.isolationLevel);</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionReadOnly(resourcesHolder.readOnly);</span><br><span class="line">			TransactionSynchronizationManager.setCurrentTransactionName(resourcesHolder.name);</span><br><span class="line">			doResumeSynchronization(suspendedSynchronizations);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
-<li>Spring事务也是通过AOP实现，相关逻辑由<strong>BeanFactoryTransactionAttributeSourceAdvisor</strong>、<strong>TransactionAttributeSource</strong>、<strong>TransactionInterceptor</strong>实现；</li>
-<li>事务的挂起与恢复，实际是通过线程本地变量对当前事务信息的保存、清除和恢复；</li>
-</ol>
-]]></content>
-      <tags>
-        <tag>Spring Boot</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spring Boot源码学习：DeferredResult的处理流程</title>
     <url>/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>业务开发时，轮询可以被用于许多场景中，但把握轮询的频次不是一件容易的事情，频次过高会对服务端产生不小的压力，频次过低时，则无法保证实时性。而随着Servlet 3.0异步请求处理的特性支持，DeferredResult的出现很好的解决了这个问题。</p>
@@ -642,6 +549,314 @@
 ]]></content>
       <tags>
         <tag>Spring Boot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>日志：每个软件工程师都应该知道的实时数据的统一抽象</title>
+    <url>/2024/04/23/%E6%97%A5%E5%BF%97%EF%BC%9A%E6%AF%8F%E4%B8%AA%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E5%B8%88%E9%83%BD%E5%BA%94%E8%AF%A5%E7%9F%A5%E9%81%93%E7%9A%84%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1/</url>
+    <content><![CDATA[<blockquote>
+<p>原文：<a href="https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying">The Log: What every software engineer should know about real-time data’s unifying abstraction</a></p>
+<p>作者：<strong>Jay Kreps</strong></p>
+</blockquote>
+<p>我大约在六年前加入了领英，那是一个特别有趣的时间点。那时我们正面临着单体集中式数据库极限的挑战，需要开始向专门的分布式系统转变。这真是一个有趣的经历：我们构建、部署和运行了分布式图数据库、分布式搜索后端、Hadoop套件、一代及二代键值数据库，并运行至今。</p>
+<p>在这个过程中，我学到的最有用的一件事情是，我们在这里构建的大多数组件，其核心都有一个简单的概念：日志，有时也被称作先写日志、提交日志或者事务日志，日志几乎与计算机的历史一样悠久，它是许多分布式数据系统和实时应用架构里面的核心。</p>
+<p>如果你不了解日志，你也就不可能完全了解数据库、NoSQL存储、键值存储、副本、paxos、hadoop、版本控制、甚至几乎任何软件系统，然而大多数软件工程师都不熟悉它，我希望改变这个现状。在这篇文章中，我将告诉你一切你需要知道的关于日志的事情，包括什么是日志、如何在数据集成、实时处理和系统构建中使用日志。</p>
+<h3 id="第一部分：什么是日志"><a href="#第一部分：什么是日志" class="headerlink" title="第一部分：什么是日志"></a>第一部分：什么是日志</h3><p>日志可能是最简单的存储抽象，它是一个只能追加、按时间排序的完全有序的序列。</p>
+<p><img src="http://storage.laixiaoming.space/blog/log.png" alt="img"></p>
+<p>记录被追加到到日志的末尾，读取时从左到右进行。每条记录都按序分配了一个唯一数字。</p>
+<p>记录的顺序包含了时间的概念，因为左边的条目在时间上是比右边的条目更加早的。日志记录的数字可以认为是这条记录的时间戳。将这种顺序描述为时间的概念，乍一看可能会有点奇怪，但有一个好处是，它可以从任何特定的物理时钟中脱离出来，这个好处在我们谈到分布式系统时显得更加至关重要。</p>
+<p>记录的内容和形式不在这次讨论的重点。当然，我们不能一直往日志中追加记录，因为磁盘的空间是有限的，这一点稍后会谈到。</p>
+<p>日志并不安全不同于文件或者数据库表。一个文件是一个字节数组，数据库表是一系列的记录，日志也是一种表或者文件，但它是时间上有序的。</p>
+<p>你可能会有疑问，这么简单的东西，为什么会值得讨论？只能追加的记录序列和数据系统有什么关系？答案是，日志有一个很关键的点，它记录了发生了什么事情以及是什么时候发生的，在多数情况下，这点对于分布式系统而言，是问题的关键。</p>
+<p>在我们深入之前，先让我说明一件可能让人有疑惑的事情。每个工程师都很熟悉另一种日志的定义，那就是一个应用通过syslog或者log4j向本地文件写入的非结构化的错误信息或者跟踪信息，为了避免歧义，我称这个为“应用日志”。相对于我在本文描述的日志，应用日志具有另一种形式。这两种日志最大的不同之处在于，应用日志主要是用于人进行阅读，而我所描述的日志或数据日志被用于程序化访问。</p>
+<p>（事实上，如果你稍微思考下，就会发现，人在单台机器上阅读日志的想法有些不合时宜。当涉及到许多服务和服务器时，这种方法很快就变得一种难于管理。日志的目的很快就变成了查询和图表的输入，以理解机器的行为，因此用英文书写在文件的日志并不如在本文中描述的结构化日志合适。）</p>
+<h4 id="数据库中的日志"><a href="#数据库中的日志" class="headerlink" title="数据库中的日志"></a>数据库中的日志</h4><p>我不知道日志的概念起源于哪里，或许是因为它太过简单以至于发明者不认为它是一种发明，就像十分查找算法。它早在IBM的Sytem R时就出现了。日志在数据库的使用是在崩溃的时候，必须保持数据结构和索引的同步。为了保证原子性、持久性，数据库系统在对它维护的所有数据结构应用修改之前，会通过日志写入将要修改的记录的信息。日志是对发生的事情的记录，每个数据库表或索引都是对有用的数据结构或索引的历史数据的投影。由于日志是即时持久化的，它也作为一种可靠数据来源，用于在崩溃时恢复其他持久化结构的。</p>
+<p>随着时间的推进，日志的用法也从用于ACID的实现细节，演变为在数据库之前同步数据的一种方式。发生在主数据库上的变更序列也需要被应用于远程的从库上，以保持同步。Oracle、MySQL、PostgreSQL都包含了传输协议，将部分日志传输到扮演从库角色的副本数据库。Oracle还将日志产品化为一种通用通用的数据订阅机制，非Oracle数据订阅者可以使用它们的XStreams和GoldenGate进行订阅使用。在MySQL和PostgreSQL上，相似的组件也作为许多数据库构中的关键组件存在。</p>
+<p>由于这个原因，机器可读的日志的概念也被局限于数据库的内部。日志作为数据订阅机制的使用似乎是偶然出现的。但这种抽象非常适用于消息、数据流和实时数据处理的所有类型。</p>
+<h4 id="分布式系统中的日志"><a href="#分布式系统中的日志" class="headerlink" title="分布式系统中的日志"></a>分布式系统中的日志</h4><p>在分布式系统中，变更的序列和数据的分发是日志解决的两个尤为重要的问题。就更新的顺序达成一致（或达成不一致、应对副作用），是分布式系统设计的核心问题。</p>
+<p>以日志为中心的分布式系统方法源于一个简单的观察，我称它为“状态机复制原理”：</p>
+<blockquote>
+<p>如果两个相同的、确定性的进程的起始状态是相同的，并且以同样的顺序获取了相同的输入，那么这两个进程将产生同样的输出，最终也拥有相同的状态。</p>
+</blockquote>
+<p>这听起来有点晦涩，让我们深入了解它的含义。</p>
+<p>确定性意味着这个进程是不依赖于时钟的，也不会有其他“带外数据”影响它的输出。如果一个程序的输出受线程执行的特定顺序影响、调用了<strong>gettimeofday</strong>或其他不可重复调用的方法，就可以认为是非确定性的。</p>
+<p>进程的状态是最终保留在机器上内存或者磁盘的数据。</p>
+<p>以相同的数据获取相同的输入听起来很熟悉，这跟日志相同。这是一个非常直观的概念：如果你给两段确定性的代码提供相同的日志输入，它们将得到相同的输出。</p>
+<p>应用在分布式计算上就非常明显，你可以将使多个机器做相同的事情的问题，简化为实现分布式的一致性日志，并作为这些进程的输入的问题。在这里，日志的目的就是将所有的非确定性排除在输入流之外，以确保所有副本处理这些输入时保持同步。</p>
+<p>当你理解了这个，这个也就不再复杂和深奥了：这差不多说，确定性的处理就是确定性的。然而，我仍然认为它是分布式系统设计中更通用的工具。</p>
+<p>一个关于这个方法的最奇妙的一个事情就是，作为日志索引的时间戳也扮演着副本状态的时钟角色，你可以通过每个副本当前处理的最大的记录的一个简单的数字或者时间戳来描述每个副本。这个时间戳对应的日志体现了副本的状态。</p>
+<p>根据日志写入的内容，在系统中应用这个原理有多种方式。例如，我们可以在日志中记录服务的请求、在对请求响应时服务的状态变化、或者执行的变更指令。理论上，我们甚至可以记录每个副本上要执行的一系列机器指令，要调用的方法名和参数。只要这两个进程以同样的方式处理这些输入，这些进程将在副本中保持一致的状态。</p>
+<p>不同的用户群体似乎用不一样的方式描述日志的使用。数据库使用群体通常会区分物理日志和逻辑日志，物理日志指的是记录每一行变更的内容的日志，而逻辑日志记录的不是行的变更，而是会引起行数据变更的SQL命令（insert、update、delete语句）。</p>
+<p>分布式系统文献通常将处理和复制广泛的分为两种方式。“状态机模型”通常被称为“主-主模型”，在这个模型下，我们维护了请求的日志，每个副本都处理这些请求。对“主-主模型”作了轻微的修改后，出现了“主-从模型”，在这个模型下，会选出一个副本作为主副本，来顺序处理到来的请求，并在处理过程中，在日志记录下状态的变更，其他的副本则顺序应用主副本上的状态变更，保持同步，以便在主副本异常时接替成为主副本。</p>
+<p><img src="http://storage.laixiaoming.space/blog/active_and_passive_arch.png" alt="img"></p>
+<p>为了理解这两种方式之前的不同，我们先来看一个不太严谨的例子，假设有多个算术服务，这些服务里维护了一个数字（初始值为0）作为服务的状态，并对这个数字应用加法和乘法。“主-主模型”下，在日志会记录下对这个值作出的变更，如“+1”、“*2”等，每个副本都会应用这些变更并得到相同的数字集。在“主-从”模型下，将存在唯一一个主副本，用于对维护的数字作出变更，并将结果记录到日志，如“1”、”3“、“6”等。从这个例子中，我们也知道了，为什么顺序是副本中保持一致性的关键因素，因为对一个加法和乘法操作调整了执行顺序将得到不一样的结果。</p>
+<p>分布式日志可以被视为共识问题模型的一种数据结构，毕竟日志代表了一系列要追加的下一个值的决定。你必须要认真一点才能在Paxos算法中看到日志的身影，尽管日志是它们最常见的应用。Paxos通常被作为”multi-paxos”协议的一个扩展存在，把日志作为一系列共识问题的建模，日志中的每个槽都有一个值。但日志在ZAB、RAFT和Viewstamped Replication这些其他的协议中更加显而易见，在这些协议里面，直接作为维护分布式、一致性的日志的模型存在。</p>
+<p>我有点怀疑我们的对这个的看法一定程序上受到了历史进程的影响，也许是由于过去几十年里，分布式计算理论的发展领先于其实际的应用。实际上，共识问题被过于简单化了。计算机系统几乎不会需要决定单个值，而几乎总是处理一系列请求。所以日志不能认为是一个简单的单值寄存器，而是一个更自然的抽象。</p>
+<p>此外，对算法的关注使得系统需要的底层日志抽象变得模糊。我个人认为，我们最终将更加关注于作为商品化模块存在的日志，而不是它的实现，正如我们经常讨论哈希表而不需要了解它是使用的线性探测的杂音哈希还是其他，这种细节。日志将成为商品化接口的存在，同时许多算法和实现竞争以提供最好的保证或者其他可选的特性。</p>
+<h4 id="变更日志：表和事件的二象性"><a href="#变更日志：表和事件的二象性" class="headerlink" title="变更日志：表和事件的二象性"></a>变更日志：表和事件的二象性</h4><p>回到数据库的讨论，在变更日志和表之间，有着有趣的二象性。日志类似于借贷和银行处理的列表，数据库表则是当前所有账号的余额，如果你有变更日志，你可以应用这些变更日志，以创建拥有当前状态的表，这个表记录了每条记录某个特定时间的最新的状态。从某种意义上说，日志是更加基础的数据结构，除了创建原始表，你还可以将其转换并创建各种类型的派生表（是的，对于非关系数据库使用群体，数据库表也是关键的数据存储）。</p>
+<p>这个过程也是可逆的，如果你有一张要更新的表，你可以记录这些变更，然后发布所有对这个表状态变更的日志。变更日志就是需要用于支持近实时副本的。在这个场景中，你可以看到表和事件的二象性：表支持的静态数据，而日志记录了变更。日志的魅力在于，它不仅拥有了数据库表最终版本的内容，也允许你通过它重建其他任何可能存在的版本，它就相当于数据库表中每个旧版本的备份集合。</p>
+<p>这可能让你想起版本控制系统，版本控制系统和数据库系统有着非常密切的关系，版本控制解决了分布式系统必须解决的一个非常相似的问题：管理分布式的、并发的状态变更。一个版本控制系统建模的是补丁序列，而那实际上是日志。你检出了当前代码的一个快照，那其实类似于数据库表，你会注意到，在版本控制系统中，复制是通过日志完成的，就像是在其他有状态的分布式系统一样：当你更新时、也就是拉取补丁并将补丁应用到你当前的版本。</p>
+<p>有些人最近从销售日志数据库的公司Datomic那里看到了这样一些想法，这个<a href = "https://www.youtube.com/watch?v=Cym4TZwTCNU">视频</a>比较好的看到了他们是如何应用这些想法的，这些想法并不是专属于这个系统的，在过去十年里，他们很好地贡献了一部分分布式系统和数据库的文献。</p>
+<p>这节内容可能有一些理论化了，别沮丧，马上就会有实操了。</p>
+<h4 id="接下来的内容"><a href="#接下来的内容" class="headerlink" title="接下来的内容"></a>接下来的内容</h4><p>在文章的剩余内容，我将尝试讲述日志在分布式内部实现和抽象分布式模型之外的好处。这包括了：</p>
+<ol>
+<li>数据集成。使一个组织中的数据更容易地用在所有存储和处理系统中。</li>
+<li>实时灵气处理。计算派生数据流。</li>
+<li>分布式系统设计。如何通过集中式日志设计来简化实际的应用系统。</li>
+</ol>
+<p>这些用法都围绕着日志作为一个单体服务来解决实现。</p>
+<p>在每个场景中，日志的好处都来源于日志能提供的简单的功能：生成持久化的、可重放的历史记录。惊讶地是，让多台机器能够以确定的方式并按各自的速度重试历史数据的能力，是这些问题的核心。</p>
+<h3 id="第二部分：数据集成"><a href="#第二部分：数据集成" class="headerlink" title="第二部分：数据集成"></a>第二部分：数据集成</h3><p>首先我将说明下“数据集成”指的是什么，以及它为什么重要，然后我们可以发现它是怎么跟日志联系在一起的。</p>
+<blockquote>
+<p>数据集成正使得一个组织的数据在所有系统和服务中变得可用。</p>
+</blockquote>
+<p>“数据集成”这个词语并不常见，但我找不到一个更好的词语。大家更熟知的ETL仅仅覆盖了数据集成的一个有限子集——主要在关系型数据仓库使用。但我正在描述的事物更多的可以认为是广泛用于实时系统和处理流的ETL。</p>
+<p>在人们对专注于大数据，对大数据大肆宣扬中，你可能很少听到过数据集成，尽管如此，我仍认为“让数据变得可用”这个普通的问题，是一个组织可以关注的最有价值的一个问题之一。</p>
+<p>对数据的有效使用遵循了马斯洛的需求层次理论，金字塔的底层部分是获取所有相关的数据，并将其放到一个适用的处理环境中（可以是华丽的实时查询系统，或者仅仅是文件文件和python脚本）。数据需要采用统一建模的方式，使得数据更易于获取和处理。一旦用统一的方式获取数据的基本需求被满足了，接着就可以在这基础上用不同的试进行数据的处理——MapReduce、实时查询系统等。</p>
+<p>值得注意的是，在缺少一个可靠和完整的数据流时，Hadoop集群只不过是一个昂贵和难以安装的加热器。一旦数据和处理变得可用，人们就可以更多关注于好的数据模型和一致的易于理解的语义这种更精细的问题上。最后关注点可以转换到更高级的处理上，更好的可视化、报表、算法处理和预测上。</p>
+<p>以我的经验，大多数组织在金字塔的底部都有巨大的漏洞，它们缺乏可靠的完整的数据流，而且想要直接跳到先进数据建模技术上。这是本末倒置的。</p>
+<p>所以主要的问题是，我们怎么在组织中构建一个可靠的数据流，贯穿在所有的数据系统中。</p>
+<h4 id="数据集成：两个难题"><a href="#数据集成：两个难题" class="headerlink" title="数据集成：两个难题"></a>数据集成：两个难题</h4><p>两个趋势使得数据集成变得困难。</p>
+<p><strong>事件数据管道</strong></p>
+<p>第一个趋势是事件数据的增长。事件数据记录了发生的事情，而不是事物是什么。在网页系统中，指的是用户的活动日志，以及需要可靠操作和监控一个数据中心机器价值的机器事件和统计数据。人们倾向于称它们为日志数据，因为它通常被写到应用日志，但这混淆了形式和功能。数据是现代网站的核心，毕竟谷歌的财富是由点击和展示构建的相关性管道产生的，而这正是事件。</p>
+<p>但这并不仅限于网站公司，这仅仅是因为网站公司是完全数字化的，所以它们很容易完成。金融数据一直以来都是以事件为中心的。RFID能将这种根据应用到物理对象上。我们认为，随着传统业务和活动的数据化，这种趋势将继续下去。</p>
+<p>这种类型的事件数据记录了发生的事情，并且往往比传统数据库的使用要大上好几个数量级。这对处理有着巨大的挑战。</p>
+<p><strong>专用数据系统的兴起</strong></p>
+<p>第二个趋势来自于专用数据系统的兴起，这些系统在过去5年变得非常受欢迎并且是可以免费获取的。专用的系统用于OLAP、搜索、简单的在线存储、批处理、图分析等等。</p>
+<p>更加多样化的更多数据，以及希望将这些数据用于更多系统的需求，导致了巨大的数据集成问题。</p>
+<h4 id="日志结构化的数据流"><a href="#日志结构化的数据流" class="headerlink" title="日志结构化的数据流"></a>日志结构化的数据流</h4><p>日志是在系统之间处理数据流的自然的数据结构。其中的秘诀非常简单，获取所有组织的数据，并将其放到一个用于实时订阅的日志中心。每一个逻辑数据源都可以用自己的日志作为模型。一个数据源可以是输出事件（比如点击、页面浏览）的应用，或者是可以修改的数据库表。每个订阅系统都尽可能快地从日志读取，应用每一条新记录到自己的存储系统中，并推进在日志中的位置。订阅者可以是任意一种数据系统——缓存、Hadoop、另一个站点的数据库、搜索系统等等。</p>
+<p><img src="http://storage.laixiaoming.space/blog/log_subscription.png" alt="img"></p>
+<p>例如，日志概念为每个变更提供了逻辑时钟，每个订阅者的状态都可以被探测到。这使得彼此间推断不同的订阅者状态变得简单，因为它们每个都有着自己的读取位置。</p>
+<p>为了让讨论更具体，举个简单的例子，假使有一个数据库和几个缓存服务器，日志则提供了一种方式来同步更新到所有的系统，并且推断出每个系统所处的时间点。我们往日志写入了一条新记录，然后从缓存中读取，如果我们希望保证不读取到旧数据，我们需要确保不会从任何一个在复制上没跟上最新数据的缓存中读取。</p>
+<p>日志也可以作为一种缓冲，使数据的产生和消费异步。有许多原因使得这点非常重要，尤其是当有多个订阅者以不同的消费速率进行消费的时候。这意味着订阅者可能崩溃或者停机维护时，并在恢复的时候赶上来：订阅者以自己控制的速度进行消费。一个批处理系统，如Hadoop或者是一个数据仓库，每小时或每天消费一次数据，但一个实时查询系统却可能是需要即时消费的。原始数据源和日志都不知道各种目标数据系统，因此消费系统可以在不做变更的情况下在管道中被添加进来或移除出去。</p>
+<p>特别重要的是，目标系统仅仅知道日志的存在而不知道源系统的任何细节。消费系统也不需要去关注数据是来源于数据库管理系统、还是新型的键值存储系统，抑或是在没有任何实时查询系统的情况下生成的。这似乎是一个很小的知识点，实际上却非常重要。</p>
+<p>在这里我使用了“日志”这个词而不是“消息系统”或者“发布订阅”，这里因为这在语义上是更加准确的，是对你在实现数据复制支持时所需要的事情的更加准备的描述。我发现“发布订阅”只是表达出了消息的间接寻址。如果你比较任意两个具有发布订阅功能的消息系统，你会发现它们承诺的是完全不同的事情，在这个领域里面，大多数模型都是没有用处的。你可以认为日志是一种有着持久化保证和强有序语义的消息系统。在分布式系统中，通信模型也叫原子广播。</p>
+<p>值得强调的是，日志仍然是基础设施，它并不是掌握数据流故事的结束：故事剩余部分围绕着元数据、模式、兼容性和处理数据结构和深化的所有细节来展开。但是，除非有一种可靠的、通用的处理数据流的机制，否则语义的细节仍然是次要的。</p>
+<h4 id="在领英"><a href="#在领英" class="headerlink" title="在领英"></a>在领英</h4><p>随着领英从中心化的关系型数据库过渡到分布式系统，我注意到数据集成的问题也在逐渐演变。</p>
+<p>目前我们的数据系统主要包括：</p>
+<p>搜索、社交图谱、Voldemort(键值存储)、Espreso(文档存储)、推荐引擎、OLAP查询引擎、Hadoop、Terradata、Ingraphs(监控图表和监控服务)</p>
+<p>以上这些都是特定的分布式系统，在特定的领域提供了高级的功能特性。</p>
+<p>使用日志作为数据流的想法在我来到这里之前就已经出现了。我们开发的最早的一个基础设施之一是一个被称为databus的服务，它在我们早期的Oracle表上提供了一种缓存抽象，以扩展数据库更改的订阅，给我们的社交图谱和搜索索引提供输入数据。</p>
+<p>我将简单介绍一些历史以提供讨论的上下文。在我们发布了自己的键值存储系统之后，大约是2008年，我开始参与这个项目。我的下一个项目是尝试部署配置一个可用的Hadoop，并将我们的推荐处理迁移到那里。由于缺乏这方面的经验，我们很自然的花了几周时间来完成数据的导入导出，剩下的时间则用来实现复杂的预测算法，就这样我们开始了长途跋涉。</p>
+<p>我们最初的计划是将数据从现有的Orcale数据仓库中删除。但是我们首先发现快速将数据从Oracle中取出是一门黑暗的艺术。更糟糕的是，数据仓库的处理过程并不适用于我们为Hadoop设计的生产批处理，大部分的处理都是不可逆的，并且与要生成的具体报表相关。我们最终避免了数据仓库，转而直接使用源数据库和日志文件。最后，我们实现了另一个管道，将数据加载到键值存储，以提供结果。</p>
+<p>这种简单的数据复制最终成为了原始开发的主要项目之一。糟糕的是，只要在任意时候管道内如果有问题，Hadoop系统也变得毫无用处——在错误的数据上运行了华丽算法只会产生更多的错误数据。</p>
+<p>虽然我们使用了一种很通用的构建方式，但每一个新的数据源都需要自定义的安装配置。它也被证明是大量错误和失败的根源。我们用Hadoop实现的网站功能开始流行起来，而我们发现有大量对此感觉兴趣的工程师，第个人都许多想要集成的一系列系统，并且想要导入许多新的数据。</p>
+<p>有些东西渐渐地清晰了起来。</p>
+<p>首先，我们构建的管道，虽然有一些杂乱，但实际上是极有价值的。在一个新处理系统（Hadoop）上让数据变得可用的过程解锁了大量的可能性。在这些数据上做新的计算变得可能，这在过去是很难实现的。许多新产品和分析都来自于将以前锁定在特定系统的多种数据放在一起。</p>
+<p>第二，很明显，可靠的数据加载需要数据管道的尝试支持。如果我们获取到了所需要的所有结构，我们可以让Hadoop数据加载变得完全的自动化，因此添加新的数据源或者处理模式的变更不再需要人工的介入——数据会自动的出现在HDFS中，Hive表将会自动地为新的数据源生成合适的列。</p>
+<p>第三，我们的数据覆盖率仍然很低。如果你看一下，领英在Hadoop中所有可用的数据的百分比，你会发现它非常不完整。考虑到需要在新数据源上付出大量的努力，让数据变得完整这项工作并不容易。</p>
+<p>我们一起在进行的，为每个数据源和目标数据构建一个个性化的数据加载很显然是不切实际的。我们有几十个数据系统和数据仓库，连接这些系统将会导致，在第两个系统之间构建一个个个性化的管道，就像这样：</p>
+<p><img src="http://storage.laixiaoming.space/blog/datapipeline_complex.png" alt="img"></p>
+<p>需要注意的是，数据是双向流动的，就像许多系统一样（数据库、Hadoop），都需要在来源和目的地之前传输数据。这意味着我们最终在每个系统构建两条管道：一条用于获取数据，另一条用于流出数据。</p>
+<p>很显然，这需要大批的人来做这个事情，而且是不可行的。当接近全连接时，我们将得到O(N2)条管道。</p>
+<p>为了避免这个，我们需要像这样通用的东西：</p>
+<p><img src="http://storage.laixiaoming.space/blog/datapipeline_simple.png" alt="img"></p>
+<p>我们需要尽可能地，将每个消费者从数据源中隔离开来。他们应当和一个数据仓库集成，并且可以从中获取所有的数据。</p>
+<p>在这种方式下，添加一个新的数据系统——数据源或者数据目的地——可以仅仅通过连接到这单个管道上实现集成，而不需要跟每个每个数据消费者连接。</p>
+<p>这种经历让我专注于构建Kafka，以将我们在消息系统中看到的内容与流行在数据库和分布式系统内部的日志概念相结合起来。我们冼想要一个可以作为中心管道给所以活动数据服务的东西，并最终用于其他许多用途，包括Hadoop之外的数据、监控数据等等。</p>
+<p>在很长一段时间，Kafka是基础设施中独一无二的存在（有人说它很特别）——它不是数据库，也不是日志文件收集系统，更不是传统的消息系统。但最近Amzon提供了一种类似于Kafka的服务——Kinesis。相似之处包括分区处理的方式，数据的持有方式，还有分为高级及初级的消费者API这种奇怪的地方。对此我感到很高兴，你创建了一个好的基础设施的抽象的标识就是，Amazon将其作为了一种服务提供出去。他们对此的看法跟我描述的很相似，它是连接所有分布式系统的管道——RdynamoDB、RedShift、S3等等——同时了作为分布式流处理EC2的基础。</p>
+<h4 id="ETL和数据仓库的关系"><a href="#ETL和数据仓库的关系" class="headerlink" title="ETL和数据仓库的关系"></a>ETL和数据仓库的关系</h4><p>让我们来谈下数据仓库，数据仓库是用于支持分析的干净的、集成数据结构的仓库。这是一个非常好的理念。对于不了解数据仓库概念的人来说，数据仓库方法涉及周期性的从源数据库中提取数据，将其转换为可理解的形式，并将加载存入中央数据仓库。集中拥有所有干净的数据的副本，对于数据密集型分析和处理而言是一项非常有价值的资产。在更高层面上，无论你使用传统的数据仓库Oracle，或者是Terada和Hadoop，这个使用方式不会有太大的不同，虽然你可能需要换一下加载和转换的顺序。</p>
+<p>包含了清洗、数据集成的数据仓库是一项非凡的资产，但实现这个的机制有一些过时了。</p>
+<p>对于一个以数据为中心的组织而言，关键问题是将干净的集成数据联合到数据仓库。数据仓库是批处理查询的基础设施，它非常适用于多种报表和临时分析，特别是当查询涉及到计算、聚合和过滤的时候。但如果批处理系统是唯一一个包含完成数据的仓库，将意味着数据不可用于实时的系统——实时处理、搜索索引 、监控系统等等。</p>
+<p>在我看来，ETL包括了两件事情。首先，它是数据提取和清洗的过程，本质上是释放被锁在组织中的各类系统中的数据，并去除特定系统的约束。第二，数据被异构用于数据仓库查询（例如适配关系型数据库系统，强制使用星形或雪花型，可能打破原有的高性能的列格式）。同时做好这两件事情不容易。这些规整的数据仓库可以用于实时的或低延时的处理，也可以用于其他实时的存储系统中的索引。</p>
+<p>我认为这具有使数据仓库ETL更加可扩展的额外的好处。典型的问题是，数据仓库团队要收集和处理其他团队的所有的数据。两边的收益是不对称的，数据的生产者常常并不知晓数据仓库中数据的使用，最终创建了很难获取或者转换成有用格式的数据。当然，中心团队也无法扩充以匹配于其他组织的发展速度，以致于数据的覆盖率问题质量不一的，数据的流向也是脆弱的，改进也是缓慢的。</p>
+<p>一个更好的方法是，拥有一个有着为额外数据定义的良好API的中心管道，日志。集成这个管道并提供规整的、良好结构的数据由数据的生产者负责。这意味着，作为系统设计和实现的一部分，他们必须考虑获取数据和生成用于传输到中心管道的良好结构格式的数据这种问题。新的存储系统的加入对于数据仓库团队而言没有任何影响，因为它们具有集成的中心点。数据仓库团队仅仅需要处理从中心日志加载结构化数据这种简单的问题，并将特定的转换格式传输到它们的系统。</p>
+<p><img src="http://storage.laixiaoming.space/blog/pipeline_ownership.png" alt="img"></p>
+<p>当一个人考虑采用传统数据仓库之外的其他数据系统时，组织上的可伸缩性变得尤为重要。例如，想在组织的完整数据上提供搜索的能力，或者想为实时趋势图的数据流提供监控和告警。在这些场景下，传统数据仓库的基础设施或者Hadoop都将变得不可用。更糟糕的是，被构建用于支持数据库加载的ETL处理管道也不再作用于其他系统，构建这些基础设施的工作量跟采用一个数据仓库一样大。这似乎是不可行的，这也解释了为什么大多数组织不具备他们在数据上的一些简单可用的能力。相反的，如果一个组织构建了统一的，良好结构的数据，那么让任意一个新系统完全获取所有的数据仅仅需要在管道上做一下集成的工作。</p>
+<p>关于数据规整化和转换在哪里完成，这个架构了有着不同的观点：</p>
+<ol>
+<li>在添加数据到公司的全局日志之前，由数据的生产者完成。</li>
+<li>由日志的实时转换器完成（产生一个新的格式化的日志）。</li>
+<li>由加载到目标数据系统进程的一部分完成。</li>
+</ol>
+<p>最好的模型是数据发布到日志之前由数据的生产者完成数据的规整化。这意味着确保了数据处理标准形式，并且不需要包含任何由生成该数据的特定代码产生的或者存储系统维护的无意义的内容。这些细节可以很好地被生成数据的团队处理，因为他们是最了解他们数据的人。这个阶段所使用的任务逻辑都应该是无损的和可逆的。</p>
+<p>任何可以实时完成的具有附加价值的转换都应该在原始日志上的后处理去执行。其中包括事件数据处理成会话，或者其他派生字段的添加。原始日志仍然是可用的，但实时处理将产生包含增强数据的派生日志。</p>
+<p>最后，只有针对目标系统的聚合操作才应该被加到加载流程中。这些操作可能包括将数据转换为特定的星形或者雪花模式，用于在数据仓库中分析和报告。由于这个阶段，一般最自然的映射到传统的ETL流程，现在基于一种更规整和统一的数据流集去处理，因此也会更简单的。</p>
+<h4 id="日志文件和事件"><a href="#日志文件和事件" class="headerlink" title="日志文件和事件"></a>日志文件和事件</h4><p>让我们再聊聊这种架构的附加好处，它支持解耦的事件驱动系统。</p>
+<p>在Web行为，获取活动数据的典型方式是将其记录到文件文件，这些文本文件可以被放到数据仓库或者Hadoop，用于聚合和查询。这存在的问题跟所有批处理ETL一样，它耦合了数据仓库数据流的能力和处理调度。</p>
+<p>在领英，我们是以日志中心的方式构建的事件数据处理。我们正使用Kafka伪中心的、多订阅者的事件日志。我们定义了数百种事件类型，每种事件类型都有着特定类型操作的特定属性，这涵盖了从页面浏览、展示、搜索、到服务调用和应用异常等各种情况。</p>
+<p>为了进一步理解这一种优势，想象一下有这么一种简单事件，在工作职位页面上展示职位信息。职位页面应该仅仅包含展示职位信息的逻辑。然而，在一个相当动态的网站上，这很容易变成额外的与工作无关的逻辑的点缀。例如，假设我们需要集成以下系统：</p>
+<ol>
+<li>将数据发送到Hadoop和数据仓库，用于离线处理。</li>
+<li>计算页面浏览量，确保浏览者不是内容爬虫的一种。</li>
+<li>聚合浏览信息，并在职位发布者的分析页面展示 。</li>
+<li>记录浏览信息，确保对用户的职位推荐合适进行展示（我们不希望一次又一次地展示相同的职位信息）。</li>
+<li>推荐系统需要记录浏览，以便正确追踪职位的流行性。</li>
+<li>等等</li>
+</ol>
+<p>用不了多久，展示一个职位这种简单的动作就会变得十分复杂。当我们的职位要支持在其他终端上展示——手机应用等——这样的逻辑必须要延续下来，复杂度也将上升。更糟糕的是，我们需要与之交互的系统是错综复杂的，负责展示职位工作的人也需要了解其他系统和特性，并确保正确的集成。这里只是简单的描述了该问题，实际的应用将会更加复杂。</p>
+<p>事件驱动风格提供了一种简化的方法。职位展示页面只负责展示职位并记录职位的相关属性信息，浏览的人或者关于职位展示的其他有用的信息。每一个其他对这个感兴趣的系统——推荐系统、安全系统、职位发布者分析系统以及数据仓库，都只需要订阅这些信息并且自己处理。展示的代码并不需要关注其他的系统，如果一个新的数据消费者被添加进来也不需要作出改变。</p>
+<h4 id="构建可伸缩的日志"><a href="#构建可伸缩的日志" class="headerlink" title="构建可伸缩的日志"></a>构建可伸缩的日志</h4><p>当然，将发布者和订阅者分离开来并不是什么新鲜事。但如果你想维护一个提交日志，该日志作为消费者规模网站上所有活动的多订阅者实时日志，那么可扩展性将是一个主要的挑战。如果我们不能构建一个快速的、低成本的，足够可扩展的日志，使其在大规模上可行，那么使用日志作为统一集成机制不过是一个更美好的幻想。</p>
+<p>人们普遍认为日志是缓慢的、高度抽象的（并且通常只把它与元数据类的使用方式联系在一起（Zookeeper））。但有了一个记录大数据流的深思熟虑的实现，打破了这一看法。在领英，目前我们通过Kafka每天写入超过600亿的消息（如果算上数据中心之间镜像的消息，这个数将是数千亿）。</p>
+<p>我们在Kafka中使用了一些技巧，以支持这种规模：</p>
+<ol>
+<li>日志分区</li>
+<li>通过批量读写优化了吞叶率</li>
+<li>避免了无意义的数据复制</li>
+</ol>
+<p>为了支持水平扩展，我们将日志进行了分区：</p>
+<p><img src="http://storage.laixiaoming.space/blog/partitioned_log.png" alt="img"></p>
+<p>每个分区都是一个完全有序的日志，但在分区之间没有全局的顺序（除非在你的消息中可能包含了墙上时钟时间）。消息被分配到一个特定的分区是由写入者决定的，大多数使用者会选择使用某种类型的值来分区（比如用户id）。分区允许日志追加，在分片之间无需协调即可发生，并且允许系统的吞吐量随着Kafka集群大小而线性扩展。</p>
+<p>每个分区都可以通过配置副本数量进行复制，每个副本都有一个副本日志完全一样的拷贝。在任意时候，其中的一个副本将作为leader，如果leader发生故障，剩余的其中一个副本将接替成为leader。</p>
+<p>在分区之间缺乏全局顺序确实是一个限制，但我们并未发现这是一个主要的限制。确实，与日志进行交互的通常是成百上千的独立线程，因为在这种情况下讨论它的全局顺序是没有意义的。代替的，我们保证了每个分区的顺序，并且Kafka保证了追加到特定分区的顺序将根据发送者发送的顺序进行传送。</p>
+<p>日志，就像文件系统，对于顺序读写可以方便地优化。日志可以把小的读写合并成更大的、更高吞吐量的操作。Kafka致力于这种优化。这种批量操作存在于从客户端发送数据到服务端时，写磁盘时、服务间的复制、将数据传送给消费者时，以及确认提交的数据时。</p>
+<p>最后，Kafka使用了简单的二进制格式维护内存日志、磁盘日志、网络中数据传输的日志。这允许我们可以使用包括“零拷贝”在内的大量优化机制。</p>
+<p>这些优化的积累起来的效应就是，你通常可以以磁盘或网络支持的速率进行读和写，即使维护的数据集大大超出了内存的大小。</p>
+<p>这篇文章并不是主要讨论Kafka的，在这里我不再讨论他们的细节。你可以通过领英的这篇文章和Kafka的设计这篇文章阅读更多的细节。</p>
+<h3 id="第三部分：日志和实时流处理"><a href="#第三部分：日志和实时流处理" class="headerlink" title="第三部分：日志和实时流处理"></a>第三部分：日志和实时流处理</h3><p>到目前为止，我只讲述了在系统之间拷贝数据的一种奇特的方式。但在存储系统之间传输字节并不是故事的结束。事实证明，日志是流的另一个说法，日志是流处理的核心。</p>
+<p>但等会，什么是流处理？</p>
+<p>如果你是上世纪90年代或21世纪初数据库文献或者成功了一半的数据基础设施产品的粉丝，那么你可以会把流处理与创建SQL引擎或者事件处理驱动处理的“盒子和箭头”界面相关联起来。</p>
+<p>如果你关注开源数据系统的爆炸性增长，你可能会将流处理与这个领域下的一些系统相关联起来——如Storm、Akka、S4、Samza。但很多人会认为这是一种异步消息处理系统，与集群感知的RPC层不同（事实上，这些领域的一些东西确实如此）。</p>
+<p>这些观点都有些局限。流处理与SQL并无关联，也不局限于实时处理。本质上，并没有什么理由不能使你不能用多种语言来处理昨天或一个月前的数据流来表达计算。</p>
+<p>我将流处理视为更广泛的东西：不断用于数据处理基础设施。我认为计算模型可以像MapReduce或其他分布式处理框架一样通用，但他同时具有生产低延迟数据的能力。</p>
+<p>处理模型的真正驱动力是数据收集的方式。数据被批量收集，也自然被批量处理。当数据不断地被收集，也自然而然地被不断地处理。</p>
+<p>美国的人口普查给批量数据收集提供了一个很好的例子。人口普查会定期开始，通过挨家挨户的蛮力调查和统计美国公民。这在1790年人口普查刚开始的时候很有用。当时的数据收集是面向批处理的，它涉及到骑马走访并在纸上记录，然后将这一批记录运输到中央地方，在那里人为进行汇总。现在，当你描述人口普查过程时，会好奇我们为什么不维护出生和死亡的记录，并借此连续地或以任何所需要的粒度得到人口的数量。</p>
+<p>这是一个极端的例子，但许多数据传输过程仍然依赖于定期的数据下载、批量的数据传输和集成。处理批量转储的方式自然是批处理。随着这些过程被连续的数据流所取代，人们自然会开始转向连续处理，以平衡处理所需要的资源，并减小延迟。</p>
+<p>例如，在领英，几乎没有批量数据收集。大多数数据都是活动数据或者数据库的变更，这两种数据都是连续发生的。事实上，你想到任何业务，潜在的页面几乎都是一个连续的过程——实时发生的事件，正如Jack Bauer说的那样。当数据被批量收集时，几乎总是因为人为的步骤、或缺乏数字化、或非数字化过程自动化遗留下的历史问题。数据传输并对数据作出回应依赖于邮件或者人工处理时，通常是非常慢的。自动化的初步尝试问题保留了原始流程的形式，因此这种方式通常持续很长时间。</p>
+<p>每天运行的生产“批量”处理作为通常是在模仿一种以一天为窗口大小的连续计算。底层数据当然问题在不断变化的。在领英，这实际上很常见（并且在Hadoop中使他们工作的机制非常复杂），我们实现了一个完整的框架来管理增量的Hadoop工作流程。</p>
+<p>从这个角度看，很容易对流处理产生不同的认识：它仅仅处理包含了时间概念的底层数据，而不需要静态的数据快照，因此它可以根据用户控制的频率输出数据，而不是等待数据集到达后再产生输出。从这个角度上看，流处理是广义上的批处理，并且鉴于实时数据的流行，这种批处理变得非常重要。</p>
+<p>那么，为什么传统的流处理只在小范围流行呢？我们认为最大的原因是实时数据收集的缺乏，使得连续处理更多停留在学术研究的层面 。</p>
+<p>我认为，是否缺乏实时数据的收集，决定了商业流处理系统的命运。他们的客户仍然在使用基于文件的每天的批处理来完成ETL和数据集成。建设流处理系统的公司专注于提供流处理引擎来连接实时数据流，但结果是实际上那个时候很少人拥有实时数据流。事实上，在领英的早期职业生涯中，有一家公司向我们推销一个非常酷炫的流处理系统，但由于那时我们所有的数据都是小时被收集到文件上，我们能做到的最好使用场景是在每小时的最后把这些文件输入到流处理系统中，他们意识到这是一个普遍问题。这个例子实际上已经证明这个规律：在金融领域，流处理已经取得了一些成功，实时数据流已经成为了常态，而处理成为了瓶颈。</p>
+<p>即使在拥有完善的批处理生态系统的前提下，我仍然认为流处理作为一种基础设施的应用也相当广泛。我认为它填补了实时请求/响应服务和离线批处理之间的基础设施缺口，对于现代互联网公司来说，我认为25%的代码可以划分到这个范畴。</p>
+<p>事实证明，日志解决了流处理中的一些棘手的技术问题，正如我所描述的，但它解决的最大的问题是，使数据在实时多订阅者中变得可用。对于那些对更多细节感兴趣的人，我们开源了Samza，一个目标明确基于这些思想构建的流处理系统。我们在相关文档中，描述了大量这些应用的细节。</p>
+<h4 id="数据流图"><a href="#数据流图" class="headerlink" title="数据流图"></a>数据流图</h4><p><img src="http://storage.laixiaoming.space/blog/dag.png" alt="img"></p>
+<p>流处理最有趣的方面与流处理系统的内部无关，而是与它如何扩展我们早期对输入数据的看法的有关。我们主要讨论了主数据的输入和日志——在多个应用的执行过程中产生的事件和数据行。但流处理也允许我们包含了由其它数据计算出的数据。对消费者而言，这些派生的数据与计算得到它们的原始数据没有什么不一样。这些派生的数据可以任意的封装组合。</p>
+<p>让我们深入研究一下，出于我们的目的，一个数据流任务，是指从日志中读取数据，并将输出写到日志或其他系统。用于输入和输出的日志将这些处理流程连接成一个流程图。实际上，以这种方式使用中心化的日志，你可以将所有的组织数据图、转换和流向视为一系列写入它们的日志和流程。</p>
+<p>流处理器根本不需要花哨的框架：它可以是读写日志的一个或一组处理过程，是可以用于帮助管理流程代码的额外的基础设施或支持。</p>
+<p>在集成中，日志的目标是双重的。</p>
+<p>首先，日志让每个数据集都支持多个订阅者，并且是有序的。回顾一下前端的“状态副本”，以便记住顺序的重要性。为了让这个更准确，假使有一个数据库的更新流——如果我们在我们的处理中对同一条记录的两条更新作重排序，我们可能会产生错误的最终结果。这种顺序比TCP等提供的更加持久，因为它不仅限于单点对点的链接，而且在处理失败和重新连接后仍然存在。</p>
+<p>第二，日志为进程提供了缓冲。这一点非常基础。如果是以非同步的方式处理的，很有可能会发生上游数据生成作业的速度会下游作为消费的速度更快。当这种情况发生时，处理必须阻塞、缓冲或丢弃数据。丢弃数据可能不是一个可行的选择，阻塞可能会造成整个处理陷入停顿。日志充当了非常大的缓冲区，它允许进程重启或者失败，而不会造成其它处理流程中其他部分的处理缓慢。当将这种数据扩展到更大的组织时，这种隔离非常重要，处理是由许多不同的团队创建的作业进行的。我们不能让一个失败的作业造成背压，导致整个处理流的停止。</p>
+<p>Storm和Samza都是以这种风格构建，并且可以使用Kafka或者其他同类型的系统作为他们的日志。</p>
+<h4 id="有状态的实时流处理"><a href="#有状态的实时流处理" class="headerlink" title="有状态的实时流处理"></a>有状态的实时流处理</h4><p>一些实时流处理只是无状态的记录转换，但许多用法更多侧重于流中窗口内的计数、聚合衙连接操作。例如，有人想要通过用用户点击的信息来丰富事件流（比如点击流）——实际上是将用户的点击流添加到用户数据库。通常，这种处理最终需要处理器维护某种状态：例如，当计数的时候，你需要维护当前的数量，如果处理器本身出问题了，这种状态要怎么维护正确呢？</p>
+<p>最简单的做法是在内存中维护状态，然而如果处理器崩溃了，将会丢失中间状态。如果状态仅在窗口内维护，处理可以回退到日志中窗口开始的位置。然而，如果要在一个小时内计数，这可能是不可行的。</p>
+<p>将所有状态简单地存储在远程存储系统中，并通过网络连接到该存储系统是一种可行的方法。这种方式的问题是缺少了数据的局部性，以及网络往返次数多。</p>
+<p>如何支持像数据库表这样的东西，它可以跟我们的处理一样被分区？</p>
+<p>当我们回顾表和日志的对偶性时，这给我们提供了可以将流转换为可以与处理共存的表的工具，同时也是一种解决表容错的机制。</p>
+<p>一个流处理器可以在本地表或者索引维护它的状态——bdb、leveldb甚至是一些更加罕见的组件，比如Lucene或者fastbit索引。存储的内容来自于其输入流（可能首先应用了一些转换）。流处理器可以将其本地索引的变更日志记录下来，以便可以在崩溃和重启时恢复其状态。这种机制允许一个通用的方法来保持与输入流数据本地共分区的任意索引类型的状态。</p>
+<p>当处理失败的时候，可以从变更日志中恢复。日志是每次备份时，本地状态到增量数据集的转换。</p>
+<p>这种状态管理的方式的优雅之处在于，处理器的状态也作为日志来维护。我们可以将这个日志视为数据库表的更改。事实上，处理器同时维护了类似于联合分区表的东西。由于状态本身就是日志，其他处理器也可以订阅它。当处理的目的是更新最终状态，并且状态是处理的自然输出时，这实际上是非常有用的。</p>
+<p>当出于数据集成的目的，将源于各数据库的日志级合起来时，日志和表的二象性的强大就变得明显了。变更日志可能是从数据库中提取而来的，并被不同的处理器异构成不同格式的索引，以跟事件流进行连接。</p>
+<p>我们将在Samza中详细介绍这种状态处理的管理方式，<a href="http://samza.incubator.apache.org/learn/documentation/0.7.0/container/state-management.html">这里</a>有一些实践的示例。</p>
+<h4 id="日志压缩"><a href="#日志压缩" class="headerlink" title="日志压缩"></a>日志压缩</h4><p><img src="http://storage.laixiaoming.space/blog/log_compaction_0.png" alt="img"></p>
+<p>当然，我们不可能保存所有时间段内所有状态变更的完整的日志。除非想要使用无限的空间，否则日志是必须要清理的。我将具体谈一些关于Kafka在这方面的实现。在Kafka中，清理有两种策略，这取决于数据是否包含键或者事件数据。对于事件数据，Kafka支持保留一个时间窗口的数据。通常，这个时间窗口被配置为几天，但这个窗口也可以基于时间或空间定义。对于有键值的数据，完整日志的一个很好的方面是你可以通过重放日志的方式来重建源系统的状态（可能在另一个系统中重建）。</p>
+<p>然而，保留完整的日志会随着时间的推移，占用起来越多的空间，重放也将花费起来越多的时间。然而，在Kafka中，我们支持另一种保留方式。代替简单地丢弃老的日志，我们删除淘汰的记录——比如那些主键有了更新的记录。通过这种方式，我们仍然能保证日志包含源系统的完整的备份，虽然不再能重建源系统的所有旧的状态，而是保留了最新的状态。我们称这个特性为日志压缩。</p>
+<h3 id="第四部分：系统构建"><a href="#第四部分：系统构建" class="headerlink" title="第四部分：系统构建"></a>第四部分：系统构建</h3><p>我最后想讨论的是日志在在线数据系统的数据系统设计中扮演的角色。</p>
+<p>这里有一个类比，日志在分布式数据库的数据流中扮演的角色和和它在一个更多的组织的数据集成中扮演的角色。在这两种情况下，它都是负责数据流、一致性和恢复。毕竟，一个组织如果不是一个复杂的分布式数据系统，那它是什么呢？</p>
+<h4 id="分解？"><a href="#分解？" class="headerlink" title="分解？"></a>分解？</h4><p>如果你换个角度，你可以将整个组织的系统和数据流看成是一个整体的分布式系统。你可以将所有的独立的面向查询的系统（Redis、SOLR、Hive表等等）看作是你的数据的专门的索引。你还可以将流处理系统看作是一个成熟的触发器和视图实现机制。我注意到传统的数据库人群非常喜欢这种观点，因为他们终于能解释通，所有的这些不同的数据系统到底是用来做什么的——他们仅仅是不同的索引类型。</p>
+<p>不可否认的是，数据库类型正爆发式增长，但实际上，其复杂性一直存在。即便在关系型数据库的盛行的时期，组织也拥有大量的关系型数据库。因为大型机，所有的数据实际都存放在同一个位置，所有可能并不存在真正的数据集成。将数据独立拆分到多个系统有许多原因：数据伸缩性、地理位置、安全性以及性能隔离是最常见的。但这些都可以通过一个好系统来解决：组织通过单个Hadoop集群保存所有的数据，并服务于众多的多样化的用户群体是可能。</p>
+<p>在转向分布式系统的过程中，已经有了一种可能的数据处理简化：将大量的各个系统的小实例聚合到一个大的集群里。许多系统不足以做到这些：它们缺乏安全性、或不能保证性能隔离、或不具备良好的伸缩性。但每个问题都是可以解决的。</p>
+<p>在我看来，不同系统大量涌现的原因是构建分布式数据系统的困难性。通过将系统裁减到一个单一的查询类型或用例上，每个系统都可以回到自己范围内可以做到的事情上来。但运行所有这些系统还是太复杂了。</p>
+<p>未来可能会有3种可能的方向。</p>
+<p>第一种可能性是现状的延续：系统之间的隔离在往后很长的一段时间内都将保持不变。这可能是因为分布式系统构建难度太大，或者是因为这种专业化使得每个系统的便利性和功能水平达到一个新的高度。只要这种情况持续下去，数据集成问题将是数据成功使用中最重要的问题之一。在这种情况下，用于集成数据的外部日志将非常重要。</p>
+<p>第二种可能性是统一合并一个具有足够通用性的系统，开始将所有不同的功能合并到一个单独的超级系统中。这个超级系统从表面上看可能像一个关系型数据库，但在组织中的使用将大大不同，因为你只需要一个大的系统而不是无数个小的系统。在这样的世界里，除了系统内部不存在真正的数据集成问题。我认为，构建这样的一个系统在实践上的困难性使得其不太可能发生。</p>
+<p>还有另外一种可能的结果，作为一个工程师，我觉得它很有吸引力。新一代的数据系统最有趣的一方面是它几乎都是开源的。开源创建了一个可能性：数据设施可能被分解成一系列的服务和面向应用的系统api。你已经在Java的技术栈上看到了，正一定程序地出现这种情况：</p>
+<ul>
+<li>Zookeeper处理了系统协调的很多问题（或者有来自于像Helix或者Curator一些的高级抽象）。</li>
+<li>Mesos和YARM处理了虚拟化和和资源管理。</li>
+<li>像Lucene和LevelDB的嵌入式类库充当了索引。</li>
+<li>Netty、Jetty和像Finagle和rest.li这种高级别的封装处理远程的通信。</li>
+<li>Avro、Protocol Buffers、Thrift等等其他的类库处理了序列化。</li>
+<li>Kafka和Bookepper提供了备份日志。</li>
+</ul>
+<p>如果你把上面的这些放一起，稍微观察一下，会发现它看起来就像是分布式数据工程中的“乐高”版本。你可以将这些零件放在一起，创造大量的可能的系统。这显然不是一个与终端用户相关的故事，他们可能更多关心api而不是实现，但在一个更加多样化和模块且持续演进的世界中，这可能是一条通往实现单个系统的简单性的一条路径。如果因为可靠的、灵活的构件出现，而使得分布式系统的实现时间从年缩减到周，聚合形成单一的整体的系统的压力将会消失。</p>
+<h4 id="日志在系统架构中的地位"><a href="#日志在系统架构中的地位" class="headerlink" title="日志在系统架构中的地位"></a>日志在系统架构中的地位</h4><p>假使存在外部日志的系统允许每个系统抛弃自身的复杂性，转而依赖于共享日志。以下是我们认为日志可以做的事：</p>
+<ul>
+<li>通过对节点并发的更新进行排序，处理数据一致性（无论是最终的还是实时的）。</li>
+<li>在节点之间提供节点的副本。</li>
+<li>为写入者提供“提交”的语义（比如，只有在你的写入被保证不会丢失的情况下确认）。</li>
+<li>提供给外部的本系统数据的订阅。</li>
+<li>对于丢失数据的失败的副本或者新的副本，提供可恢复的能力。</li>
+<li>在节点之间处理数据的重平衡。</li>
+</ul>
+<p>这实际上是分布式系统所做工作中的一个重要部分。实际上，剩余的大部分工作都与最终面向客户端的查询api和索引策略有关。这确实各个系统之间应该有所不同的部分：例如一个全文检索可能需要查询所有的分区，但通过主键的查询可能仅仅需要查询一个为该键服务的单个的节点。</p>
+<p>这是它的工作原理。系统被分为两个逻辑部分：日志和服务层。日志顺序记录了状态的变更。服务节点存储了需要为查询服务的索引（比如，一个键-值存储系统可能有像btree或者sstable的事物、一个有着倒排索引的搜索系统）。写操作可能是直接写日志，虽然他们可能被服务层代理。写日志会产生一个逻辑时间戳（日志中的索引）。如果系统被分区了，日志服务节点将有相同的分区数量，虽然他们可能有不同的机器数量。</p>
+<p><img src="http://storage.laixiaoming.space/blog/system.png" alt="img"></p>
+<p>服务节点订阅日志，并且尽可能快地以存储的顺序应用更新到它的本地的索引。</p>
+<p>客户端可以提供写入的时间戳作为查询的一部分，从任意节点获得“读取你写入的”的语义——接收到该查询请求的服务节点，将对所需的时间戳和本地的索引进行比较，必要时会延长请求，直到索引至少抵达该时间点，以避免提供了旧的数据。</p>
+<p>服务节点可能会或可能不会感知master身份或leader选举。对于许多简单的用例，服务节点可以完全不需要leader，因为日志是事实之源。</p>
+<p>分布式系统中必须要做的更棘手的事情之一是处理恢复失败的节点或者将分区从一个节点转移到另一个节点。一个典型的方案是，仅保留一个固定窗口的数据，并把这个数据和分片中存储的快照结合起来。同样地，也可以保留数据完整备份的日志，并自行进行垃圾回收。这把特定系统的服务层的大量的复杂性移到了通用的日志层。</p>
+<p>有了日志系统，你将得到了一个针对数据存储内容的成熟的订阅api，通过通过ETL传输到其他系统。</p>
+<p><img src="http://storage.laixiaoming.space/blog/full-stack.png" alt="img"></p>
+<p>注意，这样一个以日志为中心的系统是怎么立即成为在其他系统中处理和加载的数据流的提供者呢？同样的，一个流处理器可以消费多个输入流，又通过索引其输出的另一个系统服务于他们。</p>
+<p>我发现这种对系统分解为日志和查询api的观点非常具有启发性，因为它可以使查询特性从系统的可用性和一致性中脱离出来。我实际上认为，这是一种通过分解系统来理解它们的一种很有用的一种方式，虽然系统并不是以这种方式构建的。</p>
+<p>值得一提的是，虽然Kafka和Bookeeper都是一致性日志，但不是必须的。你可以简单将一个Dynamo之类的数据库分解为一个最终一致性的AP日志和一个键-值服务层。这样的日志用起来很灵活，因为它会重传旧消息，并依赖于订阅者来处理（很像Dynamo做的）。</p>
+<p>在日志中保留一个单独的副本（特别是完整的副本），在许多人看来是浪费的。事实上，有几个因素使得这个不是一个大问题。首先，日志可以是一种非常高效的存储机制。我们在我们生产的Kafka服务上的每个数据中心都存储了超过75TB的数据。同时有许多服务系统需要更多的内存来高效的服务数据（例如，文本搜索通常问题在内存中进行）。服务也使用优化过的硬件。例如，我们大多数运行中的数据系统基于内存提供服务，或使用固态硬盘。相反，日志系统只进行线性读写，因此它非常乐意使用大型多TB的硬盘。最后，正如上图描述，数据被服务于多个系统，日志的成本也在多个索引中分摊。上面几点使得外部日志的开销相当小。</p>
+<p>这正是领英用来构建许多实时查询系统的模式。这些系统从数据库中获取数据（使用Databus作为日志抽象，或者从Kafka中真正的日志中获取），并且在数据流的基础上，提供特定的分区、索引和查询能力。</p>
+<p>这是我们实现了搜索、社交图谱和在线分析查询系统的方式。实际上，将单一的数据流复制到多个服务系统用于在线服务是非常通用的做法。事实证明，这是一个极大的简化的假设。这些系统不再需要提供外部写入的api，Kafka和数据库被用于记录系统和通过日志流向恰当的系统的变更流。写入操作在本地被特定分片的节点处理。这些节点机械地将日志提供的数据流记录到自己的存储系统。失败的节点可以通过重放上游的日志来恢复。</p>
+<p>这些系统依赖日志的程度各不相同。一个完全可靠的系统可以利用日志作为数据分区、重平衡、一致性的方方面面，以及数据传播。在这样的架构中，服务层保不过是一种缓存，以支持直接写入到日志的特定处理。</p>
+<h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><p>如果你从头一起读到了这里，那么我对日志的理解，你大部分都知道了。</p>
+<p>以下是一些你可以想要查阅的有趣的相关资料。</p>
+<p>人们会用不同的术语来描述相同的事物，当你从数据库系统到分布式系统、从各企业级的应用软件到开源世界，会感到疑惑。无论如何，在大方向上是有一些共同之处的。</p>
+<p>学术论文、系统、讨论和博客：</p>
+<ul>
+<li>关于<a href = "http://www.cs.cornell.edu/fbs/publications/smsurvey.pdf">状态机</a>和<a href = "http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.20.5896">主从备份</a>的概述。</li>
+<li><a href = "http://research.microsoft.com/apps/pubs/default.aspx?id=66814">PacificA</a>是微信用于实现基于日志的存储系统的通用框架。</li>
+<li><a href = "http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/archive/spanner-osdi2012.pdf">Spanner</a>——并不是每个人都喜欢把逻辑时间用于他们的日志。谷歌的最新的数据库学工使用物理时间，并通过把时间戳直接作为区间来直接对时间漂移的不确定性进行建模。</li>
+<li><a href = "http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/archive/spanner-osdi2012.pdf">Datanomic</a>：<a href = "https://www.youtube.com/watch?v=Cym4TZwTCNU">解构数据库</a>是Rich Hicky（Clojure的创建者）在它的首个数据库产品的重要陈述。</li>
+<li><a href = "http://www.cs.utexas.edu/~lorenzo/papers/SurveyFinal.pdf">在消息传递系统中对方回滚和恢复的调查</a>，我发现这是错误容忍的非常有帮忙的介绍，也是通过日志恢复外部数据库的实际应用的不错的介绍。</li>
+<li><a href = "http://www.reactivemanifesto.org/">反应式宣言</a>。我其实并不清楚反应式编程的确切涵义，但是我想它和“事件驱动”指的是同一件事。 这个链接并没有太多的信息，但 Martin Odersky （Scala大拿）讲授的这个课程很精彩。</li>
+<li>Paxos!<ul>
+<li>原论文在<a href = "http://research.microsoft.com/en-us/um/people/lamport/pubs/lamport-paxos.pdf">这里</a>。关于作者 Leslie Lamport 发表的这篇论文有个有趣的<a href = "http://research.microsoft.com/en-us/um/people/lamport/pubs/pubs.html#lamport-paxos">历史</a>：他在80年代就发明了这个算法，但直到1998年才发表出论文，原因是评审组不喜欢论文中的希腊寓言，而他又不愿修改。</li>
+<li>甚至于论文发布以后，人们还是不怎么理解。Lamport <a href = "http://research.microsoft.com/en-us/um/people/lamport/pubs/paxos-simple.pdf">再次尝试</a>，这次甚至包含了一些关于如何在新型自动化计算机上使用的“无趣的细节”。 但算法仍然没有得到广泛的理解。</li>
+<li><a hef = "http://www.cs.cornell.edu/fbs/publications/SMSurvey.pdf">Fred Schneider</a>和<a href = "http://research.microsoft.com/en-us/um/people/blampson/58-consensus/Abstract.html">Butler Lampson</a>分别给出了更多细节关于在实时系统中如何应用Paxos。</li>
+<li>一些谷歌的工程师总结了他们在Chubby中实现Paxos的<a href = "http://www.cs.utexas.edu/users/lorenzo/corsi/cs380d/papers/paper2-1.pdf">经验</a>。</li>
+<li>我发现所有关于Paxos的论文理解起来很痛苦，但是值得我们费大力气弄懂。你不必忍受这样的痛苦了，因为日志结构的文件系统的大师<a href = "http://www.stanford.edu/~ouster/cgi-bin/papers/lfs.pdf">John Ousterhout</a>的<a href = "https://www.youtube.com/watch?v=JEpsBg0AO6o">这个视频 </a>让这一切变得相当的容易。这些一致性算法用展开的通信图表述的更好，而不是在论文中通过静态的描述来说明。颇为讽刺的是，这个视频录制的初衷是告诉人们Paxos很难理解。</li>
+<li><a href = "http://arxiv.org/pdf/1103.2408.pdf">使用Paxos来构造规模一致的数据存储</a>。这是一篇很棒的介绍使用日志来构造数据存储的文章，<em>Jun</em> 是文章的共同作者之一，他也是<code>Kafka</code>最早期的工程师之一。</li>
+</ul>
+</li>
+<li>Paxos有很多的竞争者。以下可以更进一步的映射到日志的实施，更适合于实用性的实施。<ul>
+<li>由 Barbara Liskov 提出的<a href = "http://pmg.csail.mit.edu/papers/vr-revisited.pdf">视图戳复制</a>是直接进行日志复制建模的较早的算法。</li>
+<li><a href = "http://www.stanford.edu/class/cs347/reading/zab.pdf">Zab</a>是Zookeeper所使用的算法。</li>
+<li><a href = "http://www.stanford.edu/class/cs347/reading/zab.pdf">RAFT</a>是易于理解的一致性算法之一。由John Ousterhout讲授的这个&lt;a href = “ <a href = "https://www.youtube.com/watch?v=YbZ3zDzDnrw">“&gt;视频</a>非常的棒。</li>
+</ul>
+</li>
+<li>你可以的看到在不同的实时分布式数据库中动作日志角色：<ul>
+<li><a href = "">PNUTS</a>是探索在大规模的传统的分布式数据库系统中实施以日志为中心设计理念的系统。</li>
+<li><a href = "http://hbase.apache.org/">Hbase</a>和<a href = "http://research.google.com/archive/bigtable.html">Bigtable</a>都是在目前的数据库系统中使用日志的样例。</li>
+<li>LinkedIn自己的分布式数据库<a href = "http://www.slideshare.net/amywtang/espresso-20952131">Espresso</a>和PNUTs一样，使用日志来复制，但有一个小的差异是它使用自己底层的表做为日志的来源。</li>
+</ul>
+</li>
+<li>如果你正在做一致性算法选型，<a href = "http://arxiv.org/abs/1309.5671">这篇论文</a>会对你所有帮助。</li>
+<li><a href = "http://www.amazon.com/Replication-Practice-Lecture-Computer-Theoretical/dp/3642112935">复制：理论与实践</a>，这是收录了分布式系统一致性的大量论文的一本巨著。网上有该书的诸多章节（<a href = "http://disi.unitn.it/~montreso/ds/papers/replication.pdf">1</a>，<a href = "http://research.microsoft.com/en-us/people/aguilera/stumbling-chapter.pdf">4</a>，<a href = "http://www.distributed-systems.net/papers/2010.verita.pdf">5</a>，<a href = "http://www.cs.cornell.edu/ken/history.pdf">6</a>，<a href = "http://www.pmg.csail.mit.edu/papers/vr-to-bft.pdf">7</a>，<a href = "http://engineering.linkedin.com/distributed-systems/www.cs.cornell.edu/fbs/publications/TrustSurveyTR.pdf">8</a>）。</li>
+<li>流处理。这总结起来太广泛了，以下是一些我喜欢的：<ul>
+<li><a href = "http://infolab.usc.edu/csci599/Fall2002/paper/DML2_streams-issues.pdf">在数据流系统中建模和相关事件</a>：它可能是研究这一领域的最佳概述之一。</li>
+<li><a href = "http://cs.brown.edu/research/aurora/hwang.icde05.ha.pdf">分布式处理流的高可用算法</a></li>
+<li>一些比较散的论文：<ul>
+<li><a href = "http://db.cs.berkeley.edu/papers/cidr03-tcq.pdf">TelegraphCQ</a></li>
+<li><a href = "http://cs.brown.edu/research/aurora/vldb03_journal.pdf">Aurora</a></li>
+<li><a href = "http://research.cs.wisc.edu/niagara/papers/NiagaraCQ.pdf">NiagaraCQ</a></li>
+<li><a href = "http://www.cs.berkeley.edu/~matei/papers/2012/hotcloud_spark_streaming.pdf">离散流</a>：这篇论文讨论了Spark的流系统。</li>
+<li><a href = "http://research.google.com/pubs/pub41378.html">MillWheel</a>是谷歌的流处理系统之一。</li>
+<li><a href = "http://research.microsoft.com/apps/pubs/?id=201100">Naiad</a>：一个时间数据流系统</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>企业级软件有着同样的问题除了名称不一样、更小的规模、XML。哈，开个玩笑：</p>
+<ul>
+<li><a href = "http://martinfowler.com/eaaDev/EventSourcing.html">事件溯源</a>：据我所知，这基本是企业软件工程师说“状态机复制“的方式。很有趣的一点是，同样的想法在不同的情景中被又一次发明出来。事件溯源似乎聚集于更小的、在内存中的用例。这种应用开发的方式似乎是将出现在事件日志中的流处理和应用结合起来。当处理足够大而需要数据分区进行扩容时，这变得相当复杂，我重点关注于流处理作为一个独立的原始的基础设施这一方面。</li>
+<li><a href = "http://en.wikipedia.org/wiki/Change_data_capture">变更数据捕获</a>：这是围绕从数据库获取数据的一个小产品，这也是数据提取的最友好的日志风格。</li>
+<li><a href = "http://en.wikipedia.org/wiki/Enterprise_application_integration">企业应用集成</a>似乎在解决数据集成问题，当你有像CRM或者供应链管理软件的企业软件时。</li>
+<li><a href = "http://en.wikipedia.org/wiki/Complex_event_processing">复杂的事件处理</a>：相当肯定的是没有人知道这是什么，它是怎么区别于流处理的。不同之处似乎是关注点在于无序流、事件过滤和发现，而不是聚合上，但在我看来，区别并不明显。我认为任何系统都有其优秀的地方。</li>
+<li><a href = "http://en.wikipedia.org/wiki/Enterprise_service_bus">企业服务总线</a>：我认为企业服务总线的概念跟我在数据集成描述的非常相似。这个理念似乎在企业软件社区中取得了一定的成功，但在Web开发人员或分布式数据基础设施人群中鲜为人知。</li>
+</ul>
+<p>有趣的开源组件：</p>
+<ul>
+<li><a href = "http://kafka.apache.org/">Kafka</a>是”日志即服务“的项目，是这篇文章的基础。</li>
+<li><a href = "http://kafka.apache.org/">Bookeeper</a>和<a href = "https://cwiki.apache.org/confluence/display/BOOKKEEPER/HedWig">Hedwig</a>是”日志即服务“的另外的开源组件。它们似乎致力于数据系统内部，而不是事件数据。</li>
+<li><a href = "https://github.com/linkedin/databus">数据总线</a>是为数据库表提供了类似日志层的系统。</li>
+<li><a href = "http://akka.io/">Akka</a>是一个Scala的Actor框架，它有一个插件，事件溯源，提供了持久化和记录的功能。</li>
+<li><a href = "http://samza.incubator.apache.org/">Samza</a>是一个我们在领英工作中使用的流处理框架。它使用了这篇文章中大量的理念，也集成了Kafka作为底层日志。</li>
+<li><a href = "http://samza.incubator.apache.org/">Storm</a>是一个流处理框架，可以很好的跟Kafka集成。</li>
+<li><a href = "http://spark.incubator.apache.org/docs/0.7.3/streaming-programming-guide.html">Spark Streaming</a>是Spark中的流处理框架。</li>
+<li><a href = "http://spark.incubator.apache.org/docs/0.7.3/streaming-programming-guide.html">Summingbird</a>是在Storm和Hadoop上提供了方便的计算抽象。</li>
+</ul>
+<p>我们持续关注这一领域，如果我有一些遗漏的地方，请告知。</p>
+<p>最后我给你留下的信息是：<a href = "https://youtu.be/2C7mNr5WMjA">视频</a></p>
+]]></content>
+      <tags>
+        <tag>分布式系统</tag>
       </tags>
   </entry>
 </search>
