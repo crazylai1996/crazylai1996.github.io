@@ -953,7 +953,7 @@
   <entry>
     <title>Dubbo源码学习：SPI机制</title>
     <url>/2024/06/23/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASPI%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<p>SPI全称是Service Provider Interface，是一种服务自发现机制，本质是将接口实现类的全限定名配置在文件中，并在运行时加载，动态替换为接口实现类。</p>
+    <content><![CDATA[<p>SPI全称是Service Provider Interface，是一种服务自发现机制，本质是将接口实现类的全限定名配置在文件中，在使用中，通过运行时加载，并动态地替换为具体的接口实现类。</p>
 <span id="more"></span>
 
 <h3 id="JDK-SPI"><a href="#JDK-SPI" class="headerlink" title="JDK SPI"></a>JDK SPI</h3><p>在开发中，SPI的应用中最让我们熟知的便是JDBC的使用，JDBC中定义了<strong>java.sql.Driver</strong>接口，当我们调用<strong>DriverManager#getConnection方法时</strong>，将触发<strong>DriverManager</strong>类的初始化，并利用SPI机制自动加载驱动类：</p>
@@ -1079,7 +1079,7 @@
 </ol>
 ]]></content>
       <tags>
-        <tag>dubbo</tag>
+        <tag>Dubbo</tag>
       </tags>
   </entry>
 </search>
