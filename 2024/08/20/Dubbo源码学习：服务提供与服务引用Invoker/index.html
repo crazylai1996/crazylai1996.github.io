@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"98870b25028b6803f2e798b0d7e939f8","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="前言在Dubbo中，Invoker无处不在，它是Dubbo中非常重要的一个模型，不管在服务提供端或者服务引用端均有它的身影。  Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码学习：服务提供与服务引用Invoker">
+<meta property="og:url" content="http://laixiaoming.space/2024/08/20/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8Invoker/index.html">
+<meta property="og:site_name" content="赖小明">
+<meta property="og:description" content="前言在Dubbo中，Invoker无处不在，它是Dubbo中非常重要的一个模型，不管在服务提供端或者服务引用端均有它的身影。  Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2024-08-20T15:16:43.000Z">
+<meta property="article:modified_time" content="2024-08-20T15:16:16.508Z">
+<meta property="article:author" content="laixiaoming">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://laixiaoming.space/2024/08/20/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8Invoker/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Dubbo源码学习：服务提供与服务引用Invoker | 赖小明</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">赖小明</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container"></div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="algolia-results">
+  <div id="algolia-stats"></div>
+  <div id="algolia-hits"></div>
+  <div id="algolia-pagination" class="algolia-pagination"></div>
+</div>
+
+      
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/08/20/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8Invoker/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Dubbo源码学习：服务提供与服务引用Invoker
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2024-08-20 23:16:43 / 修改时间：23:16:16" itemprop="dateCreated datePublished" datetime="2024-08-20T23:16:43+08:00">2024-08-20</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>在Dubbo中，Invoker无处不在，它是Dubbo中非常重要的一个模型，不管在服务提供端或者服务引用端均有它的身影。</p>
+<blockquote>
+<p>Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。</p>
+</blockquote>
+<span id="more"></span>
+
+<blockquote>
+<p>以下内容基于Dubbo 2.7.12版本</p>
+</blockquote>
+<h3 id="服务提供-Invoker"><a href="#服务提供-Invoker" class="headerlink" title="服务提供 Invoker"></a>服务提供 Invoker</h3><p>在服务提供方中，Invoker是由<strong>ProxyFactory</strong>创建的，Dubbo默认使用的ProxyFactory实现类为<strong>JavassistProxyFactory</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">JavassistProxyFactory</span> <span class="keyword">extends</span> <span class="title">AbstractProxyFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//省略...</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">getInvoker</span><span class="params">(T proxy, Class&lt;T&gt; type, URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//创建Wrapper类实例</span></span><br><span class="line">        <span class="keyword">final</span> Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf(<span class="string">&#x27;$&#x27;</span>) &lt; <span class="number">0</span> ? proxy.getClass() : type);</span><br><span class="line">        <span class="comment">//覆写doInvoke方法</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> AbstractProxyInvoker&lt;T&gt;(proxy, type, url) &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">protected</span> Object <span class="title">doInvoke</span><span class="params">(T proxy, String methodName,</span></span></span><br><span class="line"><span class="function"><span class="params">                                      Class&lt;?&gt;[] parameterTypes,</span></span></span><br><span class="line"><span class="function"><span class="params">                                      Object[] arguments)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<strong>JavassistProxyFactory</strong>首先创建了Wrapper类，然后重写了<strong>AbstractProxyInvoker</strong>的<strong>doInvoke</strong>方法，并将调用转发给了Wrapper实例。我们直接看下Wrapper类是如何创建的，深入可发现其关键方法在于<strong>Wrapper#makeWrapper</strong>，这里我们直接通过arthas工具反编译生成的Wrapper类的内容：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Wrapper1</span></span></span><br><span class="line"><span class="class"><span class="keyword">extends</span> <span class="title">Wrapper</span></span></span><br><span class="line"><span class="class"><span class="keyword">implements</span> <span class="title">ClassGenerator</span>.<span class="title">DC</span> </span>&#123;</span><br><span class="line">    <span class="comment">//公有字段、getter、setter字段名</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> String[] pns;</span><br><span class="line">    <span class="comment">//公有字段、getter、setter字段名及类型</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> Map pts;</span><br><span class="line">    <span class="comment">//所有方法名称</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> String[] mns;</span><br><span class="line">    <span class="comment">//当前类方法名称</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> String[] dmns;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> Class[] mts0;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String[] getPropertyNames() &#123;</span><br><span class="line">        <span class="keyword">return</span> pns;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasProperty</span><span class="params">(String string)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> pts.containsKey(string);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Class <span class="title">getPropertyType</span><span class="params">(String string)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (Class)pts.get(string);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String[] getMethodNames() &#123;</span><br><span class="line">        <span class="keyword">return</span> mns;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String[] getDeclaredMethodNames() &#123;</span><br><span class="line">        <span class="keyword">return</span> dmns;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setPropertyValue</span><span class="params">(Object object, String string, Object object2)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            HelloServiceImpl helloServiceImpl = (HelloServiceImpl)object;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> (Throwable throwable) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(throwable);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (string.equals(<span class="string">&quot;foo&quot;</span>)) &#123;</span><br><span class="line">            helloServiceImpl.foo = (String)object2;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchPropertyException(<span class="keyword">new</span> StringBuffer().append(<span class="string">&quot;Not found property \&quot;&quot;</span>).append(string).append(<span class="string">&quot;\&quot; field or setter method in class laixiaoming.service.HelloServiceImpl.&quot;</span>).toString());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Object <span class="title">getPropertyValue</span><span class="params">(Object object, String string)</span> </span>&#123;</span><br><span class="line">        HelloServiceImpl helloServiceImpl;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            helloServiceImpl = (HelloServiceImpl)object;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> (Throwable throwable) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(throwable);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (string.equals(<span class="string">&quot;foo&quot;</span>)) &#123;</span><br><span class="line">            <span class="keyword">return</span> helloServiceImpl.foo;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchPropertyException(<span class="keyword">new</span> StringBuffer().append(<span class="string">&quot;Not found property \&quot;&quot;</span>).append(string).append(<span class="string">&quot;\&quot; field or getter method in class laixiaoming.service.HelloServiceImpl.&quot;</span>).toString());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Object <span class="title">invokeMethod</span><span class="params">(Object object, String string, Class[] classArray, Object[] objectArray)</span> <span class="keyword">throws</span> InvocationTargetException </span>&#123;</span><br><span class="line">        HelloServiceImpl helloServiceImpl;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            helloServiceImpl = (HelloServiceImpl)object;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> (Throwable throwable) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(throwable);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (<span class="string">&quot;sayHello&quot;</span>.equals(string) &amp;&amp; classArray.length == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">return</span> helloServiceImpl.sayHello();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> (Throwable throwable) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> InvocationTargetException(throwable);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchMethodException(<span class="keyword">new</span> StringBuffer().append(<span class="string">&quot;Not found method \&quot;&quot;</span>).append(string).append(<span class="string">&quot;\&quot; in class laixiaoming.service.HelloServiceImpl.&quot;</span>).toString());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>查看其实现可以知道，服务提供类的Invoker主要提供3个方法，其中<strong>setPropertyValue</strong>用于设置服务提供类的属性值，<strong>getPropertyValue</strong>用于获取服务提供类的属性值，<strong>invokeMethod</strong>方则用于调用服务提供类的方法。</p>
+<h3 id="服务引用-Invoker"><a href="#服务引用-Invoker" class="headerlink" title="服务引用 Invoker"></a>服务引用 Invoker</h3><p>在服务引用过程中，Invoker由Protocol的<strong>refer</strong>方法创建而来，用于发起远程调用，在只存在一个注册中心的情况下，从传入的Url为**<em>registry://**</em>，可知由<strong>InterfaceCompatibleRegistryProtocol</strong>提供实现，<strong>InterfaceCompatibleRegistryProtocol</strong>继承自<strong>RegistryProtocol</strong>，查看<strong>InterfaceCompatibleRegistryProtocol</strong>可以发现，<strong>InterfaceCompatibleRegistryProtocol</strong>没有重写refer方法，而是重写了一些getInoker方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">ClusterInvoker&lt;T&gt; <span class="title">getInvoker</span><span class="params">(Cluster cluster, Registry registry, Class&lt;T&gt; type, URL url)</span> </span>&#123;</span><br><span class="line">        DynamicDirectory&lt;T&gt; directory = <span class="keyword">new</span> RegistryDirectory&lt;&gt;(type, url);</span><br><span class="line">        <span class="keyword">return</span> doCreateInvoker(directory, cluster, registry, type);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">ClusterInvoker&lt;T&gt; <span class="title">getServiceDiscoveryInvoker</span><span class="params">(Cluster cluster, Registry registry, Class&lt;T&gt; type, URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            registry = registryFactory.getRegistry(<span class="keyword">super</span>.getRegistryUrl(url));</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IllegalStateException e) &#123;</span><br><span class="line">            String protocol = url.getProtocol();</span><br><span class="line">            logger.warn(protocol + <span class="string">&quot; do not support service discovery, automatically switch to interface-level service discovery.&quot;</span>);</span><br><span class="line">            registry = AbstractRegistryFactory.getDefaultNopRegistryIfNotSupportServiceDiscovery();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        DynamicDirectory&lt;T&gt; directory = <span class="keyword">new</span> ServiceDiscoveryRegistryDirectory&lt;&gt;(type, url);</span><br><span class="line">        <span class="keyword">return</span> doCreateInvoker(directory, cluster, registry, type);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> &lt;T&gt; <span class="function">ClusterInvoker&lt;T&gt; <span class="title">getMigrationInvoker</span><span class="params">(RegistryProtocol registryProtocol, Cluster cluster, Registry registry,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                        Class&lt;T&gt; type, URL url, URL consumerUrl)</span> </span>&#123;</span><br><span class="line"><span class="comment">//        ClusterInvoker&lt;T&gt; invoker = getInvoker(cluster, registry, type, url);</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> MigrationInvoker&lt;T&gt;(registryProtocol, cluster, registry, type, url, consumerUrl);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>而以上这3种Invoker，则分别用于：</p>
+<ol>
+<li>getInvoker为接口级Invoker;</li>
+<li>getServiceDiscoveryInvoker为应用级Invoker；</li>
+<li>getMigrationInvoker则同时兼容了接口级及应用级Invoker；</li>
+</ol>
+<p>对于接口级Invoker及应用级的Invoker，在创建对应的服务目录Directory后，都是由<strong>RegistryProtocol#doCreateInvoker</strong>创建而来：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">protected &lt;T&gt; ClusterInvoker&lt;T&gt; doCreateInvoker(DynamicDirectory&lt;T&gt; directory, Cluster cluster, Registry registry, Class&lt;T&gt; type) &#123;</span><br><span class="line">	&#x2F;&#x2F;设置注册中心和协议</span><br><span class="line">    directory.setRegistry(registry);</span><br><span class="line">    directory.setProtocol(protocol);</span><br><span class="line">    &#x2F;&#x2F; all attributes of REFER_KEY</span><br><span class="line">    Map&lt;String, String&gt; parameters &#x3D; new HashMap&lt;String, String&gt;(directory.getConsumerUrl().getParameters());</span><br><span class="line">    &#x2F;&#x2F;生成服务消费者链接</span><br><span class="line">    URL urlToRegistry &#x3D; new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);</span><br><span class="line">    if (directory.isShouldRegister()) &#123;</span><br><span class="line">        directory.setRegisteredConsumerUrl(urlToRegistry);</span><br><span class="line">        registry.register(directory.getRegisteredConsumerUrl());</span><br><span class="line">    &#125;</span><br><span class="line">    directory.buildRouterChain(urlToRegistry);</span><br><span class="line">    &#x2F;&#x2F;服务订阅</span><br><span class="line">    directory.subscribe(toSubscribeUrl(urlToRegistry));</span><br><span class="line">    &#x2F;&#x2F;生成Invoker</span><br><span class="line">    return (ClusterInvoker&lt;T&gt;) cluster.join(directory);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>回到<strong>RegistryProtocol#refer</strong>方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">refer</span><span class="params">(Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">	<span class="comment">//转换协议头，比如nacos://</span></span><br><span class="line">    url = getRegistryUrl(url);</span><br><span class="line">    <span class="comment">//获取注册中心实例</span></span><br><span class="line">    Registry registry = getRegistry(url);</span><br><span class="line">    <span class="keyword">if</span> (RegistryService.class.equals(type)) &#123;</span><br><span class="line">        <span class="keyword">return</span> proxyFactory.getInvoker((T) registry, type, url);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//将url查询字符串转化为map</span></span><br><span class="line">    <span class="comment">// group=&quot;a,b&quot; or group=&quot;*&quot;</span></span><br><span class="line">    Map&lt;String, String&gt; qs = StringUtils.parseQueryString(url.getParameterAndDecoded(REFER_KEY));</span><br><span class="line">    String group = qs.get(GROUP_KEY);</span><br><span class="line">    <span class="keyword">if</span> (group != <span class="keyword">null</span> &amp;&amp; group.length() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> ((COMMA_SPLIT_PATTERN.split(group)).length &gt; <span class="number">1</span> || <span class="string">&quot;*&quot;</span>.equals(group)) &#123;</span><br><span class="line">            <span class="keyword">return</span> doRefer(Cluster.getCluster(MergeableCluster.NAME), registry, type, url, qs);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">	<span class="comment">//获取集群容错模式，默认failover，此处经过包装为MockClusterWrapper</span></span><br><span class="line">    Cluster cluster = Cluster.getCluster(qs.get(CLUSTER_KEY));</span><br><span class="line">    <span class="keyword">return</span> doRefer(cluster, registry, type, url, qs);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">doRefer</span><span class="params">(Cluster cluster, Registry registry, Class&lt;T&gt; type, URL url, Map&lt;String, String&gt; parameters)</span> </span>&#123;</span><br><span class="line">        URL consumerUrl = <span class="keyword">new</span> URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), <span class="number">0</span>, type.getName(), parameters);</span><br><span class="line">        <span class="comment">//生成MigrationInvoker</span></span><br><span class="line">        ClusterInvoker&lt;T&gt; migrationInvoker = getMigrationInvoker(<span class="keyword">this</span>, cluster, registry, type, url, consumerUrl);</span><br><span class="line">        <span class="keyword">return</span> interceptInvoker(migrationInvoker, url, consumerUrl);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>可以看到这里实际创建的是MigrationInvoker，在得到MigrationInvoker后，一路跟踪来到<strong>MigrationRuleListener#onRefer</strong>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public synchronized void onRefer(RegistryProtocol registryProtocol, ClusterInvoker&lt;?&gt; invoker, URL url) &#123;</span><br><span class="line">    MigrationInvoker&lt;?&gt; migrationInvoker &#x3D; (MigrationInvoker&lt;?&gt;) invoker;</span><br><span class="line"></span><br><span class="line">    MigrationRuleHandler&lt;?&gt; migrationListener &#x3D; new MigrationRuleHandler&lt;&gt;(migrationInvoker);</span><br><span class="line">    listeners.add(migrationListener);</span><br><span class="line"></span><br><span class="line">    migrationListener.doMigrate(rawRule);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>传入规则信息，进入到<strong>MigrationRuleHandler#doMigrate</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doMigrate</span><span class="params">(String rawRule)</span> </span>&#123;</span><br><span class="line">    MigrationRule rule = MigrationRule.parse(rawRule);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">null</span> != currentStep &amp;&amp; currentStep.equals(rule.getStep())) &#123;</span><br><span class="line">        <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">            logger.info(<span class="string">&quot;Migration step is not change. rule.getStep is &quot;</span> + currentStep.name());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        currentStep = rule.getStep();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    migrationInvoker.setMigrationRule(rule);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (migrationInvoker.isMigrationMultiRegistry()) &#123;</span><br><span class="line">        <span class="keyword">if</span> (migrationInvoker.isServiceInvoker()) &#123;</span><br><span class="line">            migrationInvoker.refreshServiceDiscoveryInvoker();</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            migrationInvoker.refreshInterfaceInvoker();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">switch</span> (rule.getStep()) &#123;</span><br><span class="line">            <span class="comment">//应用级优先</span></span><br><span class="line">            <span class="keyword">case</span> APPLICATION_FIRST:</span><br><span class="line">                migrationInvoker.migrateToServiceDiscoveryInvoker(<span class="keyword">false</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="comment">//应用级</span></span><br><span class="line">            <span class="keyword">case</span> FORCE_APPLICATION:</span><br><span class="line">                migrationInvoker.migrateToServiceDiscoveryInvoker(<span class="keyword">true</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="comment">//接口级</span></span><br><span class="line">            <span class="keyword">case</span> FORCE_INTERFACE:</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                migrationInvoker.fallbackToInterfaceInvoker();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里根据不同规则，来到<strong>MigrationRuleHandler#migrateToServiceDiscoveryInvoker</strong>，刷新创建对应的接口级或应用级Invoker:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">migrateToServiceDiscoveryInvoker</span><span class="params">(<span class="keyword">boolean</span> forceMigrate)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!forceMigrate) &#123;</span><br><span class="line">   		<span class="comment">//应用级及接口级服务发现双订阅</span></span><br><span class="line">        refreshServiceDiscoveryInvoker();</span><br><span class="line">        refreshInterfaceInvoker();</span><br><span class="line">        setListener(invoker, () -&gt; &#123;</span><br><span class="line">            <span class="keyword">this</span>.compareAddresses(serviceDiscoveryInvoker, invoker);</span><br><span class="line">        &#125;);</span><br><span class="line">        setListener(serviceDiscoveryInvoker, () -&gt; &#123;</span><br><span class="line">            <span class="keyword">this</span>.compareAddresses(serviceDiscoveryInvoker, invoker);</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    	<span class="comment">//应用级服务发现</span></span><br><span class="line">        refreshServiceDiscoveryInvoker();</span><br><span class="line">        setListener(serviceDiscoveryInvoker, () -&gt; &#123;</span><br><span class="line">            <span class="keyword">this</span>.destroyInterfaceInvoker(<span class="keyword">this</span>.invoker);</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Invoker 创建完毕后，最后通过<strong>ProxyFactory #getProxy</strong>创建服务代理：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">   <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ProxyFactory PROXY_FACTORY = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();</span><br><span class="line"><span class="comment">//省略...</span></span><br><span class="line">   <span class="keyword">return</span> (T) PROXY_FACTORY.getProxy(invoker, ProtocolUtils.isGeneric(generic));</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>这里的PROXY_FACTORY是一个自适应扩展点，根据url的proxy参数使用使用不同的代理实现，默认使用<strong>JavassistProxyFactory</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="meta">@SuppressWarnings(&quot;unchecked&quot;)</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">T <span class="title">getProxy</span><span class="params">(Invoker&lt;T&gt; invoker, Class&lt;?&gt;[] interfaces)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (T) Proxy.getProxy(interfaces).newInstance(<span class="keyword">new</span> InvokerInvocationHandler(invoker));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>那最终生成的代理类是什么样的呢，这里通过arthas反编译得到：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">proxy0</span></span></span><br><span class="line"><span class="class"><span class="keyword">implements</span> <span class="title">ClassGenerator</span>.<span class="title">DC</span>,</span></span><br><span class="line"><span class="class"><span class="title">EchoService</span>,</span></span><br><span class="line"><span class="class"><span class="title">Destroyable</span>,</span></span><br><span class="line"><span class="class"><span class="title">HelloService</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> Method[] methods;</span><br><span class="line">    <span class="keyword">private</span> InvocationHandler handler;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Object $echo(Object object) &#123;</span><br><span class="line">        Object[] objectArray = <span class="keyword">new</span> Object[]&#123;object&#125;;</span><br><span class="line">        Object object2 = <span class="keyword">this</span>.handler.invoke(<span class="keyword">this</span>, methods[<span class="number">0</span>], objectArray);</span><br><span class="line">        <span class="keyword">return</span> object2;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">sayHello</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        Object[] objectArray = <span class="keyword">new</span> Object[]&#123;&#125;;</span><br><span class="line">        Object object = <span class="keyword">this</span>.handler.invoke(<span class="keyword">this</span>, methods[<span class="number">1</span>], objectArray);</span><br><span class="line">        <span class="keyword">return</span> (String)object;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> $destroy() &#123;</span><br><span class="line">        Object[] objectArray = <span class="keyword">new</span> Object[]&#123;&#125;;</span><br><span class="line">        Object object = <span class="keyword">this</span>.handler.invoke(<span class="keyword">this</span>, methods[<span class="number">2</span>], objectArray);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">proxy0</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">proxy0</span><span class="params">(InvocationHandler invocationHandler)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.handler = invocationHandler;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，对Dubbo接口的调用，都会转发给<strong>InvokerInvocationHandler</strong>，最终调用到对应的invoker。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Dubbo/" rel="tag"># Dubbo</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/" rel="prev" title="Dubbo源码学习：服务引用">
+      <i class="fa fa-chevron-left"></i> Dubbo源码学习：服务引用
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B-Invoker"><span class="nav-number">2.</span> <span class="nav-text">服务提供 Invoker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8-Invoker"><span class="nav-number">3.</span> <span class="nav-text">服务引用 Invoker</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="laixiaoming"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">laixiaoming</p>
+  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
+<script src="/js/algolia-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+  
+    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
+  
+</body>
+</html>
