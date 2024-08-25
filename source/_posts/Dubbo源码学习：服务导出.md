@@ -467,7 +467,35 @@ private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> r
    - 不为remote时，导出到本地
    - 不为local时，导出到远程
 
-这里我们重点看下，导出到远程的服务导出：
+#### 导出服务到本地
+
+```Java
+private void exportLocal(URL url) {
+    URL local = URLBuilder.from(url)
+            .setProtocol(LOCAL_PROTOCOL)
+            .setHost(LOCALHOST_VALUE)
+            .setPort(0)
+            .build();
+    Exporter<?> exporter = PROTOCOL.export(
+            PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, local));
+    exporters.add(exporter);
+    logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry url : " + local);
+}
+```
+
+导出服务到本地时，先创建Invoker，然后调用**Protocol#export**导出，此时URL协议头为**injvm**，使用的Protocol实现为**InjvmProtocol**：
+
+```Java
+public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+    return new InjvmExporter<T>(invoker, invoker.getUrl().getServiceKey(), exporterMap);
+}
+```
+
+这里将Invoker包装为Exporter后就返回了。
+
+
+
+#### 导出服务到远程
 
 ```Java
 Exporter<?> exporter = PROTOCOL.export(wrapperInvoker);
@@ -577,13 +605,99 @@ public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
 }
 ```
 
-启动服务器之后，就是注册服务了，这里不细说。
+启动服务器之后，就是注册服务。
+
+#### 服务注册
+
+获取注册中心实例：
+
+```Java
+protected Registry getRegistry(final Invoker<?> originInvoker) {
+    URL registryUrl = getRegistryUrl(originInvoker);
+    return getRegistry(registryUrl);
+}
+```
+
+由于这里使用的注册中心为nacos，此时registryUrl的协议被转换为了nacos：
+
+```Java
+protected Registry getRegistry(URL url) {
+    try {
+        return registryFactory.getRegistry(url);
+    } catch (Throwable t) {
+        LOGGER.error(t.getMessage(), t);
+        throw t;
+    }
+}
+```
+
+这里registryFactory为**RegistryFactory**的自适应扩展类，由**SpiExtensionFactory**注入，最终获取到的RegistryFactory实例类型为**ListenerRegistryWrapper**，由包装类**RegistryFactoryWrapper#getRegistry**返回，registryFactory类型为**NacosRegistryFactory**，getResistry获取到的Registry类型为**NacosRegistry**：
+
+```
+@Override
+public Registry getRegistry(URL url) {
+    return new ListenerRegistryWrapper(registryFactory.getRegistry(url),
+            Collections.unmodifiableList(ExtensionLoader.getExtensionLoader(RegistryServiceListener.class)
+                    .getActivateExtension(url, "registry.listeners")));
+}
+```
+
+**RegistryFactoryWrapper#register**方法:
+
+```Java
+@Override
+public void register(URL url) {
+    try {
+        registry.register(url);
+    } finally {
+        if (CollectionUtils.isNotEmpty(listeners)) {
+            RuntimeException exception = null;
+            for (RegistryServiceListener listener : listeners) {
+                if (listener != null) {
+                    try {
+                        listener.onRegister(url);
+                    } catch (RuntimeException t) {
+                        logger.error(t.getMessage(), t);
+                        exception = t;
+                    }
+                }
+            }
+            if (exception != null) {
+                throw exception;
+            }
+        }
+    }
+}
+```
+
+最终来到**NacosRegistry#doRegister**，向Nacos注册服务：
+
+```Java
+public void doRegister(URL url) {
+    //获取服务名
+    final String serviceName = getServiceName(url);
+
+    //服务实例信息
+    final Instance instance = createInstance(url);
+    /**
+     *  namingService.registerInstance with {@link org.apache.dubbo.registry.support.AbstractRegistry#registryUrl}
+     *  default {@link DEFAULT_GROUP}
+     *
+     * in https://github.com/apache/dubbo/issues/5978
+     */
+    execute(namingService -> namingService.registerInstance(serviceName,
+            getUrl().getParameter(GROUP_KEY, Constants.DEFAULT_GROUP), instance));
+}
+```
+
+
 
 ### 总结
 
-本文简单分析了，Dubbo的启动过程，包括：
+本文简单分析了，Dubbo服务的启动和注册过程，包括：
 
 1. **@EnableDubbo**注解的原理及Dubbo的启动入口；
 2. Dubbo服务导出的过程：包括URL组装、服务的导出及本地服务的启动；
-3. 在没有注册中心时，根据dubbo://协议，使用DubboProtocol导出；存在注册中心的情况下，先根据registry://协议使用RegistryProtocol导出，再使用传递进来的export参数，使用DubboProtocol进行导出。
+3. 在没有注册中心时，根据dubbo://协议，使用DubboProtocol导出；存在注册中心的情况下，先根据registry://协议使用RegistryProtocol导出，再使用传递进来的export参数，使用DubboProtocol进行导出；
+4. 远程服务的情况下，创建注册中心实例，进行服务注册（以Nacos为例）。
 
