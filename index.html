@@ -177,7 +177,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/08/20/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8Invoker/">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/08/25/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9ASpring%20Cloud%20Gateway%E7%BA%BF%E7%A8%8B%E7%88%86%E6%BB%A1/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -191,7 +191,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2024/08/20/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8Invoker/" class="post-title-link" itemprop="url">Dubbo源码学习：服务提供与服务引用Invoker</a>
+            <a href="/2024/08/25/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9ASpring%20Cloud%20Gateway%E7%BA%BF%E7%A8%8B%E7%88%86%E6%BB%A1/" class="post-title-link" itemprop="url">问题记录：Spring Cloud Gateway线程爆满</a>
         </h2>
 
         <div class="post-meta">
@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2024-08-20 23:16:43 / 修改时间：23:16:16" itemprop="dateCreated datePublished" datetime="2024-08-20T23:16:43+08:00">2024-08-20</time>
+              <time title="创建时间：2024-08-25 19:52:15 / 修改时间：22:43:52" itemprop="dateCreated datePublished" datetime="2024-08-25T19:52:15+08:00">2024-08-25</time>
             </span>
 
           
@@ -216,13 +216,13 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>在Dubbo中，Invoker无处不在，它是Dubbo中非常重要的一个模型，不管在服务提供端或者服务引用端均有它的身影。</p>
-<blockquote>
-<p>Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。</p>
-</blockquote>
+          <h3 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h3><p>某日告警群突发OOM日志告警：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java.lang.OutOfMemoryError: unable to create <span class="keyword">new</span> <span class="keyword">native</span> thread</span><br></pre></td></tr></table></figure>
+
+<p>开发、运维、运营相关人员立马被召集了起来，首先确认了业务未受到明显的影响。</p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/2024/08/20/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8Invoker/#more" rel="contents">
+              <a class="btn" href="/2024/08/25/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9ASpring%20Cloud%20Gateway%E7%BA%BF%E7%A8%8B%E7%88%86%E6%BB%A1/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -277,7 +277,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-08-20 23:34:36" itemprop="dateModified" datetime="2024-08-20T23:34:36+08:00">2024-08-20</time>
+                <time title="修改时间：2024-08-25 22:43:52" itemprop="dateModified" datetime="2024-08-25T22:43:52+08:00">2024-08-25</time>
               </span>
 
           
@@ -349,7 +349,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-08-20 23:25:15" itemprop="dateModified" datetime="2024-08-20T23:25:15+08:00">2024-08-20</time>
+                <time title="修改时间：2024-08-25 22:43:52" itemprop="dateModified" datetime="2024-08-25T22:43:52+08:00">2024-08-25</time>
               </span>
 
           
@@ -421,7 +421,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-08-20 23:20:50" itemprop="dateModified" datetime="2024-08-20T23:20:50+08:00">2024-08-20</time>
+                <time title="修改时间：2024-08-25 22:43:52" itemprop="dateModified" datetime="2024-08-25T22:43:52+08:00">2024-08-25</time>
               </span>
 
           
@@ -977,7 +977,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
