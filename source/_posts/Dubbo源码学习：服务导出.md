@@ -467,6 +467,128 @@ private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> r
    - 不为remote时，导出到本地
    - 不为local时，导出到远程
 
+#### 创建Invoker
+
+Invoker是由**ProxyFactory**创建的，Dubbo默认使用的ProxyFactory实现类为**JavassistProxyFactory**：
+
+```Java
+public class JavassistProxyFactory extends AbstractProxyFactory {
+
+	//省略...
+
+    @Override
+    public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
+        //创建Wrapper类实例
+        final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
+        //覆写doInvoke方法
+        return new AbstractProxyInvoker<T>(proxy, type, url) {
+            @Override
+            protected Object doInvoke(T proxy, String methodName,
+                                      Class<?>[] parameterTypes,
+                                      Object[] arguments) throws Throwable {
+                return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
+            }
+        };
+    }
+
+}
+```
+
+可以看到**JavassistProxyFactory**首先创建了Wrapper类，然后重写了**AbstractProxyInvoker**的**doInvoke**方法，并将调用转发给了Wrapper实例。我们直接看下Wrapper类是如何创建的，深入可发现其关键方法在于**Wrapper#makeWrapper**，这里我们直接通过arthas工具反编译生成的Wrapper类的内容：
+
+```Java
+public class Wrapper1
+extends Wrapper
+implements ClassGenerator.DC {
+    //公有字段、getter、setter字段名
+    public static String[] pns;
+    //公有字段、getter、setter字段名及类型
+    public static Map pts;
+    //所有方法名称
+    public static String[] mns;
+    //当前类方法名称
+    public static String[] dmns;
+    public static Class[] mts0;
+
+    @Override
+    public String[] getPropertyNames() {
+        return pns;
+    }
+
+    @Override
+    public boolean hasProperty(String string) {
+        return pts.containsKey(string);
+    }
+
+    public Class getPropertyType(String string) {
+        return (Class)pts.get(string);
+    }
+
+    @Override
+    public String[] getMethodNames() {
+        return mns;
+    }
+
+    @Override
+    public String[] getDeclaredMethodNames() {
+        return dmns;
+    }
+
+    @Override
+    public void setPropertyValue(Object object, String string, Object object2) {
+        try {
+            HelloServiceImpl helloServiceImpl = (HelloServiceImpl)object;
+        }
+        catch (Throwable throwable) {
+            throw new IllegalArgumentException(throwable);
+        }
+        if (string.equals("foo")) {
+            helloServiceImpl.foo = (String)object2;
+            return;
+        }
+        throw new NoSuchPropertyException(new StringBuffer().append("Not found property \"").append(string).append("\" field or setter method in class laixiaoming.service.HelloServiceImpl.").toString());
+    }
+
+    @Override
+    public Object getPropertyValue(Object object, String string) {
+        HelloServiceImpl helloServiceImpl;
+        try {
+            helloServiceImpl = (HelloServiceImpl)object;
+        }
+        catch (Throwable throwable) {
+            throw new IllegalArgumentException(throwable);
+        }
+        if (string.equals("foo")) {
+            return helloServiceImpl.foo;
+        }
+        throw new NoSuchPropertyException(new StringBuffer().append("Not found property \"").append(string).append("\" field or getter method in class laixiaoming.service.HelloServiceImpl.").toString());
+    }
+
+    public Object invokeMethod(Object object, String string, Class[] classArray, Object[] objectArray) throws InvocationTargetException {
+        HelloServiceImpl helloServiceImpl;
+        try {
+            helloServiceImpl = (HelloServiceImpl)object;
+        }
+        catch (Throwable throwable) {
+            throw new IllegalArgumentException(throwable);
+        }
+        try {
+            if ("sayHello".equals(string) && classArray.length == 0) {
+                return helloServiceImpl.sayHello();
+            }
+        }
+        catch (Throwable throwable) {
+            throw new InvocationTargetException(throwable);
+        }
+        throw new NoSuchMethodException(new StringBuffer().append("Not found method \"").append(string).append("\" in class laixiaoming.service.HelloServiceImpl.").toString());
+    }
+}
+```
+
+查看其实现可以知道，服务提供类的Invoker主要提供3个方法，其中**setPropertyValue**用于设置服务提供类的属性值，**getPropertyValue**用于获取服务提供类的属性值，**invokeMethod**方则用于调用服务提供类的方法。
+
+
+
 #### 导出服务到本地
 
 ```Java
@@ -606,6 +728,8 @@ public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
 ```
 
 启动服务器之后，就是注册服务。
+
+
 
 #### 服务注册
 
