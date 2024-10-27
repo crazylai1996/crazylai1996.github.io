@@ -30,7 +30,7 @@
 <meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20240630164051353.png">
 <meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20240630212039912.png">
 <meta property="article:published_time" content="2024-07-06T06:49:43.000Z">
-<meta property="article:modified_time" content="2024-08-25T14:43:52.783Z">
+<meta property="article:modified_time" content="2024-10-27T10:40:49.050Z">
 <meta property="article:author" content="laixiaoming">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
@@ -214,7 +214,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-08-25 22:43:52" itemprop="dateModified" datetime="2024-08-25T22:43:52+08:00">2024-08-25</time>
+                <time title="修改时间：2024-10-27 18:40:49" itemprop="dateModified" datetime="2024-10-27T18:40:49+08:00">2024-10-27</time>
               </span>
 
           
@@ -311,7 +311,7 @@
 <p>这里的运行时协议是dubbo，协议为dubbo://，则protocol实例则是<strong>DubboProtocol</strong>：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">Exporter&lt;T&gt; <span class="title">export</span><span class="params">(Invoker&lt;T&gt; invoker)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">    URL url = invoker.getUrl();</span><br><span class="line"></span><br><span class="line">    <span class="comment">//获取服务标识</span></span><br><span class="line">    <span class="comment">// export service.</span></span><br><span class="line">    String key = serviceKey(url);</span><br><span class="line">    <span class="comment">//创建DubboExporter并放入缓存</span></span><br><span class="line">    DubboExporter&lt;T&gt; exporter = <span class="keyword">new</span> DubboExporter&lt;T&gt;(invoker, key, exporterMap);</span><br><span class="line">    exporterMap.put(key, exporter);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//export an stub service for dispatching event</span></span><br><span class="line">    Boolean isStubSupportEvent = url.getParameter(STUB_EVENT_KEY, DEFAULT_STUB_EVENT);</span><br><span class="line">    Boolean isCallbackservice = url.getParameter(IS_CALLBACK_SERVICE, <span class="keyword">false</span>);</span><br><span class="line">    <span class="keyword">if</span> (isStubSupportEvent &amp;&amp; !isCallbackservice) &#123;</span><br><span class="line">        String stubServiceMethods = url.getParameter(STUB_EVENT_METHODS_KEY);</span><br><span class="line">        <span class="keyword">if</span> (stubServiceMethods == <span class="keyword">null</span> || stubServiceMethods.length() == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (logger.isWarnEnabled()) &#123;</span><br><span class="line">                logger.warn(<span class="keyword">new</span> IllegalStateException(<span class="string">&quot;consumer [&quot;</span> + url.getParameter(INTERFACE_KEY) +</span><br><span class="line">                        <span class="string">&quot;], has set stubproxy support event ,but no stub methods founded.&quot;</span>));</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//启动本地服务器</span></span><br><span class="line">    openServer(url);</span><br><span class="line">    optimizeSerialization(url);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> exporter;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>启动服务器之后，就是注册服务。</p>
+<p>创建 Exporter实例，并将其放入 DubboProtocol 的 <strong>exporterMap</strong> 缓存，启动本地服务器后，就是注册服务。</p>
 <h4 id="服务注册"><a href="#服务注册" class="headerlink" title="服务注册"></a>服务注册</h4><p>获取注册中心实例：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> Registry <span class="title">getRegistry</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; originInvoker)</span> </span>&#123;</span><br><span class="line">    URL registryUrl = getRegistryUrl(originInvoker);</span><br><span class="line">    <span class="keyword">return</span> getRegistry(registryUrl);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -435,7 +435,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">17</span>
+          <span class="site-state-item-count">18</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
