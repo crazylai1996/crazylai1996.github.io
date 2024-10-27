@@ -387,10 +387,35 @@ protected <T> ClusterInvoker<T> doCreateInvoker(DynamicDirectory<T> directory, C
     directory.buildRouterChain(urlToRegistry);
     //服务订阅
     directory.subscribe(toSubscribeUrl(urlToRegistry));
-    //生成Invoker
+    //调用MockClusterWrapper#join生成Invoker，这里的Invoker类型为MockClusterInvoker
     return (ClusterInvoker<T>) cluster.join(directory);
 }
 ```
+
+关于doCreateInvoker返回的invoker类型，这里通过debug继续深入到 **MockClusterWrapper#join** ：
+
+```Java
+@Override
+public <T> Invoker<T> join(Directory<T> directory) throws RpcException {
+    //cluster类型为FailoverCluster
+    return new MockClusterInvoker<T>(directory,
+            this.cluster.join(directory));
+}
+```
+
+**AbstractCluster#join** ：
+
+```Java
+@Override
+public <T> Invoker<T> join(Directory<T> directory) throws RpcException {
+    //通过doJoin构建 FailoverClusterInvoker ，然后构建cluster拦截器链并返回，此时返回的类型为 InterceptorInvokerNode
+    return buildClusterInterceptors(doJoin(directory), directory.getUrl().getParameter(REFERENCE_INTERCEPTOR_KEY));
+}
+```
+
+可以看到doCreateInvoker最终得到的类型为 **InterceptorInvokerNode**。
+
+
 
 回到**RegistryProtocol#refer**方法：
 
@@ -483,7 +508,7 @@ public void doMigrate(String rawRule) {
 }
 ```
 
-这里根据不同规则，来到**MigrationRuleHandler#migrateToServiceDiscoveryInvoker**，刷新创建对应的接口级或应用级Invoker:
+这里根据不同规则，来到**MigrationRuleHandler#migrateToServiceDiscoveryInvoker**，最终调用 **RegistryProtocol#doCreateInvoker** 创建对应的接口级或应用级Invoker:
 
 ```Java
 public synchronized void migrateToServiceDiscoveryInvoker(boolean forceMigrate) {

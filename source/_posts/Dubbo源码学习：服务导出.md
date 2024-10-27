@@ -727,7 +727,7 @@ public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
 }
 ```
 
-启动服务器之后，就是注册服务。
+创建 Exporter实例，并将其放入 DubboProtocol 的 **exporterMap** 缓存，启动本地服务器后，就是注册服务。
 
 
 

@@ -60,10 +60,42 @@ protected <T> ClusterInvoker<T> doCreateInvoker(DynamicDirectory<T> directory, C
     directory.buildRouterChain(urlToRegistry);
     //订阅服务变更通知
     directory.subscribe(toSubscribeUrl(urlToRegistry));
-
+	//cluster类型为MockClusterWrapper
     return (ClusterInvoker<T>) cluster.join(directory);
 }
 ```
+
+**MockClusterWrapper#join**：
+
+```Java
+public class MockClusterWrapper implements Cluster {
+	//FailoverCluster实现类
+    private Cluster cluster;
+
+    public MockClusterWrapper(Cluster cluster) {
+        this.cluster = cluster;
+    }
+
+    @Override
+    public <T> Invoker<T> join(Directory<T> directory) throws RpcException {
+    	//返回MockClusterInvoker实例
+        return new MockClusterInvoker<T>(directory,
+                this.cluster.join(directory));
+    }
+
+}
+```
+
+**AbstractCluster#join**：
+
+```Java
+public <T> Invoker<T> join(Directory<T> directory) throws RpcException {
+	//doJoin返回FailoverClusterInvoker实例
+    return buildClusterInterceptors(doJoin(directory), directory.getUrl().getParameter(REFERENCE_INTERCEPTOR_KEY));
+}
+```
+
+
 
 在创建 **RegistryDirectory** 实例后，则通过 **RegistryDirectory#subscribe** 订阅服务提供方变更通知：
 
@@ -351,16 +383,78 @@ private Map<URL, Invoker<T>> toInvokers(List<URL> urls) {
 2. 否则，则缓存 invokerUrls ，并将 invokerUrls 转换为 invoker 实例列表：
    1. 对 URL 进行检测，过滤消费端不支持的 URL ；
    2. 合并 URL 配置；
-   3. 通过Protocol#refer方法创建invoker实例；
+   3. 根据具体协议，通过Protocol#refer方法创建invoker实例；
 3. 将转换后的 invoker 实例列表更新到服务目录的 invoker 实例列表；
 4. 销毁旧的无用的 invoker 实例。
+
+
+
+在创建 invoker 实例时，protocol 实例类型为自适应扩展实现类，而 url 协议类型为 dubbo ，可知最终使用的是 DubboProtocol实例，但通过 debug 会发现，会先经过多个 Protocol 的包装类（其中便包括用于构建Filter拦截器链的 ProtocolFilterWrapper 包装类）处理过后，最终才到 DubboProtocol ：
+
+**AbstractProtocol#refer** ：
+
+```java
+@Override
+public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+    return new AsyncToSyncInvoker<>(protocolBindingRefer(type, url));
+}
+```
+
+这里有一个点值得注意的是，在使用 protocolBindingRefer 生成 DubboInvoker 实例后，会将 DubboInovker 实例包装为 **AsyncToSyncInvoker** 实例，实际上 Dubbo 的调用是天然被设计为异步的，而该 Invoker 实例的作用则是将异步结果转化同步。
+
+
+
+**DubboProtocol#protocolBindingRefer** ：
+
+```java
+@Override
+public <T> Invoker<T> protocolBindingRefer(Class<T> serviceType, URL url) throws RpcException {
+    optimizeSerialization(url);
+
+    // 创建dubbo invoker
+    DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
+    invokers.add(invoker);
+
+    return invoker;
+}
+```
+
+**DubboProtocol#getClients** ：
+
+```java
+private ExchangeClient[] getClients(URL url) {
+    // 是否共享连接
+    int connections = url.getParameter(CONNECTIONS_KEY, 0);
+    // if not configured, connection is shared, otherwise, one connection for one service
+    if (connections == 0) {
+        /*
+         * The xml configuration should have a higher priority than properties.
+         */
+        String shareConnectionsStr = url.getParameter(SHARE_CONNECTIONS_KEY, (String) null);
+        //获取连接数
+        connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(SHARE_CONNECTIONS_KEY,
+                DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);
+        return getSharedClient(url, connections).toArray(new ExchangeClient[0]);
+    } else {
+        //初始化新的客户端
+        ExchangeClient[] clients = new ExchangeClient[connections];
+        for (int i = 0; i < clients.length; i++) {
+            clients[i] = initClient(url);
+        }
+        return clients;
+    }
+
+}
+```
+
+这里会先根据 connections 数量决定是获取共享客户端实例还是创建新的客户端实例，获取到客户端连接实例后，将其封装后创建 **DubboInvoker** 实例并返回。
 
 
 
 ### 总结
 
 1. 本文简单介绍了服务目录的概念，以及**StaticDirectory**  和 **DynamicDirectory**  两种服务目录类型的区别；
-
-2. 以 Nacos 作为注册中心为例，针对 **RegistryDirectory** 的源码作了一定的学习，包括服务的订阅过程、服务变更的通知处理流程等。 
+2. 以 Nacos 作为注册中心为例，针对 **RegistryDirectory** 的源码作了一定的学习，包括服务的订阅过程、服务变更的通知处理流程等；
+3. 服务变更后将刷新内部维护的 invoker 列表，将根据实际配置初始连接或使用共享连接。
 
  

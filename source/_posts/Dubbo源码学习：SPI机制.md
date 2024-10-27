@@ -8,6 +8,10 @@ SPI全称是Service Provider Interface，是一种服务自发现机制，本质
 
 <!--more-->
 
+> 以下内容基于Dubbo 2.7.12版本
+
+
+
 ### JDK SPI
 
 在开发中，SPI的应用中最让我们熟知的便是JDBC的使用，JDBC中定义了**java.sql.Driver**接口，当我们调用**DriverManager#getConnection方法时**，将触发**DriverManager**类的初始化，并利用SPI机制自动加载驱动类：
