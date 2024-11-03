@@ -420,7 +420,7 @@ public Object getBean() {
 
 ```Java
 public synchronized Set<String> refresh() {
-   //获取变更的key值
+   //刷新Environment对象，并获取变更的key值
    Set<String> keys = refreshEnvironment();
    this.scope.refreshAll();
    return keys;
