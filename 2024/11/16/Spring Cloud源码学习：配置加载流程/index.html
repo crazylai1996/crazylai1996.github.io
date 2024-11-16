@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"98870b25028b6803f2e798b0d7e939f8","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在 Spring Boot&#x2F;Cloud 中，配置是应用环境的一部分，而环境有一个专属的类 —— “Environment”。 Environment 是 Spring 对环境的抽象，它封装了应用运行时的所有配置属性，这些属性可以来自不同的来源，如本地配置文件、系统属性、环境变量、命令行参数、配置中心等，而 Environment 则提供了一个统一的接口来访问这些属性。 那这些不同来源的配置文件是如">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring Cloud源码学习：配置加载流程">
+<meta property="og:url" content="http://laixiaoming.space/2024/11/16/Spring%20Cloud%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E9%85%8D%E7%BD%AE%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="赖小明">
+<meta property="og:description" content="在 Spring Boot&#x2F;Cloud 中，配置是应用环境的一部分，而环境有一个专属的类 —— “Environment”。 Environment 是 Spring 对环境的抽象，它封装了应用运行时的所有配置属性，这些属性可以来自不同的来源，如本地配置文件、系统属性、环境变量、命令行参数、配置中心等，而 Environment 则提供了一个统一的接口来访问这些属性。 那这些不同来源的配置文件是如">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20241116160613820.png">
+<meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20241116173530035.png">
+<meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20241116194509525.png">
+<meta property="article:published_time" content="2024-11-16T04:46:12.000Z">
+<meta property="article:modified_time" content="2024-11-16T13:24:35.393Z">
+<meta property="article:author" content="laixiaoming">
+<meta property="article:tag" content="Spring Cloud">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://storage.laixiaoming.space/blog/image-20241116160613820.png">
+
+<link rel="canonical" href="http://laixiaoming.space/2024/11/16/Spring%20Cloud%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E9%85%8D%E7%BD%AE%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Spring Cloud源码学习：配置加载流程 | 赖小明</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">赖小明</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container"></div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="algolia-results">
+  <div id="algolia-stats"></div>
+  <div id="algolia-hits"></div>
+  <div id="algolia-pagination" class="algolia-pagination"></div>
+</div>
+
+      
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/11/16/Spring%20Cloud%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E9%85%8D%E7%BD%AE%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Spring Cloud源码学习：配置加载流程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2024-11-16 12:46:12 / 修改时间：21:24:35" itemprop="dateCreated datePublished" datetime="2024-11-16T12:46:12+08:00">2024-11-16</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在 Spring Boot/Cloud 中，配置是应用环境的一部分，而环境有一个专属的类 —— “Environment”。</p>
+<p>Environment 是 Spring 对环境的抽象，它封装了应用运行时的所有配置属性，这些属性可以来自不同的来源，如本地配置文件、系统属性、环境变量、命令行参数、配置中心等，而 Environment 则提供了一个统一的接口来访问这些属性。</p>
+<p>那这些不同来源的配置文件是如何加载并生效的呢？本文一起来看看。</p>
+<span id="more"></span>
+
+
+
+<h3 id="创建-Environment"><a href="#创建-Environment" class="headerlink" title="创建 Environment"></a>创建 Environment</h3><p>进入 SpringApplication.run 方法，来到 <strong>org.springframework.boot.SpringApplication#prepareEnvironment</strong> ：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> ConfigurableEnvironment <span class="title">prepareEnvironment</span><span class="params">(SpringApplicationRunListeners listeners,</span></span></span><br><span class="line"><span class="function"><span class="params">      ApplicationArguments applicationArguments)</span> </span>&#123;</span><br><span class="line">   <span class="comment">// 根据当前应用环境类型，创建对应的 Environment 实例，此处实例类型为 StandardServletEnvironment</span></span><br><span class="line">   ConfigurableEnvironment environment = getOrCreateEnvironment();</span><br><span class="line">   <span class="comment">// 将启动参数绑定到 environment 中</span></span><br><span class="line">   configureEnvironment(environment, applicationArguments.getSourceArgs());</span><br><span class="line">   ConfigurationPropertySources.attach(environment);</span><br><span class="line">   <span class="comment">// 发布环境准备完毕事件</span></span><br><span class="line">   listeners.environmentPrepared(environment);</span><br><span class="line">   bindToSpringApplication(environment);</span><br><span class="line">   <span class="keyword">if</span> (!<span class="keyword">this</span>.isCustomEnvironment) &#123;</span><br><span class="line">      environment = <span class="keyword">new</span> EnvironmentConverter(getClassLoader()).convertEnvironmentIfNecessary(environment,</span><br><span class="line">            deduceEnvironmentClass());</span><br><span class="line">   &#125;</span><br><span class="line">   ConfigurationPropertySources.attach(environment);</span><br><span class="line">   <span class="keyword">return</span> environment;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里在创建好 Environment 实例后，使用 SpringApplicationRunListener 发布了一个广播事件，此时只有一个 EventPublishingRunListener 实例，直接来到其 environmentPrepared 方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">environmentPrepared</span><span class="params">(ConfigurableEnvironment environment)</span> </span>&#123;</span><br><span class="line">   <span class="keyword">this</span>.initialMulticaster</span><br><span class="line">         .multicastEvent(<span class="keyword">new</span> ApplicationEnvironmentPreparedEvent(<span class="keyword">this</span>.application, <span class="keyword">this</span>.args, environment));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="http://storage.laixiaoming.space/blog/image-20241116160613820.png" alt="image-20241116160613820"></p>
+<h3 id="加载bootstrap本地配置文件"><a href="#加载bootstrap本地配置文件" class="headerlink" title="加载bootstrap本地配置文件"></a>加载bootstrap本地配置文件</h3><p>广播事件会回调所有适配的 ApplicationListener 监听器，调用其 onApplicationEvent 方法，这里第一个被调用的是 <strong>BootstrapApplicationListener#onApplicationEvent</strong> ：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onApplicationEvent</span><span class="params">(ApplicationEnvironmentPreparedEvent event)</span> </span>&#123;</span><br><span class="line">   ConfigurableEnvironment environment = event.getEnvironment();</span><br><span class="line">   <span class="comment">// 默认执行，除非显示关闭</span></span><br><span class="line">   <span class="keyword">if</span> (!environment.getProperty(<span class="string">&quot;spring.cloud.bootstrap.enabled&quot;</span>, Boolean.class,</span><br><span class="line">         <span class="keyword">true</span>)) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="comment">// don&#x27;t listen to events in a bootstrap context</span></span><br><span class="line">   <span class="comment">// 如果当前配置源已经包含了 &quot;bootstrap&quot; ，则忽略不重复处理</span></span><br><span class="line">   <span class="keyword">if</span> (environment.getPropertySources().contains(BOOTSTRAP_PROPERTY_SOURCE_NAME)) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">   &#125;</span><br><span class="line">   ConfigurableApplicationContext context = <span class="keyword">null</span>;</span><br><span class="line">   String configName = environment</span><br><span class="line">         .resolvePlaceholders(<span class="string">&quot;$&#123;spring.cloud.bootstrap.name:bootstrap&#125;&quot;</span>);</span><br><span class="line">   <span class="comment">// 是否存在父容器上下文的初始化器，通过 debug 发现没有</span></span><br><span class="line">   <span class="keyword">for</span> (ApplicationContextInitializer&lt;?&gt; initializer : event.getSpringApplication()</span><br><span class="line">         .getInitializers()) &#123;</span><br><span class="line">      <span class="keyword">if</span> (initializer <span class="keyword">instanceof</span> ParentContextApplicationContextInitializer) &#123;</span><br><span class="line">         context = findBootstrapContext(</span><br><span class="line">               (ParentContextApplicationContextInitializer) initializer,</span><br><span class="line">               configName);</span><br><span class="line">      &#125;</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">if</span> (context == <span class="keyword">null</span>) &#123;</span><br><span class="line">      <span class="comment">// 创建 bootstrap 级别的应用上下文</span></span><br><span class="line">      context = bootstrapServiceContext(environment, event.getSpringApplication(),</span><br><span class="line">            configName);</span><br><span class="line">      event.getSpringApplication()</span><br><span class="line">            .addListeners(<span class="keyword">new</span> CloseContextOnFailureApplicationListener(context));</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   apply(context, event.getSpringApplication(), environment);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="构建新的内置-SpringApplication"><a href="#构建新的内置-SpringApplication" class="headerlink" title="构建新的内置 SpringApplication"></a>构建新的内置 SpringApplication</h4><p>来到 <strong>BootstrapApplicationListener#bootstrapServiceContext</strong> ：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> ConfigurableApplicationContext <span class="title">bootstrapServiceContext</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">      ConfigurableEnvironment environment, <span class="keyword">final</span> SpringApplication application,</span></span></span><br><span class="line"><span class="function"><span class="params">      String configName)</span> </span>&#123;</span><br><span class="line">   <span class="comment">// 创建 bootstrap 级别的 environment</span></span><br><span class="line">   StandardEnvironment bootstrapEnvironment = <span class="keyword">new</span> StandardEnvironment();</span><br><span class="line">   <span class="comment">// 将初始化生成的一些 PropertySource 移除，包括 systemProperties(JVM级的环境变量) 和 systemEnvironment(操作系统级的环境变量)</span></span><br><span class="line">   MutablePropertySources bootstrapProperties = bootstrapEnvironment</span><br><span class="line">         .getPropertySources();</span><br><span class="line">   <span class="keyword">for</span> (PropertySource&lt;?&gt; source : bootstrapProperties) &#123;</span><br><span class="line">      bootstrapProperties.remove(source.getName());</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="comment">// 是否存在外部配置文件</span></span><br><span class="line">   String configLocation = environment</span><br><span class="line">         .resolvePlaceholders(<span class="string">&quot;$&#123;spring.cloud.bootstrap.location:&#125;&quot;</span>);</span><br><span class="line">   String configAdditionalLocation = environment</span><br><span class="line">         .resolvePlaceholders(<span class="string">&quot;$&#123;spring.cloud.bootstrap.additional-location:&#125;&quot;</span>);</span><br><span class="line">   <span class="comment">// 初始化容器参数</span></span><br><span class="line">   Map&lt;String, Object&gt; bootstrapMap = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">   bootstrapMap.put(<span class="string">&quot;spring.config.name&quot;</span>, configName);</span><br><span class="line">   <span class="comment">// if an app (or test) uses spring.main.web-application-type=reactive, bootstrap</span></span><br><span class="line">   <span class="comment">// will fail</span></span><br><span class="line">   <span class="comment">// force the environment to use none, because if though it is set below in the</span></span><br><span class="line">   <span class="comment">// builder</span></span><br><span class="line">   <span class="comment">// the environment overrides it</span></span><br><span class="line">   bootstrapMap.put(<span class="string">&quot;spring.main.web-application-type&quot;</span>, <span class="string">&quot;none&quot;</span>);</span><br><span class="line">   <span class="keyword">if</span> (StringUtils.hasText(configLocation)) &#123;</span><br><span class="line">      bootstrapMap.put(<span class="string">&quot;spring.config.location&quot;</span>, configLocation);</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">if</span> (StringUtils.hasText(configAdditionalLocation)) &#123;</span><br><span class="line">      bootstrapMap.put(<span class="string">&quot;spring.config.additional-location&quot;</span>,</span><br><span class="line">            configAdditionalLocation);</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="comment">// 将 environment 的配置添加到新增的 bootstrapEnvironment</span></span><br><span class="line">   bootstrapProperties.addFirst(</span><br><span class="line">         <span class="keyword">new</span> MapPropertySource(BOOTSTRAP_PROPERTY_SOURCE_NAME, bootstrapMap));</span><br><span class="line">   <span class="keyword">for</span> (PropertySource&lt;?&gt; source : environment.getPropertySources()) &#123;</span><br><span class="line">      <span class="keyword">if</span> (source <span class="keyword">instanceof</span> StubPropertySource) &#123;</span><br><span class="line">         <span class="keyword">continue</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      bootstrapProperties.addLast(source);</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="comment">// 构建了一个新的 SpringApplication</span></span><br><span class="line">   SpringApplicationBuilder builder = <span class="keyword">new</span> SpringApplicationBuilder()</span><br><span class="line">         .profiles(environment.getActiveProfiles()).bannerMode(Mode.OFF)</span><br><span class="line">         .environment(bootstrapEnvironment)</span><br><span class="line">         <span class="comment">// Don&#x27;t use the default properties in this builder</span></span><br><span class="line">         .registerShutdownHook(<span class="keyword">false</span>).logStartupInfo(<span class="keyword">false</span>)</span><br><span class="line">         .web(WebApplicationType.NONE);</span><br><span class="line">   <span class="keyword">final</span> SpringApplication builderApplication = builder.application();</span><br><span class="line">   <span class="keyword">if</span> (builderApplication.getMainApplicationClass() == <span class="keyword">null</span>) &#123;</span><br><span class="line">      <span class="comment">// gh_425:</span></span><br><span class="line">      <span class="comment">// SpringApplication cannot deduce the MainApplicationClass here</span></span><br><span class="line">      <span class="comment">// if it is booted from SpringBootServletInitializer due to the</span></span><br><span class="line">      <span class="comment">// absense of the &quot;main&quot; method in stackTraces.</span></span><br><span class="line">      <span class="comment">// But luckily this method&#x27;s second parameter &quot;application&quot; here</span></span><br><span class="line">      <span class="comment">// carries the real MainApplicationClass which has been explicitly</span></span><br><span class="line">      <span class="comment">// set by SpringBootServletInitializer itself already.</span></span><br><span class="line">      builder.main(application.getMainApplicationClass());</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">if</span> (environment.getPropertySources().contains(<span class="string">&quot;refreshArgs&quot;</span>)) &#123;</span><br><span class="line">      <span class="comment">// If we are doing a context refresh, really we only want to refresh the</span></span><br><span class="line">      <span class="comment">// Environment, and there are some toxic listeners (like the</span></span><br><span class="line">      <span class="comment">// LoggingApplicationListener) that affect global static state, so we need a</span></span><br><span class="line">      <span class="comment">// way to switch those off.</span></span><br><span class="line">      builderApplication</span><br><span class="line">            .setListeners(filterListeners(builderApplication.getListeners()));</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="comment">// 添加 BootstrapImportSelectorConfiguration 配置类</span></span><br><span class="line">   builder.sources(BootstrapImportSelectorConfiguration.class);</span><br><span class="line">   <span class="comment">// 调用 SpringApplication 的run方法</span></span><br><span class="line">   <span class="keyword">final</span> ConfigurableApplicationContext context = builder.run();</span><br><span class="line">   <span class="comment">// gh-214 using spring.application.name=bootstrap to set the context id via</span></span><br><span class="line">   <span class="comment">// `ContextIdApplicationContextInitializer` prevents apps from getting the actual</span></span><br><span class="line">   <span class="comment">// spring.application.name</span></span><br><span class="line">   <span class="comment">// during the bootstrap phase.</span></span><br><span class="line">   context.setId(<span class="string">&quot;bootstrap&quot;</span>);</span><br><span class="line">   <span class="comment">// Make the bootstrap context a parent of the app context</span></span><br><span class="line">   addAncestorInitializer(application, context);</span><br><span class="line">   <span class="comment">// It only has properties in it now that we don&#x27;t want in the parent so remove</span></span><br><span class="line">   <span class="comment">// it (and it will be added back later)</span></span><br><span class="line">   bootstrapProperties.remove(BOOTSTRAP_PROPERTY_SOURCE_NAME);</span><br><span class="line">   <span class="comment">// 配置合并</span></span><br><span class="line">   mergeDefaultProperties(environment.getPropertySources(), bootstrapProperties);</span><br><span class="line">   <span class="keyword">return</span> context;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，这里面构造了一个新的 SpringApplication，新的 SpringApplication 有几点值得关注：</p>
+<ol>
+<li>激活的 profile 与原 SpringApplication 保持一致；</li>
+<li>使用了新构建的 environment ，并添加了一个 “bootstrap” 属性源；</li>
+<li>WebApplicationType 设置为了 NONE ，说明该 SpringApplication 不会创建 Web 容器；</li>
+<li>添加了一个 BootstrapImportSelectorConfiguration 配置类；</li>
+</ol>
+<h4 id="BootstrapImportSelectorConfiguration-配置类"><a href="#BootstrapImportSelectorConfiguration-配置类" class="headerlink" title="BootstrapImportSelectorConfiguration 配置类"></a>BootstrapImportSelectorConfiguration 配置类</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> String[] selectImports(AnnotationMetadata annotationMetadata) &#123;</span><br><span class="line">   ClassLoader classLoader = Thread.currentThread().getContextClassLoader();</span><br><span class="line">   <span class="comment">// Use names and ensure unique to protect against duplicates</span></span><br><span class="line">   <span class="comment">// 加载 BootstrapConfiguration 配置项类</span></span><br><span class="line">   List&lt;String&gt; names = <span class="keyword">new</span> ArrayList&lt;&gt;(SpringFactoriesLoader</span><br><span class="line">         .loadFactoryNames(BootstrapConfiguration.class, classLoader));</span><br><span class="line">   names.addAll(Arrays.asList(StringUtils.commaDelimitedListToStringArray(</span><br><span class="line">         <span class="keyword">this</span>.environment.getProperty(<span class="string">&quot;spring.cloud.bootstrap.sources&quot;</span>, <span class="string">&quot;&quot;</span>))));</span><br><span class="line"></span><br><span class="line">   List&lt;OrderedAnnotatedElement&gt; elements = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">   <span class="keyword">for</span> (String name : names) &#123;</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">         elements.add(</span><br><span class="line">               <span class="keyword">new</span> OrderedAnnotatedElement(<span class="keyword">this</span>.metadataReaderFactory, name));</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">         <span class="keyword">continue</span>;</span><br><span class="line">      &#125;</span><br><span class="line">   &#125;</span><br><span class="line">   AnnotationAwareOrderComparator.sort(elements);</span><br><span class="line"></span><br><span class="line">   String[] classNames = elements.stream().map(e -&gt; e.name).toArray(String[]::<span class="keyword">new</span>);</span><br><span class="line"></span><br><span class="line">   <span class="keyword">return</span> classNames;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>该配置类使用 Spring 中的 SPI ，加载了 <strong>BootstrapConfiguration.class</strong> 配置的组件，通过 debug 发现，这里加载的类（使用 Nacos 配置中心）有：</p>
+<ul>
+<li>com.alibaba.cloud.nacos.NacosConfigBootstrapConfiguration</li>
+<li>org.springframework.cloud.bootstrap.config.PropertySourceBootstrapConfiguration</li>
+<li>org.springframework.cloud.bootstrap.encrypt.EncryptionBootstrapConfiguration</li>
+<li>org.springframework.cloud.autoconfigure.ConfigurationPropertiesRebinderAutoConfiguration</li>
+<li>org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration</li>
+</ul>
+<p>不难看出，这些配置都与配置中心有关。</p>
+<h4 id="启动内置-SpringApplication"><a href="#启动内置-SpringApplication" class="headerlink" title="启动内置 SpringApplication"></a>启动内置 SpringApplication</h4><p>新启动的 SpringApplication 与原 SpringApplication 的流程基本一致。</p>
+<p>首先是又一次来到 <strong>BootstrapApplicationListener#onApplicationEvent</strong> :</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onApplicationEvent</span><span class="params">(ApplicationEnvironmentPreparedEvent event)</span> </span>&#123;</span><br><span class="line">   <span class="comment">//省略...</span></span><br><span class="line">   <span class="comment">// don&#x27;t listen to events in a bootstrap context</span></span><br><span class="line">   <span class="keyword">if</span> (environment.getPropertySources().contains(BOOTSTRAP_PROPERTY_SOURCE_NAME)) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="comment">//省略...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>不同的是，由于当前已存在 “bootstrap” 属性源，该监听器的后续操作也不会继续执行。</p>
+<p>我们直接看 <strong>ConfigFileApplicationListener#onApplicationEvent</strong> 。</p>
+<h4 id="ConfigFileApplicationListener-的监听动作"><a href="#ConfigFileApplicationListener-的监听动作" class="headerlink" title="ConfigFileApplicationListener 的监听动作"></a>ConfigFileApplicationListener 的监听动作</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onApplicationEvent</span><span class="params">(ApplicationEvent event)</span> </span>&#123;</span><br><span class="line">   <span class="keyword">if</span> (event <span class="keyword">instanceof</span> ApplicationEnvironmentPreparedEvent) &#123;</span><br><span class="line">      onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">if</span> (event <span class="keyword">instanceof</span> ApplicationPreparedEvent) &#123;</span><br><span class="line">      onApplicationPreparedEvent(event);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当前是 ApplicationEnvironmentPreparedEvent 事件，来到 onApplicationEnvironmentPreparedEvent ：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">onApplicationEnvironmentPreparedEvent</span><span class="params">(ApplicationEnvironmentPreparedEvent event)</span> </span>&#123;</span><br><span class="line">   List&lt;EnvironmentPostProcessor&gt; postProcessors = loadPostProcessors();</span><br><span class="line">   postProcessors.add(<span class="keyword">this</span>);</span><br><span class="line">   AnnotationAwareOrderComparator.sort(postProcessors);</span><br><span class="line">   <span class="keyword">for</span> (EnvironmentPostProcessor postProcessor : postProcessors) &#123;</span><br><span class="line">      postProcessor.postProcessEnvironment(event.getEnvironment(), event.getSpringApplication());</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里出现了一个 EnvironmentPostProcessor ，它是运行环境的后置处理器，而 ConfigFileApplicationListener 本身也是一个 EnvironmentPostProcessor ,来到 <strong>ConfigFileApplicationListener#postProcessEnvironment</strong> ：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">postProcessEnvironment</span><span class="params">(ConfigurableEnvironment environment, SpringApplication application)</span> </span>&#123;</span><br><span class="line">   addPropertySources(environment, application.getResourceLoader());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">addPropertySources</span><span class="params">(ConfigurableEnvironment environment, ResourceLoader resourceLoader)</span> </span>&#123;</span><br><span class="line">   RandomValuePropertySource.addToEnvironment(environment);</span><br><span class="line">   <span class="keyword">new</span> Loader(environment, resourceLoader).load();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>启动了一个 Loader 加载器，用于加载配置源：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">load</span><span class="params">()</span> </span>&#123;</span><br><span class="line">   <span class="keyword">this</span>.profiles = <span class="keyword">new</span> LinkedList&lt;&gt;();</span><br><span class="line">   <span class="keyword">this</span>.processedProfiles = <span class="keyword">new</span> LinkedList&lt;&gt;();</span><br><span class="line">   <span class="keyword">this</span>.activatedProfiles = <span class="keyword">false</span>;</span><br><span class="line">   <span class="keyword">this</span>.loaded = <span class="keyword">new</span> LinkedHashMap&lt;&gt;();</span><br><span class="line">   <span class="comment">// 初始化 profiles 集合，通过debug 发现有两个元素，一个是 null，另一个当前激活的比如 dev</span></span><br><span class="line">   initializeProfiles();</span><br><span class="line">   <span class="keyword">while</span> (!<span class="keyword">this</span>.profiles.isEmpty()) &#123;</span><br><span class="line">      Profile profile = <span class="keyword">this</span>.profiles.poll();</span><br><span class="line">      <span class="keyword">if</span> (profile != <span class="keyword">null</span> &amp;&amp; !profile.isDefaultProfile()) &#123;</span><br><span class="line">         addProfileToEnvironment(profile.getName());</span><br><span class="line">      &#125;</span><br><span class="line">      load(profile, <span class="keyword">this</span>::getPositiveProfileFilter, addToLoaded(MutablePropertySources::addLast, <span class="keyword">false</span>));</span><br><span class="line">      <span class="keyword">this</span>.processedProfiles.add(profile);</span><br><span class="line">   &#125;</span><br><span class="line">   resetEnvironmentProfiles(<span class="keyword">this</span>.processedProfiles);</span><br><span class="line">   load(<span class="keyword">null</span>, <span class="keyword">this</span>::getNegativeProfileFilter, addToLoaded(MutablePropertySources::addFirst, <span class="keyword">true</span>));</span><br><span class="line">   addLoadedPropertySources();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>确定要加载的 profile 后，继续深入来到 load 方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">load</span><span class="params">(Profile profile, DocumentFilterFactory filterFactory, DocumentConsumer consumer)</span> </span>&#123;</span><br><span class="line">   <span class="comment">//从配置文件所在目录中逐个扫描</span></span><br><span class="line">    getSearchLocations().forEach((location) -&gt; &#123;</span><br><span class="line">      <span class="keyword">boolean</span> isFolder = location.endsWith(<span class="string">&quot;/&quot;</span>);</span><br><span class="line">      Set&lt;String&gt; names = isFolder ? getSearchNames() : NO_SEARCH_NAMES;</span><br><span class="line">      names.forEach((name) -&gt; load(location, name, profile, filterFactory, consumer));</span><br><span class="line">   &#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> Set&lt;String&gt; <span class="title">getSearchNames</span><span class="params">()</span> </span>&#123;</span><br><span class="line">   <span class="comment">//是否有 spring.config.name 属性，有则返回，通过 debug 发现此时值为 bootstrap</span></span><br><span class="line">   <span class="keyword">if</span> (<span class="keyword">this</span>.environment.containsProperty(CONFIG_NAME_PROPERTY)) &#123;</span><br><span class="line">      String property = <span class="keyword">this</span>.environment.getProperty(CONFIG_NAME_PROPERTY);</span><br><span class="line">      <span class="keyword">return</span> asResolvedSet(property, <span class="keyword">null</span>);</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">return</span> asResolvedSet(ConfigFileApplicationListener.<span class="keyword">this</span>.names, DEFAULT_NAMES);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取配置文件所在位置，逐个扫描该位置下的配置文件，扫描的目录包括 file:./config/、file:./、classpath:/config/、classpath:/，这里有一个点需要注意的是，这里会按顺序进行扫描，获取到的配置将追加到 MutablePropertySources 的末尾，也直接影响了配置获取的优先级：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241116173530035.png" alt="image-20241116173530035"></p>
+<p>结合 getSearchNames 方法可知，该内置 SpringApplication 的作用之一便是加载 bootstrap 级别的配置文件到 Environment。</p>
+<h4 id="合并配置"><a href="#合并配置" class="headerlink" title="合并配置"></a>合并配置</h4><p>在加载完 bootstrap 配置文件后， 再通过 <strong>mergeDefaultProperties</strong> 将 bootstrap 的配置合并到原 application 的 environment 中。</p>
+<p>回到 <strong>BootstrapApplicationListener#onApplicationEvent</strong> ，临到创建好的 bootstrap 的 ApplicationContext 后，同时也将 bootstrap 中的创建的 ApplicationContextInitializer 注册到原 application 的上下文，其中也包括 <strong>PropertySourceBootstrapConfiguration</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">apply</span><span class="params">(ConfigurableApplicationContext context,</span></span></span><br><span class="line"><span class="function"><span class="params">      SpringApplication application, ConfigurableEnvironment environment)</span> </span>&#123;</span><br><span class="line">   <span class="meta">@SuppressWarnings(&quot;rawtypes&quot;)</span></span><br><span class="line">   List&lt;ApplicationContextInitializer&gt; initializers = getOrderedBeansOfType(context,</span><br><span class="line">         ApplicationContextInitializer.class);</span><br><span class="line">   application.addInitializers(initializers</span><br><span class="line">         .toArray(<span class="keyword">new</span> ApplicationContextInitializer[initializers.size()]));</span><br><span class="line">   addBootstrapDecryptInitializer(application);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>至此，该 bootstrap 内置 SpringApplication 也执行完成了。</p>
+<h3 id="加载-application-本地配置文件"><a href="#加载-application-本地配置文件" class="headerlink" title="加载 application 本地配置文件"></a>加载 application 本地配置文件</h3><p>回到外层 application 的创建流程中，在BootstrapApplicationListener 监听器执行完成后，将再一次执行 <strong>ConfigFileApplicationListener#onApplicationEvent</strong> ，但此时不同的是，加载的配置文件名称不再是 “bootstrap” 了，而是 “application” ：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241116194509525.png" alt="image-20241116194509525"></p>
+<h3 id="Nacos配置文件的加载"><a href="#Nacos配置文件的加载" class="headerlink" title="Nacos配置文件的加载"></a>Nacos配置文件的加载</h3><p>在前面我们了解到，在创建运行 bootstrap 内置 SpringApplication 后，会注册一系列 ApplicationContextInitializer ，其中就包括 <strong>PropertySourceBootstrapConfiguration</strong> ，那它是什么时候被调用的呢</p>
+<p>通过 debug ，来到 <strong>SpringApplication#prepareContext</strong> ：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">prepareContext</span><span class="params">(ConfigurableApplicationContext context, ConfigurableEnvironment environment,</span></span></span><br><span class="line"><span class="function"><span class="params">      SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner)</span> </span>&#123;</span><br><span class="line">   <span class="comment">//...</span></span><br><span class="line">   applyInitializers(context);</span><br><span class="line">   <span class="comment">//...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">applyInitializers</span><span class="params">(ConfigurableApplicationContext context)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (ApplicationContextInitializer initializer : getInitializers()) &#123;</span><br><span class="line">        Class&lt;?&gt; requiredType = GenericTypeResolver.resolveTypeArgument(initializer.getClass(),</span><br><span class="line">                                                                        ApplicationContextInitializer.class);</span><br><span class="line">        Assert.isInstanceOf(requiredType, context, <span class="string">&quot;Unable to call initializer.&quot;</span>);</span><br><span class="line">        initializer.initialize(context);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>PropertySourceBootstrapConfiguration#initialize</strong> :</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">initialize</span><span class="params">(ConfigurableApplicationContext applicationContext)</span> </span>&#123;</span><br><span class="line">   List&lt;PropertySource&lt;?&gt;&gt; composite = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">   AnnotationAwareOrderComparator.sort(<span class="keyword">this</span>.propertySourceLocators);</span><br><span class="line">   <span class="keyword">boolean</span> empty = <span class="keyword">true</span>;</span><br><span class="line">   ConfigurableEnvironment environment = applicationContext.getEnvironment();</span><br><span class="line">   <span class="comment">// 使用 PropertySourceLocator 拉取远程配置</span></span><br><span class="line">   <span class="keyword">for</span> (PropertySourceLocator locator : <span class="keyword">this</span>.propertySourceLocators) &#123;</span><br><span class="line">      Collection&lt;PropertySource&lt;?&gt;&gt; source = locator.locateCollection(environment);</span><br><span class="line">      <span class="keyword">if</span> (source == <span class="keyword">null</span> || source.size() == <span class="number">0</span>) &#123;</span><br><span class="line">         <span class="keyword">continue</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      List&lt;PropertySource&lt;?&gt;&gt; sourceList = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">      <span class="keyword">for</span> (PropertySource&lt;?&gt; p : source) &#123;</span><br><span class="line">         sourceList.add(<span class="keyword">new</span> BootstrapPropertySource&lt;&gt;(p));</span><br><span class="line">      &#125;</span><br><span class="line">      logger.info(<span class="string">&quot;Located property source: &quot;</span> + sourceList);</span><br><span class="line">      composite.addAll(sourceList);</span><br><span class="line">      empty = <span class="keyword">false</span>;</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">if</span> (!empty) &#123;</span><br><span class="line">      <span class="comment">// 合并远程配置</span></span><br><span class="line">      MutablePropertySources propertySources = environment.getPropertySources();</span><br><span class="line">      String logConfig = environment.resolvePlaceholders(<span class="string">&quot;$&#123;logging.config:&#125;&quot;</span>);</span><br><span class="line">      LogFile logFile = LogFile.get(environment);</span><br><span class="line">      <span class="keyword">for</span> (PropertySource&lt;?&gt; p : environment.getPropertySources()) &#123;</span><br><span class="line">         <span class="keyword">if</span> (p.getName().startsWith(BOOTSTRAP_PROPERTY_SOURCE_NAME)) &#123;</span><br><span class="line">            propertySources.remove(p.getName());</span><br><span class="line">         &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      insertPropertySources(propertySources, composite);</span><br><span class="line">      reinitializeLoggingSystem(environment, logConfig, logFile);</span><br><span class="line">      setLogLevels(applicationContext, environment);</span><br><span class="line">      handleIncludedProfiles(environment);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在使用 Nacos 配置中心时，将使用 <strong>NacosPropertySourceLocator#locate</strong> 进行配置的拉取，这里不深入了解。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本文从源码的角度简单的分析了 Spring Boot/Cloud 下的配置加载流程：</p>
+<ol>
+<li>Spring Boot 在启动时，通过 <strong>ApplicationEnvironmentPreparedEvent</strong> 事件触发 <strong>BootstrapApplicationListener</strong> 监听器的执行，该监听器：<ol>
+<li> 构建一个新的内置 SpringApplication 并且启动；</li>
+<li> 该bootstrap 级 SpringApplication 通过 **ConfigFileApplicationListener ** 加载 bootstrap 配置文件，加载完成后合并到外部的 SpringApplication 的 Environment；</li>
+<li> 同时也将 <strong>PropertySourceBootstrapConfiguration</strong> 初始化器注册到外部 SpringApplication 中；</li>
+</ol>
+</li>
+<li> 加载 application 配置文件，同样也是由 **ConfigFileApplicationListener ** 完成；</li>
+<li>通过 <strong>PropertySourceBootstrapConfiguration</strong> 加载远程配置；</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Spring-Cloud/" rel="tag"># Spring Cloud</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/11/03/Spring%20Cloud%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@RefreshScope%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" rel="prev" title="Spring Cloud源码学习：@RefreshScope的实现原理">
+      <i class="fa fa-chevron-left"></i> Spring Cloud源码学习：@RefreshScope的实现原理
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA-Environment"><span class="nav-number">1.</span> <span class="nav-text">创建 Environment</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A0%E8%BD%BDbootstrap%E6%9C%AC%E5%9C%B0%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-number">2.</span> <span class="nav-text">加载bootstrap本地配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E6%96%B0%E7%9A%84%E5%86%85%E7%BD%AE-SpringApplication"><span class="nav-number">2.1.</span> <span class="nav-text">构建新的内置 SpringApplication</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#BootstrapImportSelectorConfiguration-%E9%85%8D%E7%BD%AE%E7%B1%BB"><span class="nav-number">2.2.</span> <span class="nav-text">BootstrapImportSelectorConfiguration 配置类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E5%86%85%E7%BD%AE-SpringApplication"><span class="nav-number">2.3.</span> <span class="nav-text">启动内置 SpringApplication</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ConfigFileApplicationListener-%E7%9A%84%E7%9B%91%E5%90%AC%E5%8A%A8%E4%BD%9C"><span class="nav-number">2.4.</span> <span class="nav-text">ConfigFileApplicationListener 的监听动作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%88%E5%B9%B6%E9%85%8D%E7%BD%AE"><span class="nav-number">2.5.</span> <span class="nav-text">合并配置</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A0%E8%BD%BD-application-%E6%9C%AC%E5%9C%B0%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-number">3.</span> <span class="nav-text">加载 application 本地配置文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Nacos%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E7%9A%84%E5%8A%A0%E8%BD%BD"><span class="nav-number">4.</span> <span class="nav-text">Nacos配置文件的加载</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">5.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="laixiaoming"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">laixiaoming</p>
+  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
+<script src="/js/algolia-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+  
+    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
+  
+</body>
+</html>
