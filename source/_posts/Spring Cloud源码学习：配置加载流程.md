@@ -237,7 +237,7 @@ public String[] selectImports(AnnotationMetadata annotationMetadata) {
 - org.springframework.cloud.autoconfigure.ConfigurationPropertiesRebinderAutoConfiguration
 - org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration
 
-不难看出，这些配置都与配置中心有关。
+这些配置都与配置中心有关，值得关注的一点是，**NacosConfigBootstrapConfiguration** 也是在 bootstrap SpringApplication 中创建的，也说明了 Nacos 配置中心的地址的配置需要配置在 bootstrap 配置文件，而不能在 application 配置文件。
 
 
 
