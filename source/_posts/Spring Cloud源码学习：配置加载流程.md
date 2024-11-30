@@ -179,6 +179,7 @@ private ConfigurableApplicationContext bootstrapServiceContext(
    // during the bootstrap phase.
    context.setId("bootstrap");
    // Make the bootstrap context a parent of the app context
+   // 配置 bootstrap 作为 application 的父容器
    addAncestorInitializer(application, context);
    // It only has properties in it now that we don't want in the parent so remove
    // it (and it will be added back later)
