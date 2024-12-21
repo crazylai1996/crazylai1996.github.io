@@ -1916,4 +1916,46 @@
         <tag>Kafka</tag>
       </tags>
   </entry>
+  <entry>
+    <title>问题记录：ConcurrentHashMap 死循环</title>
+    <url>/2024/12/21/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AConcurrentHashMap%20%E6%AD%BB%E5%BE%AA%E7%8E%AF/</url>
+    <content><![CDATA[<h3 id="问题的出现和定位"><a href="#问题的出现和定位" class="headerlink" title="问题的出现和定位"></a>问题的出现和定位</h3><p>测试环境中，有测试同学反馈说接口请求慢，超时了也没有数据返回。</p>
+<p>首先从测试同学那里了解到具体慢的接口，排查了对应的服务的状态，确定了服务的状态是正常在线的。</p>
+<p>进入该服务对应的容器内，用 <strong>jstat -gctil</strong> 命令查看了服务进程的 GC 情况，发现不管是内存占用，或是 GC 的频率和时间占比，都不高。</p>
+<p>然后又通过 <strong>top</strong> 看了下 CPU 的使用率，发现服务的进程整体使用率到了 90% 以上，随即通过 <strong>top -Hp 1</strong> 指定进程，定位到了占用的的具体线程id是 <strong>196</strong>：</p>
+<span id="more"></span>
+
+
+
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221162635379.png" alt="image-20241221162635379"></p>
+<p>有了线程 id 后，又通过 <strong>jstack 1 jstack.log</strong> 导出了该服务的线程堆栈信息，通过转换后的 16 进制的线程 id （c4）定位到了占用高的这个线程的堆栈信息：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221163133550.png" alt="image-20241221163133550"></p>
+<p>发现了该线程此时正在执行 <strong>java.util.concurrent.ConcurrentHashMap.computeIfAbsent</strong> 方法。难不成陷入了死循环？</p>
+<p>带着疑惑翻开 computeIfAbsent 对应的源码，该方法的逻辑是如果指定的 key 在 map 中不存在，则通过 mappingFunction 方法计算出一个新值，并将其放入 map 中。该方法代码行数不多，逻辑清晰：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public V computeIfAbsent(K key, Function&lt;? super K, ? extends V&gt; mappingFunction) &#123;</span><br><span class="line">    if (key &#x3D;&#x3D; null || mappingFunction &#x3D;&#x3D; null)</span><br><span class="line">        throw new NullPointerException();</span><br><span class="line">    &#x2F;&#x2F; 计算 key 的 hash 值</span><br><span class="line">    int h &#x3D; spread(key.hashCode());</span><br><span class="line">    V val &#x3D; null;</span><br><span class="line">    int binCount &#x3D; 0;</span><br><span class="line">    for (Node&lt;K,V&gt;[] tab &#x3D; table;;) &#123;</span><br><span class="line">        Node&lt;K,V&gt; f; int n, i, fh;</span><br><span class="line">        &#x2F;&#x2F; 初始化 </span><br><span class="line">        if (tab &#x3D;&#x3D; null || (n &#x3D; tab.length) &#x3D;&#x3D; 0)</span><br><span class="line">            tab &#x3D; initTable();</span><br><span class="line">        &#x2F;&#x2F; 定位到桶</span><br><span class="line">        else if ((f &#x3D; tabAt(tab, i &#x3D; (n - 1) &amp; h)) &#x3D;&#x3D; null) &#123;</span><br><span class="line">        	&#x2F;&#x2F;占位节点</span><br><span class="line">            Node&lt;K,V&gt; r &#x3D; new ReservationNode&lt;K,V&gt;();</span><br><span class="line">            synchronized (r) &#123;</span><br><span class="line">                if (casTabAt(tab, i, null, r)) &#123;</span><br><span class="line">                    binCount &#x3D; 1;</span><br><span class="line">                    Node&lt;K,V&gt; node &#x3D; null;</span><br><span class="line">                    try &#123;</span><br><span class="line">                        if ((val &#x3D; mappingFunction.apply(key)) !&#x3D; null)</span><br><span class="line">                            node &#x3D; new Node&lt;K,V&gt;(h, key, val, null);</span><br><span class="line">                    &#125; finally &#123;</span><br><span class="line">                        setTabAt(tab, i, node);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            if (binCount !&#x3D; 0)</span><br><span class="line">                break;</span><br><span class="line">        &#125;</span><br><span class="line">        &#x2F;&#x2F; 正在护容</span><br><span class="line">        else if ((fh &#x3D; f.hash) &#x3D;&#x3D; MOVED)</span><br><span class="line">            tab &#x3D; helpTransfer(tab, f);</span><br><span class="line">        else &#123;</span><br><span class="line">            boolean added &#x3D; false;</span><br><span class="line">            synchronized (f) &#123;</span><br><span class="line">                if (tabAt(tab, i) &#x3D;&#x3D; f) &#123;</span><br><span class="line">                	&#x2F;&#x2F; 链表节点</span><br><span class="line">                    if (fh &gt;&#x3D; 0) &#123;</span><br><span class="line">                        &#x2F;&#x2F; 省略...</span><br><span class="line">                    &#125;</span><br><span class="line">                    &#x2F;&#x2F; 红黑树节点</span><br><span class="line">                    else if (f instanceof TreeBin) &#123;</span><br><span class="line">                        &#x2F;&#x2F; 省略...</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            if (binCount !&#x3D; 0) &#123;</span><br><span class="line">                if (binCount &gt;&#x3D; TREEIFY_THRESHOLD)</span><br><span class="line">                    treeifyBin(tab, i);</span><br><span class="line">                if (!added)</span><br><span class="line">                    return val;</span><br><span class="line">                break;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    if (val !&#x3D; null)</span><br><span class="line">        addCount(1L, binCount);</span><br><span class="line">    return val;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>回看导出的线程堆栈信息，发现这个线程进入了两次 computeIfAbsent 方法，而且此时该线程第一次进入到 computeIfAbsent 后停留在了 mappingFunction 的执行，合理猜测是因为 mappingFunction 中包含了对同一个 map 的 computeIfAbsent ，而正是对同一个 map 进行 computeIfAbsent 递归操作导致了问题的产生。</p>
+<p>结合现有信息，到网上（<a href="https://juejin.cn/post/6844904191077384200">原文</a>）查了下，发现 ConcurrentHashMap 的 computeIfAbsent 方法果然有死循环这个问题！</p>
+<p>好了，现在我们来看下ConcurrentHashMap 是怎么让自己陷入死循环的：</p>
+<ol>
+<li>第一次执行 computeIfAbsent 方法：此时 key 值不存在，会先往对应位放入一个预留节点 ReservationNode ，接着执行 mappingFunction 方法：</li>
+</ol>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221174003993.png" alt="image-20241221174003993"></p>
+<ol start="2">
+<li> 当此时 mappingFunction 包含了对同一个 map 的 computeIfAbsent 操作时，会第二次进入 computeIfAbsent 方法，而且当该 computeIfAbsent 操作的 key 与第一次进来时的 key 的 hash 值冲突时，此时两次操作定位到的槽会是同一个，再次进入 for 循环，进入之后一路执行，但发现所有的条件均不满足，也就只能无奈陷入了死循环了：</li>
+</ol>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221175332687.png" alt="image-20241221175332687"></p>
+<h3 id="问题的源头"><a href="#问题的源头" class="headerlink" title="问题的源头"></a>问题的源头</h3><p>那哪里会存在 computeIfAbsent 的递归调用呢？</p>
+<p>通过线程的堆栈可以发现，两次的调用都是由 DataSource#getConnection 发起的，原来是因为该服务引入了 Seata ，而 Seata 默认会对所有数据源进行代理，并将代理后的对象存入 ConcurrentHashMap ，而存入的方式就是通过 computeIfAbsent 完成的，而且巧的是该服务同时也引入了 DynamicDataSource 动态数据源，动态数据源内部会维护多个真实的数据源，所以对动态数据源的操作都会转发到真实的数据源：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221180132904.png" alt="image-20241221180132904"></p>
+<h3 id="解决方法"><a href="#解决方法" class="headerlink" title="解决方法"></a>解决方法</h3><p>定位到问题的原因就简单了，既然是因为 Seata 对多个数据源的代理导致，那么只针对真实数据源进行代理理论上就可以解决该问题了，而 Seata 也恰好支持通过配置不代理指定的数据源，对应的配置是 <strong>seata.excludes-for-auto-proxying</strong> 。</p>
+<p>而在 JDK9 中，作者实际上也修复了该问题，修复的方式也很简单粗暴，就是只要发现了递归调用的情况，直接抛异常：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221181724042.png" alt="image-20241221181724042"></p>
+<p>另外，在 JDK 8 中，computeIfAbsent 方法实际上也通过注释说明了 mappingFunction 不能包含对同一个 map 的递归操作，所以这个好像严格意义上也不算 bug ？只是使用姿势不对？</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20241221182622468.png" alt="image-20241221182622468"></p>
+]]></content>
+      <tags>
+        <tag>问题记录</tag>
+      </tags>
+  </entry>
 </search>
