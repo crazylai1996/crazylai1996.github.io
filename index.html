@@ -177,6 +177,75 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/12/21/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AConcurrentHashMap%20%E6%AD%BB%E5%BE%AA%E7%8E%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2024/12/21/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AConcurrentHashMap%20%E6%AD%BB%E5%BE%AA%E7%8E%AF/" class="post-title-link" itemprop="url">问题记录：ConcurrentHashMap 死循环</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2024-12-21 13:50:10 / 修改时间：20:13:11" itemprop="dateCreated datePublished" datetime="2024-12-21T13:50:10+08:00">2024-12-21</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="问题的出现和定位"><a href="#问题的出现和定位" class="headerlink" title="问题的出现和定位"></a>问题的出现和定位</h3><p>测试环境中，有测试同学反馈说接口请求慢，超时了也没有数据返回。</p>
+<p>首先从测试同学那里了解到具体慢的接口，排查了对应的服务的状态，确定了服务的状态是正常在线的。</p>
+<p>进入该服务对应的容器内，用 <strong>jstat -gctil</strong> 命令查看了服务进程的 GC 情况，发现不管是内存占用，或是 GC 的频率和时间占比，都不高。</p>
+<p>然后又通过 <strong>top</strong> 看了下 CPU 的使用率，发现服务的进程整体使用率到了 90% 以上，随即通过 <strong>top -Hp 1</strong> 指定进程，定位到了占用的的具体线程id是 <strong>196</strong>：</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/12/21/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AConcurrentHashMap%20%E6%AD%BB%E5%BE%AA%E7%8E%AF/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/12/15/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%97%B6%E9%97%B4%E8%BD%AE/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -810,78 +879,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/06/23/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASPI%E6%9C%BA%E5%88%B6/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2024/06/23/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASPI%E6%9C%BA%E5%88%B6/" class="post-title-link" itemprop="url">Dubbo源码学习：SPI机制</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2024-06-23 12:52:15" itemprop="dateCreated datePublished" datetime="2024-06-23T12:52:15+08:00">2024-06-23</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-10-27 18:40:49" itemprop="dateModified" datetime="2024-10-27T18:40:49+08:00">2024-10-27</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>SPI全称是Service Provider Interface，是一种服务自发现机制，本质是将接口实现类的全限定名配置在文件中，在使用中，通过运行时加载，并动态地替换为具体的接口实现类。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2024/06/23/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASPI%E6%9C%BA%E5%88%B6/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -953,7 +950,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-count">23</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
