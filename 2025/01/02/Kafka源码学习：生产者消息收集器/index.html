@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"98870b25028b6803f2e798b0d7e939f8","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="前言前面我们提到，当通过 KafkaProducer#send 方法发送消息时，消息会先被写入到消息收集器—— RecordAccumulator 中缓存，当缓存的消息满足一定的条件后，将由 Sender 线程获取批量消息并将其发往 Kafka ，这样的好处是能够减少网络请求的次数，从而提升网络吞量。本篇文章一起来学习下 RecordAccumulator 的内部实现。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kafka源码学习：生产者消息收集器">
+<meta property="og:url" content="http://laixiaoming.space/2025/01/02/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E7%94%9F%E4%BA%A7%E8%80%85%E6%B6%88%E6%81%AF%E6%94%B6%E9%9B%86%E5%99%A8/index.html">
+<meta property="og:site_name" content="赖小明">
+<meta property="og:description" content="前言前面我们提到，当通过 KafkaProducer#send 方法发送消息时，消息会先被写入到消息收集器—— RecordAccumulator 中缓存，当缓存的消息满足一定的条件后，将由 Sender 线程获取批量消息并将其发往 Kafka ，这样的好处是能够减少网络请求的次数，从而提升网络吞量。本篇文章一起来学习下 RecordAccumulator 的内部实现。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-01-02T13:06:13.000Z">
+<meta property="article:modified_time" content="2025-01-03T11:10:39.537Z">
+<meta property="article:author" content="laixiaoming">
+<meta property="article:tag" content="Kafka">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://laixiaoming.space/2025/01/02/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E7%94%9F%E4%BA%A7%E8%80%85%E6%B6%88%E6%81%AF%E6%94%B6%E9%9B%86%E5%99%A8/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Kafka源码学习：生产者消息收集器 | 赖小明</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">赖小明</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container"></div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="algolia-results">
+  <div id="algolia-stats"></div>
+  <div id="algolia-hits"></div>
+  <div id="algolia-pagination" class="algolia-pagination"></div>
+</div>
+
+      
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2025/01/02/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E7%94%9F%E4%BA%A7%E8%80%85%E6%B6%88%E6%81%AF%E6%94%B6%E9%9B%86%E5%99%A8/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Kafka源码学习：生产者消息收集器
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-01-02 21:06:13" itemprop="dateCreated datePublished" datetime="2025-01-02T21:06:13+08:00">2025-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-01-03 19:10:39" itemprop="dateModified" datetime="2025-01-03T19:10:39+08:00">2025-01-03</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>前面我们提到，当通过 KafkaProducer#send 方法发送消息时，消息会先被写入到消息收集器—— <strong>RecordAccumulator</strong> 中缓存，当缓存的消息满足一定的条件后，将由 Sender 线程获取批量消息并将其发往 Kafka ，这样的好处是能够减少网络请求的次数，从而提升网络吞量。本篇文章一起来学习下 <strong>RecordAccumulator</strong> 的内部实现。</p>
+<span id="more"></span>
+
+<blockquote>
+<p>以下内容基于Kafka 2.5.1版本</p>
+</blockquote>
+<h3 id="append-方法"><a href="#append-方法" class="headerlink" title="append 方法"></a>append 方法</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> RecordAppendResult <span class="title">append</span><span class="params">(TopicPartition tp,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 <span class="keyword">long</span> timestamp,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 <span class="keyword">byte</span>[] key,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 <span class="keyword">byte</span>[] value,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 Header[] headers,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 Callback callback,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 <span class="keyword">long</span> maxTimeToBlock,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 <span class="keyword">boolean</span> abortOnNewBatch,</span></span></span><br><span class="line"><span class="function"><span class="params">                                 <span class="keyword">long</span> nowMs)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">    <span class="comment">// We keep track of the number of appending thread to make sure we do not miss batches in</span></span><br><span class="line">    <span class="comment">// abortIncompleteBatches().</span></span><br><span class="line">    <span class="comment">// 记录追回消息的线程数</span></span><br><span class="line">    appendsInProgress.incrementAndGet();</span><br><span class="line">    ByteBuffer buffer = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">if</span> (headers == <span class="keyword">null</span>) headers = Record.EMPTY_HEADERS;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// check if we have an in-progress batch</span></span><br><span class="line">        <span class="comment">// 获取对应主题分区的双端队列</span></span><br><span class="line">        Deque&lt;ProducerBatch&gt; dq = getOrCreateDeque(tp);</span><br><span class="line">        <span class="comment">// 同步锁</span></span><br><span class="line">        <span class="keyword">synchronized</span> (dq) &#123;</span><br><span class="line">            <span class="keyword">if</span> (closed)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> KafkaException(<span class="string">&quot;Producer closed while send in progress&quot;</span>);</span><br><span class="line">            <span class="comment">// 尝试追加消息</span></span><br><span class="line">            RecordAppendResult appendResult = tryAppend(timestamp, key, value, headers, callback, dq, nowMs);	  <span class="comment">// 添加成功则返回</span></span><br><span class="line">            <span class="keyword">if</span> (appendResult != <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">return</span> appendResult;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// we don&#x27;t have an in-progress record batch try to allocate a new batch</span></span><br><span class="line">        <span class="comment">// 是否创建新的消息批次</span></span><br><span class="line">        <span class="keyword">if</span> (abortOnNewBatch) &#123;</span><br><span class="line">            <span class="comment">// Return a result that will cause another call to append.</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RecordAppendResult(<span class="keyword">null</span>, <span class="keyword">false</span>, <span class="keyword">false</span>, <span class="keyword">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span> maxUsableMagic = apiVersions.maxUsableProduceMagic();</span><br><span class="line">        <span class="comment">// 计算批次大小，取批次大小和消息大小的最大值</span></span><br><span class="line">        <span class="keyword">int</span> size = Math.max(<span class="keyword">this</span>.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));</span><br><span class="line">        log.trace(<span class="string">&quot;Allocating a new &#123;&#125; byte message buffer for topic &#123;&#125; partition &#123;&#125;&quot;</span>, size, tp.topic(), tp.partition());</span><br><span class="line">        <span class="comment">// 申请内存空间 buffer</span></span><br><span class="line">        buffer = free.allocate(size, maxTimeToBlock);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Update the current time in case the buffer allocation blocked above.</span></span><br><span class="line">        nowMs = time.milliseconds();</span><br><span class="line">        <span class="comment">// 再次加锁</span></span><br><span class="line">        <span class="keyword">synchronized</span> (dq) &#123;</span><br><span class="line">            <span class="comment">// Need to check if producer is closed again after grabbing the dequeue lock.</span></span><br><span class="line">            <span class="keyword">if</span> (closed)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> KafkaException(<span class="string">&quot;Producer closed while send in progress&quot;</span>);</span><br><span class="line">			<span class="comment">// 尝试追加消息</span></span><br><span class="line">            RecordAppendResult appendResult = tryAppend(timestamp, key, value, headers, callback, dq, nowMs);</span><br><span class="line">            <span class="keyword">if</span> (appendResult != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">// Somebody else found us a batch, return the one we waited for! Hopefully this doesn&#x27;t happen often...</span></span><br><span class="line">                <span class="keyword">return</span> appendResult;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 构建新的消息批次 ProducerBatch</span></span><br><span class="line">            MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);</span><br><span class="line">            ProducerBatch batch = <span class="keyword">new</span> ProducerBatch(tp, recordsBuilder, nowMs);</span><br><span class="line">            FutureRecordMetadata future = Objects.requireNonNull(batch.tryAppend(timestamp, key, value, headers,</span><br><span class="line">                    callback, nowMs));</span><br><span class="line">			<span class="comment">// 将消息批次放入双端队列</span></span><br><span class="line">            dq.addLast(batch);</span><br><span class="line">            incomplete.add(batch);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Don&#x27;t deallocate this buffer in the finally block as it&#x27;s being used in the record batch</span></span><br><span class="line">            <span class="comment">// 新申请的内存 buffer 置空</span></span><br><span class="line">            buffer = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RecordAppendResult(future, dq.size() &gt; <span class="number">1</span> || batch.isFull(), <span class="keyword">true</span>, <span class="keyword">false</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="comment">// 如果 buffer 不为空，表明该新申请的这块 buffer 没有用上，需要释放掉</span></span><br><span class="line">        <span class="keyword">if</span> (buffer != <span class="keyword">null</span>)</span><br><span class="line">            free.deallocate(buffer);</span><br><span class="line">        appendsInProgress.decrementAndGet();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>整体流程如下：</p>
+<ol>
+<li><p>获取或创建新的双端队列：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> Deque&lt;ProducerBatch&gt; <span class="title">getOrCreateDeque</span><span class="params">(TopicPartition tp)</span> </span>&#123;</span><br><span class="line">    Deque&lt;ProducerBatch&gt; d = <span class="keyword">this</span>.batches.get(tp);</span><br><span class="line">    <span class="keyword">if</span> (d != <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">return</span> d;</span><br><span class="line">    d = <span class="keyword">new</span> ArrayDeque&lt;&gt;();</span><br><span class="line">    Deque&lt;ProducerBatch&gt; previous = <span class="keyword">this</span>.batches.putIfAbsent(tp, d);</span><br><span class="line">    <span class="keyword">if</span> (previous == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">return</span> d;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">return</span> previous;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中 batches 类型为 CopyOnWriteMap ，线程安全类，存放了主题到消息批次队列的映射。</p>
+</li>
+<li><p>尝试往队列中追加数据，此时会取队列的最后一个消息批次，并通过 ProducerBatch#tryAppend 进行追加：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> FutureRecordMetadata <span class="title">tryAppend</span><span class="params">(<span class="keyword">long</span> timestamp, <span class="keyword">byte</span>[] key, <span class="keyword">byte</span>[] value, Header[] headers, Callback callback, <span class="keyword">long</span> now)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 是否超过 buffer 限制</span></span><br><span class="line">    <span class="keyword">if</span> (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 往 buffer 追加消息</span></span><br><span class="line">        Long checksum = <span class="keyword">this</span>.recordsBuilder.append(timestamp, key, value, headers);</span><br><span class="line">        <span class="keyword">this</span>.maxRecordSize = Math.max(<span class="keyword">this</span>.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),</span><br><span class="line">                recordsBuilder.compressionType(), key, value, headers));</span><br><span class="line">        <span class="keyword">this</span>.lastAppendTime = now;</span><br><span class="line">        FutureRecordMetadata future = <span class="keyword">new</span> FutureRecordMetadata(<span class="keyword">this</span>.produceFuture, <span class="keyword">this</span>.recordCount,</span><br><span class="line">                                                               timestamp, checksum,</span><br><span class="line">                                                               key == <span class="keyword">null</span> ? -<span class="number">1</span> : key.length,</span><br><span class="line">                                                               value == <span class="keyword">null</span> ? -<span class="number">1</span> : value.length,</span><br><span class="line">                                                               Time.SYSTEM);</span><br><span class="line">        <span class="comment">// we have to keep every future returned to the users in case the batch needs to be</span></span><br><span class="line">        <span class="comment">// split to several new batches and resent.</span></span><br><span class="line">        thunks.add(<span class="keyword">new</span> Thunk(callback, future));</span><br><span class="line">        <span class="keyword">this</span>.recordCount++;</span><br><span class="line">        <span class="keyword">return</span> future;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>计算消息批次大小（取批次大小和消息大小的最大值），申请新的内存空间 buffer；</p>
+</li>
+<li><p>再次尝试添加消息；</p>
+</li>
+<li><p>使用申请到的内存，构建新的消息批次，将消息追加到消息批次，同时将消息批次添加到主题分区对应的队列；</p>
+</li>
+<li><p>释放无用的 buffer。</p>
+</li>
+</ol>
+<p>这里有几点值得思考：</p>
+<ol>
+<li><p>为什么对同一个锁对象，前后加了再次锁，能不能合并成一个呢？</p>
+<p>首先，锁的粒度控制得越小，锁竞争造成的开销也就越小；另外，申请新的内在空间 buffer 是比较耗时操作，在并发情况下，生产者的消息体也并不都是一样的。如果合并成一个同步锁，假使生产者1在发送消息时，因为消息太大而需要申请新的内存空间，而此时的消息批次剩余的内在空间却能满足生产者2发送的消息时，由于生产者1先进来，会新构建一个消息批次，后来的生产者也会使用新构建的消息批次追加消息，而可能导致空间没能很好的利用。</p>
+</li>
+<li><p>流程的最后，有一个内存释放的操作，这个有作用是什么呢？</p>
+<p>同样是并发情况下，如果两个生产者在第一次尝试添加消息失败时，会构建新的消息批次，在先到来的生产者1构建完成后并将消息追加进去，生产者2这里会先再次尝试追加，如果追回成功，那么此时生产者2则不需要构建一个新的消息批次，申请的内存也自然用不上了，所以需要及时地释放。</p>
+</li>
+</ol>
+<h3 id="内存池-BufferPool"><a href="#内存池-BufferPool" class="headerlink" title="内存池 BufferPool"></a>内存池 BufferPool</h3><p>前面我们提到，构建一个新的 ProducerBatch 前会先申请一块内存，而内存的来源就是内存池，也叫 BufferPool。</p>
+<p>我们都知道线程池、连接池等将资源池化的最大作用就是复用，BufferPool 也不例外，其通过对内存块的复用，可以避免频繁的创建内存和销毁内存，从而避免频繁地 GC。那 BufferPool 是怎么实现的呢，首先来看下其申请内存的方法实现。</p>
+<h4 id="allocate"><a href="#allocate" class="headerlink" title="allocate"></a>allocate</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> ByteBuffer <span class="title">allocate</span><span class="params">(<span class="keyword">int</span> size, <span class="keyword">long</span> maxTimeToBlockMs)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">    <span class="comment">// 申请的内存大小是否超过总大小，默认是 32M</span></span><br><span class="line">    <span class="keyword">if</span> (size &gt; <span class="keyword">this</span>.totalMemory)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">&quot;Attempt to allocate &quot;</span> + size</span><br><span class="line">                                           + <span class="string">&quot; bytes, but there is a hard limit of &quot;</span></span><br><span class="line">                                           + <span class="keyword">this</span>.totalMemory</span><br><span class="line">                                           + <span class="string">&quot; on memory allocations.&quot;</span>);</span><br><span class="line"></span><br><span class="line">    ByteBuffer buffer = <span class="keyword">null</span>;</span><br><span class="line">    <span class="comment">// 加锁</span></span><br><span class="line">    <span class="keyword">this</span>.lock.lock();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>.closed) &#123;</span><br><span class="line">        <span class="keyword">this</span>.lock.unlock();</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> KafkaException(<span class="string">&quot;Producer closed while allocating memory&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// check if we have a free buffer of the right size pooled</span></span><br><span class="line">        <span class="comment">// 申请的大小如果等于池化内存块的大小（默认为 16k ，也为消息批次的默认大小），并且有可用的内存池，则直接从池子取出返回</span></span><br><span class="line">        <span class="keyword">if</span> (size == poolableSize &amp;&amp; !<span class="keyword">this</span>.free.isEmpty())</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">this</span>.free.pollFirst();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// now check if the request is immediately satisfiable with the</span></span><br><span class="line">        <span class="comment">// memory on hand or if we need to block</span></span><br><span class="line">        <span class="comment">// 池化空间内存大小</span></span><br><span class="line">        <span class="keyword">int</span> freeListSize = freeSize() * <span class="keyword">this</span>.poolableSize;</span><br><span class="line">        <span class="comment">// 如果非池化可用空间加上池化可用空间能满足目标空间</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span>.nonPooledAvailableMemory + freeListSize &gt;= size) &#123;</span><br><span class="line">            <span class="comment">// we have enough unallocated or pooled memory to immediately</span></span><br><span class="line">            <span class="comment">// satisfy the request, but need to allocate the buffer</span></span><br><span class="line">            <span class="comment">// 释放池化空间到 nonPooledAvailableMemory，以确保能够满足目标空间</span></span><br><span class="line">            freeUp(size);</span><br><span class="line">            <span class="keyword">this</span>.nonPooledAvailableMemory -= size;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// we are out of memory and will have to block</span></span><br><span class="line">            <span class="comment">// 当前 BufferPool 空间不足以满足目标空间时，需要阻塞等待可用</span></span><br><span class="line">            <span class="keyword">int</span> accumulated = <span class="number">0</span>;</span><br><span class="line">            Condition moreMemory = <span class="keyword">this</span>.lock.newCondition();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 最长等待时间</span></span><br><span class="line">                <span class="keyword">long</span> remainingTimeToBlockNs = TimeUnit.MILLISECONDS.toNanos(maxTimeToBlockMs);</span><br><span class="line">                <span class="keyword">this</span>.waiters.addLast(moreMemory);</span><br><span class="line">                <span class="comment">// loop over and over until we have a buffer or have reserved</span></span><br><span class="line">                <span class="comment">// enough memory to allocate one</span></span><br><span class="line">                <span class="comment">// 没有足够的空间就一直循环</span></span><br><span class="line">                <span class="keyword">while</span> (accumulated &lt; size) &#123;</span><br><span class="line">                    <span class="keyword">long</span> startWaitNs = time.nanoseconds();</span><br><span class="line">                    <span class="keyword">long</span> timeNs;</span><br><span class="line">                    <span class="keyword">boolean</span> waitingTimeElapsed;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        waitingTimeElapsed = !moreMemory.await(remainingTimeToBlockNs, TimeUnit.NANOSECONDS);</span><br><span class="line">                    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                        <span class="keyword">long</span> endWaitNs = time.nanoseconds();</span><br><span class="line">                        timeNs = Math.max(<span class="number">0L</span>, endWaitNs - startWaitNs);</span><br><span class="line">                        recordWaitTime(timeNs);</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="keyword">if</span> (<span class="keyword">this</span>.closed)</span><br><span class="line">                        <span class="keyword">throw</span> <span class="keyword">new</span> KafkaException(<span class="string">&quot;Producer closed while allocating memory&quot;</span>);</span><br><span class="line"></span><br><span class="line">                    <span class="keyword">if</span> (waitingTimeElapsed) &#123;</span><br><span class="line">                        <span class="keyword">throw</span> <span class="keyword">new</span> TimeoutException(<span class="string">&quot;Failed to allocate memory within the configured max blocking time &quot;</span> + maxTimeToBlockMs + <span class="string">&quot; ms.&quot;</span>);</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    remainingTimeToBlockNs -= timeNs;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// check if we can satisfy this request from the free list,</span></span><br><span class="line">                    <span class="comment">// otherwise allocate memory</span></span><br><span class="line">                    <span class="comment">// 目标空间是池化内存大小，并且存在可用的内存块，则直接使用</span></span><br><span class="line">                    <span class="keyword">if</span> (accumulated == <span class="number">0</span> &amp;&amp; size == <span class="keyword">this</span>.poolableSize &amp;&amp; !<span class="keyword">this</span>.free.isEmpty()) &#123;</span><br><span class="line">                        <span class="comment">// just grab a buffer from the free list</span></span><br><span class="line">                        buffer = <span class="keyword">this</span>.free.pollFirst();</span><br><span class="line">                        accumulated = size;</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="comment">// we&#x27;ll need to allocate memory, but we may only get</span></span><br><span class="line">                        <span class="comment">// part of what we need on this iteration</span></span><br><span class="line">                        <span class="comment">// 继续释放池化空间到 nonPooledAvailableMemory</span></span><br><span class="line">                        freeUp(size - accumulated);</span><br><span class="line">                        <span class="keyword">int</span> got = (<span class="keyword">int</span>) Math.min(size - accumulated, <span class="keyword">this</span>.nonPooledAvailableMemory);</span><br><span class="line">                        <span class="keyword">this</span>.nonPooledAvailableMemory -= got;</span><br><span class="line">                        accumulated += got;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// Don&#x27;t reclaim memory on throwable since nothing was thrown</span></span><br><span class="line">                accumulated = <span class="number">0</span>;</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                <span class="comment">// When this loop was not able to successfully terminate don&#x27;t loose available memory</span></span><br><span class="line">                <span class="keyword">this</span>.nonPooledAvailableMemory += accumulated;</span><br><span class="line">                <span class="keyword">this</span>.waiters.remove(moreMemory);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="comment">// signal any additional waiters if there is more memory left</span></span><br><span class="line">        <span class="comment">// over for them</span></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (!(<span class="keyword">this</span>.nonPooledAvailableMemory == <span class="number">0</span> &amp;&amp; <span class="keyword">this</span>.free.isEmpty()) &amp;&amp; !<span class="keyword">this</span>.waiters.isEmpty())</span><br><span class="line">                <span class="keyword">this</span>.waiters.peekFirst().signal();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="comment">// Another finally... otherwise find bugs complains</span></span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (buffer == <span class="keyword">null</span>)</span><br><span class="line">        <span class="comment">// 从非池化空间 nonPooledAvailableMemory 分配内存</span></span><br><span class="line">        <span class="keyword">return</span> safeAllocateByteBuffer(size);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">return</span> buffer;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先需要了解的是，BufferPool 的可用空间分为两个部分：</p>
+<ol>
+<li>池化内存可用区域 free（ByteBuffer 队列）：初始值为空，由固定大小 poolableSize（等于消息批次大小）的 ByteBuffer 组成；</li>
+<li>非池化可用内存大小 nonPooledAvailableMemory：初始值等于总内存大小 totalMemory；</li>
+</ol>
+<p>当申请内存，按以下流程分配：</p>
+<ol>
+<li>如果申请的目标空间等池化内存大小 poolableSize，则优先从池化内存可用区 free 分配；</li>
+<li>如果池化区没有可用内存块，或者目标空间大小不等于池化内存大小，则从非池空间区域分配；<ol>
+<li>如果剩余空间（池化内存大小+非池化内存大小）能满足目标空间，则释放池化内存块，同时增加非池化内存大小，最后从非池化内存区分配；</li>
+<li>否则，循环阻塞等待释放足够的可用空间出来；</li>
+</ol>
+</li>
+<li>返回分配到的内存块 ByteBuffer。</li>
+</ol>
+<h4 id="deallocate"><a href="#deallocate" class="headerlink" title="deallocate"></a>deallocate</h4><p>从 BufferPool 中分配的 ByteBuffer 内存块在使用完之后，可以通过 deallocate 方法释放：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">deallocate</span><span class="params">(ByteBuffer buffer, <span class="keyword">int</span> size)</span> </span>&#123;</span><br><span class="line">    lock.lock();</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 如果待释放的 ByteBuffer 大小为 poolableSize ,则放入池化内存区</span></span><br><span class="line">        <span class="keyword">if</span> (size == <span class="keyword">this</span>.poolableSize &amp;&amp; size == buffer.capacity()) &#123;</span><br><span class="line">            buffer.clear();</span><br><span class="line">            <span class="keyword">this</span>.free.add(buffer);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 否则放入非池化内存区 nonPooledAvailableMemory ，ByteBuffer 就等待自动回收了</span></span><br><span class="line">            <span class="keyword">this</span>.nonPooledAvailableMemory += size;</span><br><span class="line">        &#125;</span><br><span class="line">        Condition moreMem = <span class="keyword">this</span>.waiters.peekFirst();</span><br><span class="line">        <span class="keyword">if</span> (moreMem != <span class="keyword">null</span>)</span><br><span class="line">            moreMem.signal();</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>总的来说，释放的 ByteBuffer 大小如果满足池化大小，则放入池化内存区域重复利用，否则增加非池化内存大小，而释放的 ByteBuffer 则等待 JVM 的 GC 进行自动回收。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本文针对 Kafka 客户端的 RecordAccumulator 消息收集器的 append 添加消息方法的流程作了简单的分析学习，又借此引出了 BufferPool 内存池，并对申请内存和释放内存作了简单的分析学习，了解到 BufferPool 包括两个部分 free 和nonPooledAvailableMemory，而能够复用的是 free 这一部分。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/12/30/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E7%94%9F%E4%BA%A7%E8%80%85%E5%8F%91%E9%80%81%E6%B6%88%E6%81%AF%E7%9A%84%E6%B5%81%E7%A8%8B/" rel="prev" title="Kafka源码学习：生产者发送消息的流程">
+      <i class="fa fa-chevron-left"></i> Kafka源码学习：生产者发送消息的流程
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#append-%E6%96%B9%E6%B3%95"><span class="nav-number">2.</span> <span class="nav-text">append 方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0-BufferPool"><span class="nav-number">3.</span> <span class="nav-text">内存池 BufferPool</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#allocate"><span class="nav-number">3.1.</span> <span class="nav-text">allocate</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#deallocate"><span class="nav-number">3.2.</span> <span class="nav-text">deallocate</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="laixiaoming"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">laixiaoming</p>
+  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">26</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
+<script src="/js/algolia-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+  
+    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
+  
+</body>
+</html>
