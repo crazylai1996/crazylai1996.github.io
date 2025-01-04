@@ -6,7 +6,7 @@ tags: Kafka
 
 
 
-我们都知道，在使用 Kakfa 客户端发送消息时，只需要指定主题和消息的内容，再调用发送方法即可。那发送方法中包含了哪些逻辑呢，本文结合源码一起来看下。
+我们都知道，在使用 Kakfa 客户端发送消息时，只需要指定主题和消息的内容，再调用发送方法即可。那发送方法中具体包含了哪些逻辑呢，本文结合源码一起来看下。
 
 ```Java
 // 构建消息
@@ -169,7 +169,7 @@ private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback call
         if (transactionManager != null && transactionManager.isTransactional()) {
             transactionManager.failIfNotReadyForSend();
         }
-        // 5. 将消息缓存到 accumulator
+        // 5. 将消息缓存到消息收集器 accumulator
         RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                 serializedValue, headers, interceptCallback, remainingWaitMs, true, nowMs);
 
@@ -233,8 +233,8 @@ private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback call
 2. 使用 Serializer 器对消息的 key 和 value 序列化；
 3. 获取消息发往的目标分区 partition；
 4. 预估序列化后的消息大小，如果超过了限制，则抛出异常；
-5. 调用 RecordAccumulator#append 方法，将消息缓存到消息批次；
-6. 如果消息批次满了，或者创建了新的批次，唤醒 sender 线程，后续由 sender 线程从 RecordAccumulator 中批量发送消息到 Kafka。
+5. 调用 RecordAccumulator#append 方法，将消息放入消息收集器中的消息批次；
+6. 如果消息批次满了，或者创建了新的批次，则唤醒 Sender 线程，后续由 Sender 线程从 RecordAccumulator 中批量发送消息到 Kafka。
 
 
 
@@ -345,12 +345,12 @@ public int nextPartition(String topic, Cluster cluster, int prevPartition) {
 
 初看起来 indexCache 中只要有值，那么向同一个 topic 发送消息时会一直使用同一个分区，其实不然，在 doSend 方法中，我们可以看到当需要创建一个新的消息批次时，也会触发 nextPartition 方法的执行。那么这样做的目的是什么呢？
 
-前面我们提到发送消息时，会通过 RecordAccumulator 将消息先缓存起来，后续由 sender 线程发送，而触发发送的条件有两个：
+前面我们提到发送消息时，会先流入消息收集器 RecordAccumulator 中将消息先缓存起来，后续由 Sender 线程发送，而触发发送的条件有两种：
 
 1. 消息批次被填满；
 2. 消息发送的等待时间超过了 linger.ms 的配置。
 
-而 StickyPartitionCache 的作用其实是 “黏性选择”，能尽可能地将消息发往同一个分区，使消息批次能尽快的填满被发送出去，这样就可以一定程度上降低消息发送的延迟，同时也降低了发送的频次。
+而 StickyPartitionCache 的作用其实是 “黏性选择”，它能尽可能地将消息发往同一个分区，使消息批次能尽快的填满被发送出去，这样就可以一定程度上降低消息发送的延迟，同时也降低了发送的频次。
 
 
 

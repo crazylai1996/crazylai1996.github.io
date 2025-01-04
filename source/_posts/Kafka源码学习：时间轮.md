@@ -109,7 +109,7 @@ private[timer] class TimerTaskEntry(val timerTask: TimerTask, val expirationMs: 
 }
 ```
 
-这里需要注意的是 TimerTaskList 被 volatile 修饰，因为在 Kafka 中，当上层时间轮剩余时间小于基本时间跨度（tickMs），又没到执行时间时，就会将该任务重新添加到下层时间轮中，最终由下层时间轮推进执行，因此，这里才有需要保证线程之间的内在可见性。
+这里需要注意的是 TimerTaskList 被 volatile 修饰，因为在 Kafka 中，当上层时间轮剩余时间小于基本时间跨度（tickMs），又没到执行时间时，就会将该任务重新添加到下层时间轮中，最终由下层时间轮推进执行，因此，这里才有需要保证线程之间的内存可见性。
 
 
 
@@ -158,7 +158,7 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
 }
 ```
 
-TimerTaskList 实现了 Delayed 接口，这里因为在 Kafka 中，时间轮的推进是通过 DelayQueue 进行的，每个 TimerTaskList 都会添加到 DelayQueue 。在设置过期时间时，会对新旧值进行判断，因为 bucket 是可以重用的，只有更新过期时间成功后，才会将该 bucket 重新添加到 DelayQueue。
+TimerTaskList 实现了 Delayed 接口，这里是因为在 Kafka 中，时间轮的推进是通过 DelayQueue 进行的，每个 TimerTaskList 都会添加到 DelayQueue 。在设置过期时间时，会对新旧值进行判断，因为 bucket 是可以重用的，只有更新过期时间成功后，才会将该 bucket 重新添加到 DelayQueue。
 
 
 
@@ -327,7 +327,7 @@ private[this] val reinsert = (timerTaskEntry: TimerTaskEntry) => addTimerTaskEnt
 随着时间的推进，到期任务将尝试重新添加到时间轮，此时有两种情况：
 
 - 任务到期，或任务被取消，如果任务未取消，则执行到期任务；
-- 任务未到期，任务被重新添加到下级时间轮（时间轮降级）；
+- 任务未到期，任务将被重新添加到下级时间轮（时间轮降级）；
 
 
 

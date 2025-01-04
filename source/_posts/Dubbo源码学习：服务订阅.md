@@ -33,7 +33,7 @@ tags: Dubbo
 
 ### 服务订阅
 
-在前一篇 [Dubbo源码学习：服务引用](https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more) 中我们了解到，远程调用的Invoker是通过 **InterfaceCompatibleRegistryProtocol##getInvoker** 创建的：
+在前一篇 [Dubbo源码学习：服务引用](https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more) 中我们了解到，远程调用的Invoker是通过 **InterfaceCompatibleRegistryProtocol#getInvoker** 创建的：
 
 ```Java
 public <T> ClusterInvoker<T> getInvoker(Cluster cluster, Registry registry, Class<T> type, URL url) {

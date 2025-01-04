@@ -142,6 +142,7 @@ public RecordAppendResult append(TopicPartition tp,
                                                                   Time.SYSTEM);
            // we have to keep every future returned to the users in case the batch needs to be
            // split to several new batches and resent.
+           // 将异步发送结果 Future 收集起来
            thunks.add(new Thunk(callback, future));
            this.recordCount++;
            return future;
@@ -318,6 +319,7 @@ public void deallocate(ByteBuffer buffer, int size) {
             // 否则放入非池化内存区 nonPooledAvailableMemory ，ByteBuffer 就等待自动回收了
             this.nonPooledAvailableMemory += size;
         }
+        // 唤醒等待中的线程
         Condition moreMem = this.waiters.peekFirst();
         if (moreMem != null)
             moreMem.signal();
