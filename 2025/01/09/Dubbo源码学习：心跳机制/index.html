@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"98870b25028b6803f2e798b0d7e939f8","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="前言在 Dubbo 中，默认协议使用单一长连接进行通信，这可以避免每次调用都新建 TCP 连接，从而降低延迟、提高调用的响应速度，但长连接的稳定性受环境、服务端等影响可能会断开，所以如何及时检测连接是否可用并进行重连（保活），对于通信框架而言是非常重要的话题。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码学习：心跳机制">
+<meta property="og:url" content="http://laixiaoming.space/2025/01/09/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E5%BF%83%E8%B7%B3%E6%9C%BA%E5%88%B6/index.html">
+<meta property="og:site_name" content="赖小明">
+<meta property="og:description" content="前言在 Dubbo 中，默认协议使用单一长连接进行通信，这可以避免每次调用都新建 TCP 连接，从而降低延迟、提高调用的响应速度，但长连接的稳定性受环境、服务端等影响可能会断开，所以如何及时检测连接是否可用并进行重连（保活），对于通信框架而言是非常重要的话题。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-01-09T15:31:10.000Z">
+<meta property="article:modified_time" content="2025-01-09T15:36:45.873Z">
+<meta property="article:author" content="laixiaoming">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://laixiaoming.space/2025/01/09/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E5%BF%83%E8%B7%B3%E6%9C%BA%E5%88%B6/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Dubbo源码学习：心跳机制 | 赖小明</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">赖小明</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container"></div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="algolia-results">
+  <div id="algolia-stats"></div>
+  <div id="algolia-hits"></div>
+  <div id="algolia-pagination" class="algolia-pagination"></div>
+</div>
+
+      
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2025/01/09/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E5%BF%83%E8%B7%B3%E6%9C%BA%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Dubbo源码学习：心跳机制
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2025-01-09 23:31:10 / 修改时间：23:36:45" itemprop="dateCreated datePublished" datetime="2025-01-09T23:31:10+08:00">2025-01-09</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>在 Dubbo 中，默认协议使用单一长连接进行通信，这可以避免每次调用都新建 TCP 连接，从而降低延迟、提高调用的响应速度，但长连接的稳定性受环境、服务端等影响可能会断开，所以如何及时检测连接是否可用并进行重连（保活），对于通信框架而言是非常重要的话题。</p>
+<span id="more"></span>
+
+<blockquote>
+<p>以下内容基于Dubbo 2.7.12版本</p>
+</blockquote>
+<h3 id="连接保活"><a href="#连接保活" class="headerlink" title="连接保活"></a>连接保活</h3><h4 id="为什么需要保活"><a href="#为什么需要保活" class="headerlink" title="为什么需要保活"></a>为什么需要保活</h4><p>在了解 Dubbo 的方案前，我们可以先思考下有哪些因素会影响长连接的的稳定性：</p>
+<ol>
+<li>在网络通信中，客户端和服务端之间的数据传输通常会经过多个中间设备（如NAT网关、防火墙等）。这些设备为了节省资源或遵循安全策略，可能会在一段时间内没有数据传输时主动删除 TCP 会话信息；</li>
+<li>网络链路故障，或者进入不稳定或者拥堵的网络环境，可能会导致连接被关闭；</li>
+<li>服务端应用进程被关闭。</li>
+</ol>
+<h4 id="如何保活"><a href="#如何保活" class="headerlink" title="如何保活"></a>如何保活</h4><p>那为了确保连接的可用性，以及及时发现异常断线情况并进行重连，我们可以采取哪些措施呢？</p>
+<p>提到保活，我们都知道 TCP keepalive机制，但这个其实是操作系统实现的一个功能，在开启这个机制后，当长连接无数据交互一定时间间隔时，连接的一方会向对端发送保活探测包，在连接正常时，对端将对此作出回应。</p>
+<p>那既然如此，是不是只要开启 keepalive 就行了呢？</p>
+<p>其实不够，因为 keepalive 只是在网络层进行保活，假使网络本身没问题，但是由于服务端进程假死等异常情况时，此时 keepalive 就无法探测到了，在这种情况下，往往需要应用层去实现心跳机制，按照一定的时间间隔，发送心跳包到对端，以此确认连接对端是否可达。而相对 TCP 的 keepalive，实现业务心跳：</p>
+<ol>
+<li>不仅可以检测连接是否正常，也可以检测对端进程是否正常</li>
+<li>具有更大的灵活性，可以自己控制检测的间隔，检测的方式等；</li>
+<li>另外，心跳包还可以附带业务信息，定时在服务端和客户端之间同步。</li>
+</ol>
+<p>但在应用层实现心跳也需要考虑资源占用情况，心跳检测过于频繁会增加系统的负担，而间隔太长又可能会导致不可用的连接不能尽早的被发现，这是一个需要权衡的问题。</p>
+<p>本文将一起来学习下，在 Dubbo 中，连接是如何保活的。</p>
+<h3 id="Dubbo-的心跳机制"><a href="#Dubbo-的心跳机制" class="headerlink" title="Dubbo 的心跳机制"></a>Dubbo 的心跳机制</h3><h4 id="服务消费端"><a href="#服务消费端" class="headerlink" title="服务消费端"></a>服务消费端</h4><p>ExchangeClient 是 Dubbo 对服务消费端信息交换层的抽象，而 HeaderExchangeClient 是其默认实现，我们直接来到其构造方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">HeaderExchangeClient</span><span class="params">(Client client, <span class="keyword">boolean</span> startTimer)</span> </span>&#123;</span><br><span class="line">    Assert.notNull(client, <span class="string">&quot;Client can&#x27;t be null&quot;</span>);</span><br><span class="line">    <span class="comment">// 客户端实现</span></span><br><span class="line">    <span class="keyword">this</span>.client = client;</span><br><span class="line">    <span class="keyword">this</span>.channel = <span class="keyword">new</span> HeaderExchangeChannel(client);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (startTimer) &#123;</span><br><span class="line">        URL url = client.getUrl();</span><br><span class="line">        <span class="comment">// 开启重连定时任务</span></span><br><span class="line">        startReconnectTask(url);</span><br><span class="line">        <span class="comment">// 开启心跳定时任务</span></span><br><span class="line">        startHeartBeatTask(url);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>startReconnectTask 开启了一个重连定时任务：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">startReconnectTask</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 可以通过配置是不重连，默认重连</span></span><br><span class="line">    <span class="keyword">if</span> (shouldReconnect(url)) &#123;</span><br><span class="line">        AbstractTimerTask.ChannelProvider cp = () -&gt; Collections.singletonList(HeaderExchangeClient.<span class="keyword">this</span>);</span><br><span class="line">        <span class="comment">// 获取空闲的超时时间，默认为心跳 * 3，即心跳达到3次不回复则进行重连</span></span><br><span class="line">        <span class="keyword">int</span> idleTimeout = getIdleTimeout(url);</span><br><span class="line">        <span class="comment">// 计算任务的执行频率，实际是将配置的超时时间除以3后得到的值</span></span><br><span class="line">        <span class="keyword">long</span> heartbeatTimeoutTick = calculateLeastDuration(idleTimeout);</span><br><span class="line">        <span class="keyword">this</span>.reconnectTimerTask = <span class="keyword">new</span> ReconnectTimerTask(cp, heartbeatTimeoutTick, idleTimeout);</span><br><span class="line">        IDLE_CHECK_TIMER.newTimeout(reconnectTimerTask, heartbeatTimeoutTick, TimeUnit.MILLISECONDS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>重连定时任务 ReconnectTimerTask#doTask：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doTask</span><span class="params">(Channel channel)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 获取上一次收到回复的时间</span></span><br><span class="line">        Long lastRead = lastRead(channel);</span><br><span class="line">        Long now = now();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Rely on reconnect timer to reconnect when AbstractClient.doConnect fails to init the connection</span></span><br><span class="line">        <span class="comment">// 如果连接断开了，直接重连</span></span><br><span class="line">        <span class="keyword">if</span> (!channel.isConnected()) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                logger.info(<span class="string">&quot;Initial connection to &quot;</span> + channel);</span><br><span class="line">                ((Client) channel).reconnect();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                logger.error(<span class="string">&quot;Fail to connect to &quot;</span> + channel, e);</span><br><span class="line">            &#125;</span><br><span class="line">        <span class="comment">// check pong at client</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (lastRead != <span class="keyword">null</span> &amp;&amp; now - lastRead &gt; idleTimeout) &#123;</span><br><span class="line">            <span class="comment">// 如果空闲时间超过指定时间，则进行重连</span></span><br><span class="line">            logger.warn(<span class="string">&quot;Reconnect to channel &quot;</span> + channel + <span class="string">&quot;, because heartbeat read idle time out: &quot;</span></span><br><span class="line">                    + idleTimeout + <span class="string">&quot;ms&quot;</span>);</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                ((Client) channel).reconnect();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                logger.error(channel + <span class="string">&quot;reconnect failed during idle time.&quot;</span>, e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">        logger.warn(<span class="string">&quot;Exception when reconnect to remote channel &quot;</span> + channel.getRemoteAddress(), t);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>startHeartBeatTask 开启了一个心跳定时任务：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">startHeartBeatTask</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 客户端是否能够处理空闲事件</span></span><br><span class="line">    <span class="keyword">if</span> (!client.canHandleIdle()) &#123;</span><br><span class="line">        AbstractTimerTask.ChannelProvider cp = () -&gt; Collections.singletonList(HeaderExchangeClient.<span class="keyword">this</span>);</span><br><span class="line">        <span class="comment">// 获取心跳间隔时间，默认为 60s</span></span><br><span class="line">        <span class="keyword">int</span> heartbeat = getHeartbeat(url);</span><br><span class="line">        <span class="comment">// 心跳间隔时间</span></span><br><span class="line">        <span class="keyword">long</span> heartbeatTick = calculateLeastDuration(heartbeat);</span><br><span class="line">        <span class="keyword">this</span>.heartBeatTimerTask = <span class="keyword">new</span> HeartbeatTimerTask(cp, heartbeatTick, heartbeat);</span><br><span class="line">        IDLE_CHECK_TIMER.newTimeout(heartBeatTimerTask, heartbeatTick, TimeUnit.MILLISECONDS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在获取心跳任务的执行时间间隔时，这里跟重连任务一样，同时是将时间除以3得到，这是为什么呢？这其实是 Dubbo 缩短了检测间隔时间，增大了及时发现死链的概率。</p>
+<p>心跳定时任务 HeartbeatTimerTask#doTask：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doTask</span><span class="params">(Channel channel)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 上一次读取响应时间 </span></span><br><span class="line">        Long lastRead = lastRead(channel);</span><br><span class="line">        <span class="comment">// 上一次发出请求时间</span></span><br><span class="line">        Long lastWrite = lastWrite(channel);</span><br><span class="line">        <span class="comment">// 超过心跳间隔则进行发起心跳请求</span></span><br><span class="line">        <span class="keyword">if</span> ((lastRead != <span class="keyword">null</span> &amp;&amp; now() - lastRead &gt; heartbeat)</span><br><span class="line">                || (lastWrite != <span class="keyword">null</span> &amp;&amp; now() - lastWrite &gt; heartbeat)) &#123;</span><br><span class="line">            Request req = <span class="keyword">new</span> Request();</span><br><span class="line">            req.setVersion(Version.getProtocolVersion());</span><br><span class="line">            req.setTwoWay(<span class="keyword">true</span>);</span><br><span class="line">            req.setEvent(HEARTBEAT_EVENT);</span><br><span class="line">            channel.send(req);</span><br><span class="line">            <span class="keyword">if</span> (logger.isDebugEnabled()) &#123;</span><br><span class="line">                logger.debug(<span class="string">&quot;Send heartbeat to remote channel &quot;</span> + channel.getRemoteAddress()</span><br><span class="line">                        + <span class="string">&quot;, cause: The channel has no data-transmission exceeds a heartbeat period: &quot;</span></span><br><span class="line">                        + heartbeat + <span class="string">&quot;ms&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">        logger.warn(<span class="string">&quot;Exception when heartbeat to remote channel &quot;</span> + channel.getRemoteAddress(), t);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>另外，我们还注意到 ，在 startHeartBeatTask 开启心跳任务前，有个前提条件的判断：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">client.canHandleIdle()</span><br></pre></td></tr></table></figure>
+
+<p>查看实现得知，这是 Netty 对空闲连接的检测提供了天然支持，在使用 Netty 时，可以通过 IdleStateHandler 很方便的实现空闲连接检测。在 NettyClientHandler 中，提供了对空闲事件的处理：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">userEventTriggered</span><span class="params">(ChannelHandlerContext ctx, Object evt)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    <span class="comment">// send heartbeat when read idle.</span></span><br><span class="line">    <span class="keyword">if</span> (evt <span class="keyword">instanceof</span> IdleStateEvent) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);</span><br><span class="line">            <span class="keyword">if</span> (logger.isDebugEnabled()) &#123;</span><br><span class="line">                logger.debug(<span class="string">&quot;IdleStateEvent triggered, send heartbeat to channel &quot;</span> + channel);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 发送心跳请求</span></span><br><span class="line">            Request req = <span class="keyword">new</span> Request();</span><br><span class="line">            req.setVersion(Version.getProtocolVersion());</span><br><span class="line">            req.setTwoWay(<span class="keyword">true</span>);</span><br><span class="line">            req.setEvent(HEARTBEAT_EVENT);</span><br><span class="line">            channel.send(req);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            NettyChannel.removeChannelIfDisconnected(ctx.channel());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">super</span>.userEventTriggered(ctx, evt);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>有了 IdleStateHandler 的支持，Dubbo 可以减少一个心跳任务的定时器，从而降低资源消耗。</p>
+<h4 id="服务提供端"><a href="#服务提供端" class="headerlink" title="服务提供端"></a>服务提供端</h4><p>在服务提供端，HeaderExchangeServer 是 Dubbo 信息交互层的默认实现在其构造函数中：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">HeaderExchangeServer</span><span class="params">(RemotingServer server)</span> </span>&#123;</span><br><span class="line">    Assert.notNull(server, <span class="string">&quot;server == null&quot;</span>);</span><br><span class="line">    <span class="keyword">this</span>.server = server;</span><br><span class="line">    <span class="comment">// 开启空闲检测任务</span></span><br><span class="line">    startIdleCheckTask(getUrl());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>会开启一个空闲检测任务：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> start客户端是否能够处理空闲事件IdleCheckTask(URL url) &#123;</span><br><span class="line">    <span class="comment">// 服务端是否能够处理空闲事件</span></span><br><span class="line">    <span class="keyword">if</span> (!server.canHandleIdle()) &#123;</span><br><span class="line">        AbstractTimerTask.ChannelProvider cp = () -&gt; unmodifiableCollection(HeaderExchangeServer.<span class="keyword">this</span>.getChannels());</span><br><span class="line">        <span class="comment">// 获取空闲超时时间，默认心跳间隔*3</span></span><br><span class="line">        <span class="keyword">int</span> idleTimeout = getIdleTimeout(url);</span><br><span class="line">        <span class="comment">// 计算执行时间间隔</span></span><br><span class="line">        <span class="keyword">long</span> idleTimeoutTick = calculateLeastDuration(idleTimeout);</span><br><span class="line">        <span class="comment">// 开启了一个关闭连接定时任务</span></span><br><span class="line">        CloseTimerTask closeTimerTask = <span class="keyword">new</span> CloseTimerTask(cp, idleTimeoutTick, idleTimeout);</span><br><span class="line">        <span class="keyword">this</span>.closeTimerTask = closeTimerTask;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// init task and start timer.</span></span><br><span class="line">        IDLE_CHECK_TIMER.newTimeout(closeTimerTask, idleTimeoutTick, TimeUnit.MILLISECONDS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关闭连接定时任务 CloseTimerTask#doTask：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doTask</span><span class="params">(Channel channel)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 上一次读取响应时间 </span></span><br><span class="line">        Long lastRead = lastRead(channel);</span><br><span class="line">        <span class="comment">// 上一次发出请求时间</span></span><br><span class="line">        Long lastWrite = lastWrite(channel);</span><br><span class="line">        Long now = now();</span><br><span class="line">        <span class="comment">// check ping &amp; pong at server</span></span><br><span class="line">        <span class="comment">// 超过空闲超时时间，则直接断开连接</span></span><br><span class="line">        <span class="keyword">if</span> ((lastRead != <span class="keyword">null</span> &amp;&amp; now - lastRead &gt; idleTimeout)</span><br><span class="line">                || (lastWrite != <span class="keyword">null</span> &amp;&amp; now - lastWrite &gt; idleTimeout)) &#123;</span><br><span class="line">            logger.warn(<span class="string">&quot;Close channel &quot;</span> + channel + <span class="string">&quot;, because idleCheck timeout: &quot;</span></span><br><span class="line">                    + idleTimeout + <span class="string">&quot;ms&quot;</span>);</span><br><span class="line">            channel.close();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">        logger.warn(<span class="string">&quot;Exception when close remote channel &quot;</span> + channel.getRemoteAddress(), t);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，在服务提供端这边，如果在指定的空闲超时时间内没有发生读写，会直接关闭连接。</p>
+<p>而对于 NettyServer 的空闲处理：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">userEventTriggered</span><span class="params">(ChannelHandlerContext ctx, Object evt)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    <span class="comment">// server will close channel when server don&#x27;t receive any heartbeat from client util timeout.</span></span><br><span class="line">    <span class="keyword">if</span> (evt <span class="keyword">instanceof</span> IdleStateEvent) &#123;</span><br><span class="line">        NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            logger.info(<span class="string">&quot;IdleStateEvent triggered, close channel &quot;</span> + channel);</span><br><span class="line">            <span class="comment">// 关闭连接</span></span><br><span class="line">            channel.close();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            NettyChannel.removeChannelIfDisconnected(ctx.channel());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">super</span>.userEventTriggered(ctx, evt);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>也是对连接直接关闭。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>在 Dubbo 服务消费端，会启动两个定时任务，IdleStateHandler主要用于定时发送心跳请求，而 ReconnectTimerTask 用于3次心跳未回复之后进行重连的逻辑；而在服务提供端，只启动了一个 CloseTimerTask，用于检测空闲超时时间关闭连接。另外对于 Netty 的实现客户端/服务端，则使用了 IdleStateHandler 代替了其中的 IdleStateHandler 及 CloseTimerTask。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Dubbo/" rel="tag"># Dubbo</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/" rel="prev" title="Kafka源码学习：Sender 线程">
+      <i class="fa fa-chevron-left"></i> Kafka源码学习：Sender 线程
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E4%BF%9D%E6%B4%BB"><span class="nav-number">2.</span> <span class="nav-text">连接保活</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E4%BF%9D%E6%B4%BB"><span class="nav-number">2.1.</span> <span class="nav-text">为什么需要保活</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E4%BF%9D%E6%B4%BB"><span class="nav-number">2.2.</span> <span class="nav-text">如何保活</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Dubbo-%E7%9A%84%E5%BF%83%E8%B7%B3%E6%9C%BA%E5%88%B6"><span class="nav-number">3.</span> <span class="nav-text">Dubbo 的心跳机制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E6%B6%88%E8%B4%B9%E7%AB%AF"><span class="nav-number">3.1.</span> <span class="nav-text">服务消费端</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E6%8F%90%E4%BE%9B%E7%AB%AF"><span class="nav-number">3.2.</span> <span class="nav-text">服务提供端</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="laixiaoming"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">laixiaoming</p>
+  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
+<script src="/js/algolia-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+  
+    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
+  
+</body>
+</html>
