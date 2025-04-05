@@ -23,27 +23,27 @@
   <meta name="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
 <meta property="og:type" content="website">
 <meta property="og:title" content="赖小明">
-<meta property="og:url" content="http://laixiaoming.space/archives/2024/08/index.html">
+<meta property="og:url" content="http://laixiaoming.space/page/4/index.html">
 <meta property="og:site_name" content="赖小明">
 <meta property="og:description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:author" content="laixiaoming">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://laixiaoming.space/archives/2024/08/">
+<link rel="canonical" href="http://laixiaoming.space/page/4/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : false,
+    isHome : true,
     isPost : false,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>归档 | 赖小明</title>
+  <title>赖小明</title>
   
 
 
@@ -171,52 +171,85 @@
         <div class="content-wrap">
           
 
-          <div class="content archive">
+          <div class="content index posts-expand">
             
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/">
 
-  
-  
-  
-  <div class="post-block">
-    <div class="posts-collapse">
-      <div class="collection-title">
-        
-        <span class="collection-header">还行! 目前共计 31 篇日志。 继续努力。</span>
-      </div>
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/" class="post-title-link" itemprop="url">分布式事务 -两阶段提交及Atomikos在Spring Boot的使用</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-05-01 18:23:31" itemprop="dateCreated datePublished" datetime="2023-05-01T18:23:31+08:00">2023-05-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-02-16 20:19:44" itemprop="dateModified" datetime="2024-02-16T20:19:44+08:00">2024-02-16</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-    <div class="collection-year">
-      <span class="collection-header">2024</span>
+          <h2 id="基于XA规范的两阶段提交方式"><a href="#基于XA规范的两阶段提交方式" class="headerlink" title="基于XA规范的两阶段提交方式"></a>基于XA规范的两阶段提交方式</h2><p>事务在业务的开发中有着至关重要的作用，事务具有的ACID的特性能保证业务处理前后数据的一致性：<br><strong>原子性（Atomicity）：</strong> 事务执行的所有操作，要么全部执行，要么全部不执行；<br><strong>一致性（Consistency）：</strong> 事务的执行前后，数据的完整性保持一致；<br><strong>隔离性（Isolation）：</strong> 两个或多个事务并行执行时是互不干扰的；<br><strong>持久性（Durability）：</strong> 事务执行完成后，其对数据库数据的更改会被永久保存下来；<br>在单机环境下，数据库系统对事务的支持是比较完善的；但当对数据进行水平或垂直拆分，一个数据库节点变为多个数据库节点时，分布式事务就出现了。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%8F%90%E4%BA%A4%E5%8F%8AAtomikos%E5%9C%A8Spring%20Boot%E7%9A%84%E4%BD%BF%E7%94%A8/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
     </div>
 
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2024-08-25T19:52:15+08:00"
-              content="2024-08-25">
-          08-25
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2024/08/25/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9ASpring%20Cloud%20Gateway%E7%BA%BF%E7%A8%8B%E7%88%86%E6%BB%A1/" itemprop="url">
-            <span itemprop="name">问题记录：Spring Cloud Gateway线程爆满</span>
-          </a>
-      </div>
-
-    </header>
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
   </article>
-
-
-    </div>
-  </div>
   
   
   
 
+
   
+  <nav class="pagination">
+    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span>
+  </nav>
 
 
 
