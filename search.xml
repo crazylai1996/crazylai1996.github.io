@@ -2558,4 +2558,38 @@
         <tag>Nacos</tag>
       </tags>
   </entry>
+  <entry>
+    <title>问题记录：Controller 注入空指针异常</title>
+    <url>/2025/06/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AController%20%E6%B3%A8%E5%85%A5%E7%A9%BA%E6%8C%87%E9%92%88%E5%BC%82%E5%B8%B8/</url>
+    <content><![CDATA[<h3 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h3><p>在最近开发过程中，遇到了一个让人疑惑的问题，现有一个 Controller ，有且只有一个私有方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/test&quot;)</span></span><br><span class="line"><span class="meta">@Api(tags = &quot;测试&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestPubController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Resource</span></span><br><span class="line">    <span class="keyword">private</span> TestService testService;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@GetMapping(&quot;/pri&quot;)</span></span><br><span class="line">    <span class="meta">@ApiOperation(value = &quot;测试私有方法&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> String <span class="title">testPrivate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;private&quot;</span>);</span><br><span class="line">        testService.say();</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;private&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>此时，接口调用是没有任何问题的。但当在这个 Controller 方法中增加了一个公有方法后：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@GetMapping(&quot;/pub&quot;)</span></span><br><span class="line"><span class="meta">@ApiOperation(value = &quot;测试公共方法&quot;)</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">testPublic</span><span class="params">(<span class="meta">@RequestParam(required = false)</span> Integer p)</span> </span>&#123;</span><br><span class="line">    System.out.println(<span class="string">&quot;public&quot;</span>);</span><br><span class="line">    testService.say();</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;public&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>问题出现了，原有的 “/test/pri” 接口在调用 “testService#say” 方法时报了“空指针异常”，而新增的 “/test/pub” 却能正常使用。这乍一看，着实有点诡异，于是便打开 IDEA 准备 debug 一波。</p>
+<h3 id="定位问题"><a href="#定位问题" class="headerlink" title="定位问题"></a>定位问题</h3><p>首先是 “test/pri” 接口：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20250629222842692.png" alt="image-20250629222842692"></p>
+<p>可以看到 testService 确实是空的。</p>
+<p>再看下 “test/pub” 接口，注入正常：</p>
+<p><img src="http://storage.laixiaoming.space/blog/image-20250629223030460.png" alt="image-20250629223030460"></p>
+<p>为什么会出现这种情况呢？</p>
+<p>仔细一看会发现，这两个地方的 this 对象并不是同一个！在 testPrivate 方法中，this 指向的是一个 “TestPubController” 的 CGLIB 代理对象，而在 testPublic 方法中，this 则指向的是一个 “TestPubController” 对象。</p>
+<p>了解过 Spring 代理的可能已经知道端倪了，TestPubController 是被代理过的，在进入 testPrivate 方法时，当前对象是代理对象，而进入 testPublic 方法时，当前对象是目标对象，而目标对象才是完成了自动注入流程的。</p>
+<p>那为什么 testPrivate 方法中不会调用目标对象呢？</p>
+<p>使用 arthas 查看这个代理类的源码中，这两个方法的具体区别：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestPubController</span>$$<span class="title">EnhancerBySpringCGLIB</span>$$<span class="title">ee1c3a5f</span></span></span><br><span class="line"><span class="class">        <span class="keyword">extends</span> <span class="title">TestPubController</span></span></span><br><span class="line"><span class="class">        <span class="keyword">implements</span> <span class="title">SpringProxy</span>,</span></span><br><span class="line"><span class="class">        <span class="title">Advised</span>,</span></span><br><span class="line"><span class="class">        <span class="title">Factory</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 省略...</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">final</span> String <span class="title">testPublic</span><span class="params">(Integer n)</span> </span>&#123;</span><br><span class="line">        MethodInterceptor methodInterceptor = <span class="keyword">this</span>.CGLIB$CALLBACK_0;</span><br><span class="line">        <span class="keyword">if</span> (methodInterceptor == <span class="keyword">null</span>) &#123;</span><br><span class="line">            TestPubController$$EnhancerBySpringCGLIB$$ee1c3a5f.CGLIB$BIND_CALLBACKS(<span class="keyword">this</span>);</span><br><span class="line">            methodInterceptor = <span class="keyword">this</span>.CGLIB$CALLBACK_0;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (methodInterceptor != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> (String) methodInterceptor.intercept(<span class="keyword">this</span>, CGLIB$testPublic$<span class="number">0</span>$Method, <span class="keyword">new</span> Object[]&#123;n&#125;, CGLIB$testPublic$<span class="number">0</span>$Proxy);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.testPublic(n);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 省略...</span></span><br><span class="line">&#125;</span><br><span class="line">        </span><br></pre></td></tr></table></figure>
+
+<p>发现代理类中只代理实现了 testPublic 方法，此时出现这个问题的原因便清晰了。</p>
+<ol>
+<li>该项目中有一个切面类，针对所有 Controller 的方法增加了日志打印的处理逻辑；</li>
+<li>当 Controller 中只有私有方法时，CGLIB 不会生成该 Controller 的代理类，此时不会有任何问题；</li>
+<li>当  Controller 中存在仅有方法时，CGLIB 将会生成该 Controller 的代理类，此时对公有方法的调用将转化为目标对象的调用；但另一方面，又不会代理私有方法，此时问题便出现了。</li>
+</ol>
+<p>所以在项目开发中，对于 Controller 中的接口方法，由于并不是所有的框架都会忽略方法可见性，建议还是设置为公有，以此可以避免一些其他不可预知的问题。</p>
+]]></content>
+      <tags>
+        <tag>问题记录</tag>
+      </tags>
+  </entry>
 </search>

@@ -177,6 +177,84 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/04/23/%E6%97%A5%E5%BF%97%EF%BC%9A%E6%AF%8F%E4%B8%AA%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E5%B8%88%E9%83%BD%E5%BA%94%E8%AF%A5%E7%9F%A5%E9%81%93%E7%9A%84%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2024/04/23/%E6%97%A5%E5%BF%97%EF%BC%9A%E6%AF%8F%E4%B8%AA%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E5%B8%88%E9%83%BD%E5%BA%94%E8%AF%A5%E7%9F%A5%E9%81%93%E7%9A%84%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1/" class="post-title-link" itemprop="url">日志：每个软件工程师都应该知道的实时数据的统一抽象</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-04-23 21:23:23" itemprop="dateCreated datePublished" datetime="2024-04-23T21:23:23+08:00">2024-04-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-05-18 19:53:23" itemprop="dateModified" datetime="2024-05-18T19:53:23+08:00">2024-05-18</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <blockquote>
+<p>原文：<a target="_blank" rel="noopener" href="https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying">The Log: What every software engineer should know about real-time data’s unifying abstraction</a></p>
+<p>作者：<strong>Jay Kreps</strong></p>
+</blockquote>
+<p>我大约在六年前加入了领英，那是一个特别有趣的时间点。那时我们正面临着单体集中式数据库极限的挑战，需要开始向专门的分布式系统转变。这真是一个有趣的经历：我们构建、部署和运行了分布式图数据库、分布式搜索后端、Hadoop套件、一代及二代键值数据库，并运行至今。</p>
+<p>在这个过程中，我学到的最有用的一件事情是，我们在这里构建的大多数组件，其核心都有一个简单的概念：日志，有时也被称作先写日志、提交日志或者事务日志，日志几乎与计算机的历史一样悠久，它是许多分布式数据系统和实时应用架构里面的核心。</p>
+<p>如果你不了解日志，你也就不可能完全了解数据库、NoSQL存储、键值存储、副本、paxos、hadoop、版本控制、甚至几乎任何软件系统，然而大多数软件工程师都不熟悉它，我希望改变这个现状。在这篇文章中，我将告诉你一切你需要知道的关于日志的事情，包括什么是日志、如何在数据集成、实时处理和系统构建中使用日志。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/04/23/%E6%97%A5%E5%BF%97%EF%BC%9A%E6%AF%8F%E4%B8%AA%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E5%B8%88%E9%83%BD%E5%BA%94%E8%AF%A5%E7%9F%A5%E9%81%93%E7%9A%84%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/04/20/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ADeferredResult%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -824,83 +902,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/" class="post-title-link" itemprop="url">分布式事务-基于可靠消息的最终一致性实现</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-01 18:30:30" itemprop="dateCreated datePublished" datetime="2023-05-01T18:30:30+08:00">2023-05-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:19:51" itemprop="dateModified" datetime="2024-02-16T20:19:51+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="CAP与BASE"><a href="#CAP与BASE" class="headerlink" title="CAP与BASE"></a>CAP与BASE</h2><p>我们都知道，传统数据库事务具有ACID的特性，但在分布式环境下，追求强一致性在大多数情况下无法满足高性能需求。<br>分布式系统的CAP理论告诉我们，一致性、可用性、分区容忍性无法同时满足，最多只能满足其他两项。CAP理论描述如下：</p>
-<ul>
-<li>一致性（Consistency）：所有节点在同一时间读到同样的数据；</li>
-<li>可用性（Availability）：无论是成功还是失败，每个请求都能收到一个反馈。可用性强调的是服务可用，不保证数据的正确性；</li>
-<li>分区容忍性（Partition-Tolerance）：即使系统中有部分问题或者有消息的丢失，但系统仍然能够继续运行。分区容忍性强调的是集群对分区故障的容错能力；</li>
-</ul>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/05/01/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%20-%20%E5%9F%BA%E4%BA%8E%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E7%9A%84%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E5%AE%9E%E7%8E%B0/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -972,7 +973,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-count">32</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
