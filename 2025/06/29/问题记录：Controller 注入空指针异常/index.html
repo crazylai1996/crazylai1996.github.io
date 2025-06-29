@@ -30,7 +30,7 @@
 <meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20250629222842692.png">
 <meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20250629223030460.png">
 <meta property="article:published_time" content="2025-06-29T14:09:19.000Z">
-<meta property="article:modified_time" content="2025-06-29T15:28:22.144Z">
+<meta property="article:modified_time" content="2025-06-29T15:52:23.445Z">
 <meta property="article:author" content="laixiaoming">
 <meta property="article:tag" content="问题记录">
 <meta name="twitter:card" content="summary">
@@ -208,7 +208,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2025-06-29 22:09:19 / 修改时间：23:28:22" itemprop="dateCreated datePublished" datetime="2025-06-29T22:09:19+08:00">2025-06-29</time>
+              <time title="创建时间：2025-06-29 22:09:19 / 修改时间：23:52:23" itemprop="dateCreated datePublished" datetime="2025-06-29T22:09:19+08:00">2025-06-29</time>
             </span>
 
           
@@ -224,6 +224,8 @@
       
         <h3 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h3><p>在最近开发过程中，遇到了一个让人疑惑的问题，现有一个 Controller ，有且只有一个私有方法：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/test&quot;)</span></span><br><span class="line"><span class="meta">@Api(tags = &quot;测试&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestPubController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Resource</span></span><br><span class="line">    <span class="keyword">private</span> TestService testService;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@GetMapping(&quot;/pri&quot;)</span></span><br><span class="line">    <span class="meta">@ApiOperation(value = &quot;测试私有方法&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> String <span class="title">testPrivate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;private&quot;</span>);</span><br><span class="line">        testService.say();</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;private&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<span id="more"></span>
 
 <p>此时，接口调用是没有任何问题的。但当在这个 Controller 方法中增加了一个公有方法后：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@GetMapping(&quot;/pub&quot;)</span></span><br><span class="line"><span class="meta">@ApiOperation(value = &quot;测试公共方法&quot;)</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">testPublic</span><span class="params">(<span class="meta">@RequestParam(required = false)</span> Integer p)</span> </span>&#123;</span><br><span class="line">    System.out.println(<span class="string">&quot;public&quot;</span>);</span><br><span class="line">    testService.say();</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;public&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>

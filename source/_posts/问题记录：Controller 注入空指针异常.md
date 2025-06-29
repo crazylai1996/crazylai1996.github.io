@@ -28,6 +28,8 @@ public class TestPubController {
 }
 ```
 
+<!--more-->
+
 此时，接口调用是没有任何问题的。但当在这个 Controller 方法中增加了一个公有方法后：
 
 ```Java
