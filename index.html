@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2026-08-29 21:27:15 / 修改时间：23:13:16" itemprop="dateCreated datePublished" datetime="2026-08-29T21:27:15+08:00">2026-08-29</time>
+              <time title="创建时间：2026-08-29 21:27:15 / 修改时间：23:16:35" itemprop="dateCreated datePublished" datetime="2026-08-29T21:27:15+08:00">2026-08-29</time>
             </span>
 
           
@@ -222,61 +222,14 @@
 <li>特别之处：网络正常，服务和数据库资源使用也都正常——从外部看，服务”没问题”，但它就是一动不动。</li>
 </ul>
 <p>于是导了一分线程快照信息，从它开始分析。</p>
-<h3 id="定位问题"><a href="#定位问题" class="headerlink" title="定位问题"></a>定位问题</h3><p>第一眼看过去：所有业务线程都停在同一行、等同一个对象：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">waiting on condition [<span class="number">0x00007f993e24b000</span>]</span><br><span class="line">   java.lang.Thread.State: WAITING (parking)</span><br><span class="line">	at sun.misc.Unsafe.park(Native Method)</span><br><span class="line">	- parking to wait <span class="keyword">for</span>  &lt;<span class="number">0x00000006df3157c0</span>&gt; (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)</span><br><span class="line">	at java.util.concurrent.locks.LockSupport.park(LockSupport.java:<span class="number">175</span>)</span><br><span class="line">	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:<span class="number">2039</span>)</span><br><span class="line">	at com.alibaba.druid.pool.DruidDataSource.takeLast(DruidDataSource.java:<span class="number">2218</span>)</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>无论是 HTTP 接口，还是 Dubbo 接口，整个系统都在等待从 Druid 连接池中获取一个连接；</li>
-<li>没有正在执行中的 SQL ，数据库控制台上也无慢 SQL 迹象；</li>
-</ul>
-<p>可以初步确定的是，数据库连接池没有可用连接了，全被打满了。</p>
-<p>随着而来的问题是，连接池有多大，连接都哪去了？</p>
-<p>看了下 Nacos 配置：</p>
-<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">datasource:</span></span><br><span class="line">  <span class="attr">hikari:</span></span><br><span class="line">    <span class="attr">maximum-pool-size:</span> <span class="number">30</span></span><br><span class="line">    <span class="attr">minimum-idle:</span> <span class="number">10</span></span><br><span class="line">    <span class="attr">connection-timeout:</span> <span class="number">10000</span></span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line">  <span class="attr">url:</span> <span class="string">xxx</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">com.alibaba.druid.pool.DruidDataSource</span></span><br><span class="line">  <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br></pre></td></tr></table></figure>
-
-<p>发现了点端倪：</p>
-<ul>
-<li>日志显示的是 DruidDataSource，配置咋是 hikari 的配置；</li>
-</ul>
-<p>由此可以确定的是整段 <code>spring.datasource.hikari.*</code>  配置完全没用上，实际生效的是 Druid 默认值配置。</p>
-<p>查了下 Druid 的几个关键参数的默认值：</p>
-<ul>
-<li><p>最大连接数：8</p>
-</li>
-<li><p>获取连接超时：-1（无限等待）</p>
-</li>
-</ul>
-<p> Druid 默认“无限等待”配置符合服务当前“连接池被打满，所有业务线程都卡在等可用连接上“这个现象，那随着而来的问题是，那 8 个连接都被哪些线程占用了呢，为什么迟迟不释放？</p>
-<p>问了下同事刚在做什么操作，得知是测试的同事在测“退款”申请接口。</p>
-<p>于是再次查看了线程快照信息，看到确实有 4 个线程处在“退款”方法中。难道是这 4 个线程把 8 个连接都占满了？</p>
-<p><img src="http://storage.laixiaoming.space/blog/image-20260829220906304.png" alt="image-20260829220906304"></p>
-<p>从中挑了一个“退款”线程，细看了一下，发现有 3 次事务切面的调用，这个线程有没有可能已经持有了 2 个连接，并且在等待获取第 3 个连接，同时处于这个状态的线程有 4 个，4 个线程占用的线程恰好等于 8 个。</p>
-<p>为了验证这个假设，于是看了下代码，大致是这样的事务结构：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="meta">@Transactional(rollbackFor = Exception.class)</span>  </span><br><span class="line"><span class="keyword">public</span> Long <span class="title function_">serviceA</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (Objects.equals(order.getPackageType(), OrderPackageTypeEnum.RIGHTS_PACKAGE.getCode())) &#123;</span><br><span class="line">        <span class="keyword">return</span> self.serviceB();  </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Transactional(propagation = Propagation.NOT_SUPPORTED)</span>  <span class="comment">// 挂起 外层事务</span></span><br><span class="line"><span class="keyword">public</span> Long <span class="title function_">serviceB</span><span class="params">(...)</span> &#123;</span><br><span class="line">    <span class="built_in">this</span>.saveOrUpdate();</span><br><span class="line">    self.serviceC(...);                            <span class="comment">//卡死点</span></span><br><span class="line">    <span class="keyword">return</span> ...;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Transactional(propagation = Propagation.REQUIRES_NEW)</span>      <span class="comment">// 再开新事务</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">serviceC</span><span class="params">(...)</span> &#123; <span class="comment">/* ...写库... */</span> &#125;</span><br></pre></td></tr></table></figure>
-
-<p>可是疑问又来了，Propagation.NOT_SUPPORTED 确实会挂起外层事务，但是 serviceB 在执行数据操作后应该会立马释放连接才对，按理当走到 serviceC 方法的时候，应该最多只会持有 1 个连接才对。</p>
-<p>我决定写个同样事务结构的小 demo 验证下。</p>
-<p>经过层层 debug 后发现，在进入到 serviceB 中，执行数据库后，并不会马上释放连接，而是等 serviceB 方法执行完成后，由事务切换释放：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">org.springframework.transaction.interceptor.TransactionAspectSupport#invokeWithinTransaction</span><br><span class="line">  -&gt;org.springframework.transaction.interceptor.TransactionAspectSupport#commitTransactionAfterReturning</span><br><span class="line">    -&gt;org.springframework.transaction.support.AbstractPlatformTransactionManager#commit</span><br><span class="line">      -&gt;org.springframework.transaction.support.AbstractPlatformTransactionManager#processCommit</span><br><span class="line">        -&gt;org.springframework.transaction.support.AbstractPlatformTransactionManager#triggerBeforeCompletion</span><br></pre></td></tr></table></figure>
-
-<p>最终是通过事务提交钩子函数释放的：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title function_">triggerBeforeCompletion</span><span class="params">(DefaultTransactionStatus status)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (status.isNewSynchronization()) &#123;</span><br><span class="line">        <span class="keyword">if</span> (status.isDebug()) &#123;</span><br><span class="line">            logger.trace(<span class="string">&quot;Triggering beforeCompletion synchronization&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        TransactionSynchronizationUtils.triggerBeforeCompletion();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>那钩子函数是什么注册上去的呢：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">org.mybatis.spring.SqlSessionUtils#getSqlSession(org.apache.ibatis.session.SqlSessionFactory, org.apache.ibatis.session.ExecutorType, org.springframework.dao.support.PersistenceExceptionTranslator)</span><br><span class="line">  -&gt;org.mybatis.spring.SqlSessionUtils#registerSessionHolder</span><br></pre></td></tr></table></figure>
-
-<p>可以看到：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">registerSessionHolder</span><span class="params">(SqlSessionFactory sessionFactory, ExecutorType executorType,</span></span><br><span class="line"><span class="params">    PersistenceExceptionTranslator exceptionTranslator, SqlSession session)</span> &#123;</span><br><span class="line">  SqlSessionHolder holder;</span><br><span class="line">  <span class="keyword">if</span> (TransactionSynchronizationManager.isSynchronizationActive()) &#123;</span><br><span class="line">    <span class="type">Environment</span> <span class="variable">environment</span> <span class="operator">=</span> sessionFactory.getConfiguration().getEnvironment();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (environment.getTransactionFactory() <span class="keyword">instanceof</span> SpringManagedTransactionFactory) &#123;</span><br><span class="line">      LOGGER.debug(() -&gt; <span class="string">&quot;Registering transaction synchronization for SqlSession [&quot;</span> + session + <span class="string">&quot;]&quot;</span>);</span><br><span class="line"></span><br><span class="line">      holder = <span class="keyword">new</span> <span class="title class_">SqlSessionHolder</span>(session, executorType, exceptionTranslator);</span><br><span class="line">      TransactionSynchronizationManager.bindResource(sessionFactory, holder);</span><br><span class="line">      <span class="comment">// 注册事务钩子函数</span></span><br><span class="line">      TransactionSynchronizationManager</span><br><span class="line">          .registerSynchronization(<span class="keyword">new</span> <span class="title class_">SqlSessionSynchronization</span>(holder, sessionFactory));</span><br><span class="line">      holder.setSynchronizedWithTransaction(<span class="literal">true</span>);</span><br><span class="line">      holder.requested();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">//...</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  	<span class="comment">//...</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>至此，问题的前因后果也出来了：</p>
-<ol>
-<li>数据源配置错误导致连接池大小只有默认的 8；</li>
-<li>默认参数 maxWait&#x3D;-1 导致所有获取不到连接的线程无限等待；</li>
-<li><code>serviceA</code> 外层事务 + <code>NOT_SUPPORTED</code> 挂起 + <code>REQUIRES_NEW</code> 追加，使单请求并发就占用了 3个 连接；</li>
-<li>4 笔并发退款请求”持2求1”，占满 8 个连接，导致发生典型的连接池嵌套死锁。</li>
-</ol>
-<h3 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h3><p>事务传播也得慎用，考虑不周到容易造成池容量被腰斩，且极易形成”互相等对方释放”的伪死锁。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%80%97%E5%B0%BD/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
