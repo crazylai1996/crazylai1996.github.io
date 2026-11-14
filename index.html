@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2026-11-14 14:58:18 / 修改时间：17:16:10" itemprop="dateCreated datePublished" datetime="2026-11-14T14:58:18+08:00">2026-11-14</time>
+              <time title="创建时间：2026-11-14 14:58:18 / 修改时间：17:38:24" itemprop="dateCreated datePublished" datetime="2026-11-14T14:58:18+08:00">2026-11-14</time>
             </span>
 
           
@@ -217,33 +217,14 @@
 
       
           <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>最初的 <strong>Transformer</strong> 模型是为机器翻译任务设计的，它在整体上遵循了 <strong>编码器‑解码器 (Encoder‑Decoder)</strong> 架构。编码器负责 <strong>理解</strong> 源句子，解码器负责 <strong>生成</strong> 目标句子，两者通过注意力机制紧密协作，实现了高度并行的序列建模。</p>
-<h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h3><p><img src="http://storage.laixiaoming.space/blog/1794646316202.png"></p>
-<ul>
-<li><p><strong>编码器（Encoder）</strong>：任务是“理解”源句子输入。它会读取所有输入词元，最终为每个词元生成一个富含上下文信息的向量表示。</p>
-</li>
-<li><p><strong>解码器（Decoder）</strong>：任务是“生成”目标句子。它会参考自己已经生成的前文，并根据编码器对源句子的“理解”，来生成下一个词。</p>
-</li>
-</ul>
-<h3 id="核心组件"><a href="#核心组件" class="headerlink" title="核心组件"></a>核心组件</h3><h4 id="位置编码"><a href="#位置编码" class="headerlink" title="位置编码"></a>位置编码</h4><p>注意力机制有个天然的缺陷：它不知道词的顺序。对它来说，“我喜欢苹果手机”和“苹果手机喜欢我”里的词完全一样，区分不出来。</p>
-<p><strong>解决方法</strong>：在词嵌入向量上叠加位置信息，主要有两种实现思路：</p>
-<ul>
-<li><strong>固定函数编码（如正弦&#x2F;余弦周期函数）</strong>：利用三角函数将位置映射到 [−1,1] 的数值向量中，以连续周期变化小数值唯一表征离散整数位置，支持外推更长序列。</li>
-<li><strong>可学习的位置嵌入（Learned Positional Embedding）</strong>：像训练词嵌入字典一样，为每一个位置分配一个可学习的向量，与词嵌入直接相加得到位置感知的综合表示。</li>
-</ul>
-<h4 id="自注意力层"><a href="#自注意力层" class="headerlink" title="自注意力层"></a>自注意力层</h4><p>每个词元同时与序列中所有其他词元计算相关度，加权计算生成该词的包含上下文信息的新表示。</p>
-<h4 id="前馈网络层"><a href="#前馈网络层" class="headerlink" title="前馈网络层"></a>前馈网络层</h4><p>通常由密集连接层（Dense）组成，对序列中的每个位置独立进行非线性映射与变换。相当于对单个词做深度特征提取。</p>
-<h4 id="残差连接-和-归一化"><a href="#残差连接-和-归一化" class="headerlink" title="残差连接 和 归一化"></a>残差连接 和 归一化</h4><ul>
-<li><strong>残差连接</strong>：将子层的输入直接加到输出上，解决了深层网络的梯度消失问题，让梯度可以直接回传。</li>
-<li><strong>归一化</strong>：稳定每一层的数值分布，加速模型收敛。</li>
-</ul>
-<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><ul>
-<li><strong>Encoder‑Decoder 架构</strong> 中，Encoder 负责 <strong>理解</strong>，Decoder 负责 <strong>生成</strong>，专门用于机器翻译等序列‑序列任务。</li>
-<li><strong>位置编码</strong> 解决了注意力的顺序感知的问题。</li>
-<li><strong>多头自注意力</strong> 捕获全局上下文感知信息。</li>
-<li><strong>前馈网络</strong> 负责深度特征提取。</li>
-<li><strong>残差 、归一化</strong> 保证深层堆叠仍然可训练。</li>
-</ul>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
