@@ -177,6 +177,80 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/" class="post-title-link" itemprop="url">Kafka源码学习：Sender 线程</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-01-04 16:22:35" itemprop="dateCreated datePublished" datetime="2025-01-04T16:22:35+08:00">2025-01-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-01-09 23:36:46" itemprop="dateModified" datetime="2025-01-09T23:36:46+08:00">2025-01-09</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>在前面我们学习到 Kafka 生产者在发送时，消息会先流入到消息收集器 RecordAccumulator，随后再由另外的线程—— Sender 线程将累积的消息发往 Kafka 服务端。本篇文章一起学习下 Sender 线程的工作流程。</p>
+<p>Sender 线程的启动可以在 KafkaProducer 的构造函数中找到：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//...</span></span><br><span class="line"><span class="built_in">this</span>.sender = newSender(logContext, kafkaClient, <span class="built_in">this</span>.metadata);</span><br><span class="line"><span class="type">String</span> <span class="variable">ioThreadName</span> <span class="operator">=</span> NETWORK_THREAD_PREFIX + <span class="string">&quot; | &quot;</span> + clientId;</span><br><span class="line"><span class="built_in">this</span>.ioThread = <span class="keyword">new</span> <span class="title class_">KafkaThread</span>(ioThreadName, <span class="built_in">this</span>.sender, <span class="literal">true</span>);</span><br><span class="line"><span class="built_in">this</span>.ioThread.start();</span><br><span class="line"><span class="comment">//...</span></span><br></pre></td></tr></table></figure>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2025/01/02/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E7%94%9F%E4%BA%A7%E8%80%85%E6%B6%88%E6%81%AF%E6%94%B6%E9%9B%86%E5%99%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -810,79 +884,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/" class="post-title-link" itemprop="url">Dubbo源码学习：服务订阅</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2024-09-28 11:49:43" itemprop="dateCreated datePublished" datetime="2024-09-28T11:49:43+08:00">2024-09-28</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-01-09 23:36:46" itemprop="dateModified" datetime="2025-01-09T23:36:46+08:00">2025-01-09</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>在前一篇 <a href="https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more">Dubbo源码学习：服务引用</a> 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？</p>
-<p>在深入了解之前，我们需要先了解下服务目录的概念。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -954,7 +955,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">36</span>
+          <span class="site-state-item-count">37</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

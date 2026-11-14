@@ -20,15 +20,15 @@
     var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"98870b25028b6803f2e798b0d7e939f8","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="前言我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找词，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这">
+  <meta name="description" content="前言我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找表，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Transformer 架构：自注意力机制">
 <meta property="og:url" content="http://laixiaoming.space/2026/11/07/Transformer%20%E6%9E%B6%E6%9E%84%EF%BC%9A%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6/index.html">
 <meta property="og:site_name" content="赖小明">
-<meta property="og:description" content="前言我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找词，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这">
+<meta property="og:description" content="前言我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找表，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-11-07T13:25:08.000Z">
-<meta property="article:modified_time" content="2026-11-08T09:16:22.700Z">
+<meta property="article:modified_time" content="2026-11-14T06:26:27.681Z">
 <meta property="article:author" content="laixiaoming">
 <meta property="article:tag" content="Transformer">
 <meta property="article:tag" content="深度学习">
@@ -212,7 +212,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2026-11-08 17:16:22" itemprop="dateModified" datetime="2026-11-08T17:16:22+08:00">2026-11-08</time>
+                <time title="修改时间：2026-11-14 14:26:27" itemprop="dateModified" datetime="2026-11-14T14:26:27+08:00">2026-11-14</time>
               </span>
 
           
@@ -226,7 +226,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找词，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这就是“<strong>自注意力</strong>”。</p>
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找表，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这就是“<strong>自注意力</strong>”。</p>
 <span id="more"></span>
 
 <h3 id="理解自注意力"><a href="#理解自注意力" class="headerlink" title="理解自注意力"></a>理解自注意力</h3><p>“自注意力”是 Google 团队在 2017 年发表的论文 ——《Attention Is All You Need》中提出的 Transformer 架构中提到的。它的作用是利用句子中相关词元的表示来调节某个词元的表示，从而生成上下文感知的词元表示。</p>
@@ -241,11 +241,11 @@
 </li>
 </ul>
 <p>在检索时，我们会将查询与键进行比对，计算出相关度得分后，将得分作用于文档排序，得到最终检索结果。</p>
-<p>同样的，我们在理解一个句子是，我们是否先计算出每个词元与句子中其他所有词元的相关性分数，然后利用相关性分数对每个词元进行加权后求和，以得到每个词元的新表示呢？当然可以，这正是自注意力工作的基本原理。</p>
-<h3 id="工作原理"><a href="#工作原理" class="headerlink" title="工作原理"></a>工作原理</h3><p>在自注意力中，Query、Key、Value 都来自<strong>同一个序列</strong>。其核心公式为：</p>
+<p>同样的，我们在理解一个句子是，我们能否先计算出每个词元与句子中其他所有词元的相关性分数，然后利用相关性分数对每个词元进行加权后求和，以得到每个词元的新表示呢？当然可以，这正是自注意力工作的基本原理。</p>
+<h3 id="工作原理"><a href="#工作原理" class="headerlink" title="工作原理"></a>工作原理</h3><p>在计算自注意力时，Query、Key、Value 都来自<strong>同一个序列</strong>。其核心公式为：</p>
 <p>$$\text{Attention}(Q, K, V) &#x3D; \text{softmax}!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V$$</p>
 <h4 id="Q-K-V-从哪来"><a href="#Q-K-V-从哪来" class="headerlink" title="Q&#x2F;K&#x2F;V 从哪来"></a>Q&#x2F;K&#x2F;V 从哪来</h4><p>在自注意力公式中，我们能否使用直接使用词嵌入 X 作为 Q&#x2F;K&#x2F;V 的输入呢？</p>
-<p>答案是不行的，词嵌入是词元的固定表示，而自注意力机制要做的是，将词嵌入向量映射到一个具有上下文感知的新表示。为此我们需要引入 3 个可学习权重矩阵：$W_Q$、$W_K$、$W_V$。</p>
+<p>答案是不行的，词嵌入是词元的<strong>固定表示</strong>，而自注意力机制要做的是，将词嵌入向量映射到一个具有<strong>上下文感知的新表示</strong>。为此我们需要引入 3 个可学习权重矩阵：$W_Q$、$W_K$、$W_V$。</p>
 <p>$$Q &#x3D; X W_Q, \quad K &#x3D; X W_K, \quad V &#x3D; X W_V$$</p>
 <p>使其能在训练过程中自动学会：</p>
 <ul>
@@ -253,14 +253,31 @@
 <li>$W_K$：把输入变成「能被查到的标签」</li>
 <li>$W_V$：把输入变成「被查到后提供的信息」</li>
 </ul>
+<p>以[“我”, “喜欢”, “苹果”, “手机”]这名话为例，为便于手工演算，我们假定：</p>
+<ul>
+<li>序列长度 <em>n</em>&#x3D;4</li>
+<li>词嵌入维度 <em>d</em>&#x3D;2</li>
+</ul>
+<p><strong>输入词嵌入矩阵 $X$</strong>：</p>
+<p>$$<br>X &#x3D; \begin{bmatrix}<br>1.0 &amp; 0.0 \  % 我<br>0.0 &amp; 1.0 \  % 喜欢<br>1.0 &amp; 1.0 \  % 苹果<br>0.5 &amp; 0.5    % 手机<br>\end{bmatrix}<br>$$</p>
+<p><strong>可学习权重矩阵（初始值）</strong>：</p>
+<p>$$<br>W_Q &#x3D; \begin{bmatrix} 1.0 &amp; 0.0 \ 0.0 &amp; 1.0 \end{bmatrix},\quad<br>W_K &#x3D; \begin{bmatrix} 1.0 &amp; 0.5 \ 0.5 &amp; 1.0 \end{bmatrix},\quad<br>W_V &#x3D; \begin{bmatrix} 1.0 &amp; 0.0 \ 0.0 &amp; 1.0 \end{bmatrix}<br>$$</p>
+<p>$$<br>W_Q,; W_K,; W_V \in \mathbb{R}^{d_{\text{model}} \times d_k}<br>$$</p>
+<p>通常取 $d_k &#x3D; d_{\text{model}}$。</p>
+<p><strong>计算 $Q$、$K$、$V$</strong>：</p>
+<p>$$<br>Q &#x3D; XW_Q &#x3D; \begin{bmatrix}<br>1.0 &amp; 0.0 \<br>0.0 &amp; 1.0 \<br>1.0 &amp; 1.0 \<br>0.5 &amp; 0.5<br>\end{bmatrix},\quad<br>K &#x3D; XW_K &#x3D; \begin{bmatrix}<br>1.0 &amp; 0.5 \<br>0.5 &amp; 1.0 \<br>1.5 &amp; 1.5 \<br>0.75 &amp; 0.75<br>\end{bmatrix},\quad<br>V &#x3D; XW_V &#x3D; \begin{bmatrix}<br>1.0 &amp; 0.0 \<br>0.0 &amp; 1.0 \<br>1.0 &amp; 1.0 \<br>0.5 &amp; 0.5<br>\end{bmatrix}<br>$$</p>
 <h4 id="计算注意力分数"><a href="#计算注意力分数" class="headerlink" title="计算注意力分数"></a>计算注意力分数</h4><p>$$<br>S &#x3D; QK^\top<br>$$</p>
 <p>自注意力机制中，首先要计算查询矩阵和键矩阵的点积。点积可以作为度量两个向量相似度的一种方式，点积越大，说明两个向量在多维空间中的指向越一致（夹角越小），两个向量之间的相似度也就越高。</p>
+<p>$$<br>S &#x3D; \begin{bmatrix}<br>1.00 &amp; 0.50 &amp; 1.50 &amp; 0.75 \<br>0.50 &amp; 1.00 &amp; 1.50 &amp; 0.75 \<br>1.50 &amp; 1.50 &amp; 3.00 &amp; 1.50 \<br>0.75 &amp; 0.75 &amp; 1.50 &amp; 0.75<br>\end{bmatrix}<br>$$</p>
 <h4 id="缩放"><a href="#缩放" class="headerlink" title="缩放"></a>缩放</h4><p>$$<br>S_{\text{scaled}} &#x3D; \frac{S}{\sqrt{d_k}}<br>$$</p>
 <p>将S除以键向量维度的平方根，这样做的目的主要是抵消高维度带来的点积值过大而引入的缩放因子，以避免 softmax 函数的梯度消失或过大，从而获得稳定的梯度。</p>
+<p>$$<br>S_{\text{scaled}} &#x3D; \frac{S}{\sqrt{2}} \approx \begin{bmatrix}<br>0.707 &amp; 0.354 &amp; 1.061 &amp; 0.530 \<br>0.354 &amp; 0.707 &amp; 1.061 &amp; 0.530 \<br>1.061 &amp; 1.061 &amp; 2.121 &amp; 1.061 \<br>0.530 &amp; 0.530 &amp; 1.061 &amp; 0.530<br>\end{bmatrix}<br>$$</p>
 <h4 id="计算注意力权重"><a href="#计算注意力权重" class="headerlink" title="计算注意力权重"></a>计算注意力权重</h4><p>$$A &#x3D; \text{softmax}(S_{\text{scaled}})$$</p>
 <p>将注意力分数转为注意力权重，注意力权重分布在0到1的范围内。</p>
+<p>$$<br>A \approx \begin{bmatrix}<br>0.2523 &amp; 0.1771 &amp; 0.3592 &amp; 0.2114 \<br>0.1771 &amp; 0.2523 &amp; 0.3592 &amp; 0.2114 \<br>0.1698 &amp; 0.1698 &amp; 0.4905 &amp; 0.1698 \<br>0.2128 &amp; 0.2128 &amp; 0.3616 &amp; 0.2128<br>\end{bmatrix}<br>$$</p>
 <h4 id="加权求和"><a href="#加权求和" class="headerlink" title="加权求和"></a>加权求和</h4><p>$$\text{Output} &#x3D; AV$$</p>
 <p>将注意力权重作用于词元，得到词元的新表示。</p>
+<p>$$<br>\text{Output} \approx \begin{bmatrix}<br>0.7172 &amp; 0.6421 \  % 我<br>0.6421 &amp; 0.7172 \  % 喜欢<br>0.7453 &amp; 0.7453 \  % 苹果<br>0.6808 &amp; 0.6808    % 手机<br>\end{bmatrix}<br>$$</p>
 <h3 id="多头注意力"><a href="#多头注意力" class="headerlink" title="多头注意力"></a>多头注意力</h3><p>“多头注意力”是对自注意力机制的微调。“多头”是指：自注意力层的输出空间被分解为一组独立的子空间，对这些子空间分别进行学习，也就是说，每个 Head 拥有<strong>独立且不同的权重矩阵</strong>：$W_Q$、$W_K$、$W_V$：</p>
 <p>$$\text{MultiHead}(X) &#x3D; \text{Concat}(\text{head}_1, \ldots, \text{head}_h) W_O$$</p>
 <p>$$\text{head}<em>i &#x3D; \text{Attention}(X W</em>{Q_i},, X W_{K_i},, X W_{V_i})$$</p>
@@ -295,7 +312,10 @@
     <a href="/2026/10/28/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E7%9A%84%E8%A1%A8%E7%A4%BA%E6%96%B9%E6%B3%95/" rel="prev" title="深度学习：文本数据的表示方法">
       <i class="fa fa-chevron-left"></i> 深度学习：文本数据的表示方法
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" rel="next" title="Transformer 的整体架构">
+      Transformer 的整体架构 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -370,7 +390,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">36</span>
+          <span class="site-state-item-count">37</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

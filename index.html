@@ -177,6 +177,91 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" class="post-title-link" itemprop="url">Transformer 的整体架构</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2026-11-14 14:58:18 / 修改时间：17:16:10" itemprop="dateCreated datePublished" datetime="2026-11-14T14:58:18+08:00">2026-11-14</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>最初的 <strong>Transformer</strong> 模型是为机器翻译任务设计的，它在整体上遵循了 <strong>编码器‑解码器 (Encoder‑Decoder)</strong> 架构。编码器负责 <strong>理解</strong> 源句子，解码器负责 <strong>生成</strong> 目标句子，两者通过注意力机制紧密协作，实现了高度并行的序列建模。</p>
+<h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h3><p><img src="http://storage.laixiaoming.space/blog/1794646316202.png"></p>
+<ul>
+<li><p><strong>编码器（Encoder）</strong>：任务是“理解”源句子输入。它会读取所有输入词元，最终为每个词元生成一个富含上下文信息的向量表示。</p>
+</li>
+<li><p><strong>解码器（Decoder）</strong>：任务是“生成”目标句子。它会参考自己已经生成的前文，并根据编码器对源句子的“理解”，来生成下一个词。</p>
+</li>
+</ul>
+<h3 id="核心组件"><a href="#核心组件" class="headerlink" title="核心组件"></a>核心组件</h3><h4 id="位置编码"><a href="#位置编码" class="headerlink" title="位置编码"></a>位置编码</h4><p>注意力机制有个天然的缺陷：它不知道词的顺序。对它来说，“我喜欢苹果手机”和“苹果手机喜欢我”里的词完全一样，区分不出来。</p>
+<p><strong>解决方法</strong>：在词嵌入向量上叠加位置信息，主要有两种实现思路：</p>
+<ul>
+<li><strong>固定函数编码（如正弦&#x2F;余弦周期函数）</strong>：利用三角函数将位置映射到 [−1,1] 的数值向量中，以连续周期变化小数值唯一表征离散整数位置，支持外推更长序列。</li>
+<li><strong>可学习的位置嵌入（Learned Positional Embedding）</strong>：像训练词嵌入字典一样，为每一个位置分配一个可学习的向量，与词嵌入直接相加得到位置感知的综合表示。</li>
+</ul>
+<h4 id="自注意力层"><a href="#自注意力层" class="headerlink" title="自注意力层"></a>自注意力层</h4><p>每个词元同时与序列中所有其他词元计算相关度，加权计算生成该词的包含上下文信息的新表示。</p>
+<h4 id="前馈网络层"><a href="#前馈网络层" class="headerlink" title="前馈网络层"></a>前馈网络层</h4><p>通常由密集连接层（Dense）组成，对序列中的每个位置独立进行非线性映射与变换。相当于对单个词做深度特征提取。</p>
+<h4 id="残差连接-和-归一化"><a href="#残差连接-和-归一化" class="headerlink" title="残差连接 和 归一化"></a>残差连接 和 归一化</h4><ul>
+<li><strong>残差连接</strong>：将子层的输入直接加到输出上，解决了深层网络的梯度消失问题，让梯度可以直接回传。</li>
+<li><strong>归一化</strong>：稳定每一层的数值分布，加速模型收敛。</li>
+</ul>
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><ul>
+<li><strong>Encoder‑Decoder 架构</strong> 中，Encoder 负责 <strong>理解</strong>，Decoder 负责 <strong>生成</strong>，专门用于机器翻译等序列‑序列任务。</li>
+<li><strong>位置编码</strong> 解决了注意力的顺序感知的问题。</li>
+<li><strong>多头自注意力</strong> 捕获全局上下文感知信息。</li>
+<li><strong>前馈网络</strong> 负责深度特征提取。</li>
+<li><strong>残差 、归一化</strong> 保证深层堆叠仍然可训练。</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2026/11/07/Transformer%20%E6%9E%B6%E6%9E%84%EF%BC%9A%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -208,7 +293,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2026-11-08 17:16:22" itemprop="dateModified" datetime="2026-11-08T17:16:22+08:00">2026-11-08</time>
+                <time title="修改时间：2026-11-14 14:26:27" itemprop="dateModified" datetime="2026-11-14T14:26:27+08:00">2026-11-14</time>
               </span>
 
           
@@ -222,7 +307,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找词，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这就是“<strong>自注意力</strong>”。</p>
+          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>我们知道，“词嵌入”可以表示“语义”，但它本质上还是一个查找表，对于在不同句子中的同一个词，它的“词嵌入”向量是相同的，但在实际情况中，一个词的含义通常取决于上下文，同一个词在不同的句子中，可以有截然不同的含义。比如：“我爱吃苹果“和“我喜欢苹果手机”，这里面的“苹果”并不是同一个东西。我们需要一个方法，能够做到，同一个词，在不同的句子中，如果它们的含义不一样，那么它们的向量表示也不一样，而这就是“<strong>自注意力</strong>”。</p>
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2026/11/07/Transformer%20%E6%9E%B6%E6%9E%84%EF%BC%9A%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6/#more" rel="contents">
@@ -817,80 +902,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/" class="post-title-link" itemprop="url">Kafka源码学习：Sender 线程</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2025-01-04 16:22:35" itemprop="dateCreated datePublished" datetime="2025-01-04T16:22:35+08:00">2025-01-04</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-01-09 23:36:46" itemprop="dateModified" datetime="2025-01-09T23:36:46+08:00">2025-01-09</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>在前面我们学习到 Kafka 生产者在发送时，消息会先流入到消息收集器 RecordAccumulator，随后再由另外的线程—— Sender 线程将累积的消息发往 Kafka 服务端。本篇文章一起学习下 Sender 线程的工作流程。</p>
-<p>Sender 线程的启动可以在 KafkaProducer 的构造函数中找到：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//...</span></span><br><span class="line"><span class="built_in">this</span>.sender = newSender(logContext, kafkaClient, <span class="built_in">this</span>.metadata);</span><br><span class="line"><span class="type">String</span> <span class="variable">ioThreadName</span> <span class="operator">=</span> NETWORK_THREAD_PREFIX + <span class="string">&quot; | &quot;</span> + clientId;</span><br><span class="line"><span class="built_in">this</span>.ioThread = <span class="keyword">new</span> <span class="title class_">KafkaThread</span>(ioThreadName, <span class="built_in">this</span>.sender, <span class="literal">true</span>);</span><br><span class="line"><span class="built_in">this</span>.ioThread.start();</span><br><span class="line"><span class="comment">//...</span></span><br></pre></td></tr></table></figure>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2025/01/04/Kafka%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9ASender%20%E7%BA%BF%E7%A8%8B/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -962,7 +973,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">36</span>
+          <span class="site-state-item-count">37</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
