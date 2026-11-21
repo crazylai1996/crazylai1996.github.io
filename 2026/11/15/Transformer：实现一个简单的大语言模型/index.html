@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"0fe5a76c65503aa1e49ff34206b789ec","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="前言了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Deco">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Transformer：实现一个简单的大语言模型">
+<meta property="og:url" content="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/index.html">
+<meta property="og:site_name" content="赖小明">
+<meta property="og:description" content="前言了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Deco">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-11-15T07:47:31.000Z">
+<meta property="article:modified_time" content="2026-11-21T08:32:53.639Z">
+<meta property="article:author" content="laixiaoming">
+<meta property="article:tag" content="Transformer">
+<meta property="article:tag" content="深度学习">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Transformer：实现一个简单的大语言模型 | 赖小明</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">赖小明</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container"></div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="algolia-results">
+  <div id="algolia-stats"></div>
+  <div id="algolia-hits"></div>
+  <div id="algolia-pagination" class="algolia-pagination"></div>
+</div>
+
+      
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="laixiaoming">
+      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="赖小明">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Transformer：实现一个简单的大语言模型
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2026-11-15 15:47:31" itemprop="dateCreated datePublished" datetime="2026-11-15T15:47:31+08:00">2026-11-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2026-11-21 16:32:53" itemprop="dateModified" datetime="2026-11-21T16:32:53+08:00">2026-11-21</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 <strong>Decoder-Only</strong> 架构，它摒弃了 Encoder，只使用 Decoder 来完成文本生成任务，而这也是 GPT 模型采用的构架。</p>
+<p>下面我们基于 Transformer 的 Decoder 来实现一个简单的“文本生成”语言模型。</p>
+<span id="more"></span>
+
+<blockquote>
+<p>《Python深度学习》笔记</p>
+</blockquote>
+<h3 id="文本数据准备"><a href="#文本数据准备" class="headerlink" title="文本数据准备"></a>文本数据准备</h3><p>训练语言模型的第一步是加载原始文本。我们的数据集是一个 <code>.jsonl</code> 文件（数据来自 jingyaogong&#x2F;minimind_dataset），每行是一个 JSON 对象，其中 <code>text</code> 字段存放了一条训练文本。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># DataLoader.py</span></span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">load_texts</span>(<span class="params">path: <span class="built_in">str</span>, max_lines: <span class="built_in">int</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">str</span>]:</span><br><span class="line">    texts = []</span><br><span class="line">    <span class="keyword">with</span> <span class="built_in">open</span>(path, <span class="string">&#x27;r&#x27;</span>, encoding=<span class="string">&#x27;utf-8&#x27;</span>) <span class="keyword">as</span> f:</span><br><span class="line">        <span class="keyword">for</span> i, line <span class="keyword">in</span> <span class="built_in">enumerate</span>(f):</span><br><span class="line">            <span class="keyword">if</span> i &gt;= max_lines:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                data = json.loads(line)</span><br><span class="line">                text = data.get(<span class="string">&quot;text&quot;</span>, <span class="string">&quot;&quot;</span>)</span><br><span class="line">                <span class="keyword">if</span> text:</span><br><span class="line">                    texts.append(text)</span><br><span class="line">            <span class="keyword">except</span> json.JSONDecodeError:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">    <span class="keyword">return</span> texts</span><br></pre></td></tr></table></figure>
+
+<h3 id="构建词表"><a href="#构建词表" class="headerlink" title="构建词表"></a>构建词表</h3><p>词表决定了模型能”看懂”哪些文字。传统方案按空格切词后统计频次，但对中文效果很差，而且遇到训练集里没有的词就束手无策（Out-of-Vocabulary，OOV）。</p>
+<p>这里我们使用 <strong>Byte-Level BPE</strong>（字节对编码），它是 GPT-2&#x2F;GPT-4 等模型使用的分词方案，核心思路：</p>
+<ol>
+<li>把每个字符先映射成 UTF-8 字节（256 个基础 token，天然覆盖所有语言）；</li>
+<li>反复合并出现频率最高的相邻字节对，直到词表达到目标大小。</li>
+</ol>
+<p>这样做的好处是：任何文字都能被表示；对中文、英文、数字、标点全部友好，无需额外预处理。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># BPEVocab.py</span></span><br><span class="line"><span class="keyword">from</span> tokenizers <span class="keyword">import</span> Tokenizer</span><br><span class="line"><span class="keyword">from</span> tokenizers.models <span class="keyword">import</span> BPE</span><br><span class="line"><span class="keyword">from</span> tokenizers.trainers <span class="keyword">import</span> BpeTrainer</span><br><span class="line"><span class="keyword">from</span> tokenizers.pre_tokenizers <span class="keyword">import</span> ByteLevel</span><br><span class="line"><span class="keyword">from</span> tokenizers.decoders <span class="keyword">import</span> ByteLevel <span class="keyword">as</span> ByteLevelDecoder</span><br><span class="line"><span class="keyword">from</span> tokenizers.processors <span class="keyword">import</span> TemplateProcessing</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">BPEVocab</span>:</span><br><span class="line">    PAD_TOKEN = <span class="string">&quot;&lt;pad&gt;&quot;</span></span><br><span class="line">    BOS_TOKEN = <span class="string">&quot;&lt;bos&gt;&quot;</span>   <span class="comment"># Beginning of Sequence</span></span><br><span class="line">    EOS_TOKEN = <span class="string">&quot;&lt;eos&gt;&quot;</span>   <span class="comment"># End of Sequence</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, texts: <span class="built_in">list</span>[<span class="built_in">str</span>], vocab_size: <span class="built_in">int</span> = <span class="number">6000</span></span>):</span><br><span class="line">        tokenizer = Tokenizer(BPE(unk_token=<span class="literal">None</span>))</span><br><span class="line">        tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=<span class="literal">False</span>)</span><br><span class="line">        tokenizer.decoder       = ByteLevelDecoder()</span><br><span class="line"></span><br><span class="line">        trainer = BpeTrainer(</span><br><span class="line">            vocab_size=vocab_size,</span><br><span class="line">            special_tokens=[<span class="variable language_">self</span>.PAD_TOKEN, <span class="variable language_">self</span>.BOS_TOKEN, <span class="variable language_">self</span>.EOS_TOKEN],</span><br><span class="line">        )</span><br><span class="line">        tokenizer.train_from_iterator(texts, trainer=trainer)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 训练后配置 post-processor，编码时自动加 BOS/EOS</span></span><br><span class="line">        bos_id = tokenizer.token_to_id(<span class="variable language_">self</span>.BOS_TOKEN)</span><br><span class="line">        eos_id = tokenizer.token_to_id(<span class="variable language_">self</span>.EOS_TOKEN)</span><br><span class="line">        tokenizer.post_processor = TemplateProcessing(</span><br><span class="line">            single=<span class="string">f&quot;<span class="subst">&#123;self.BOS_TOKEN&#125;</span> $A <span class="subst">&#123;self.EOS_TOKEN&#125;</span>&quot;</span>,</span><br><span class="line">            special_tokens=[</span><br><span class="line">                (<span class="variable language_">self</span>.BOS_TOKEN, bos_id),</span><br><span class="line">                (<span class="variable language_">self</span>.EOS_TOKEN, eos_id),</span><br><span class="line">            ],</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">        <span class="variable language_">self</span>.tokenizer = tokenizer</span><br><span class="line">        <span class="variable language_">self</span>.PAD = tokenizer.token_to_id(<span class="variable language_">self</span>.PAD_TOKEN)</span><br><span class="line">        <span class="variable language_">self</span>.BOS = bos_id</span><br><span class="line">        <span class="variable language_">self</span>.EOS = eos_id</span><br></pre></td></tr></table></figure>
+
+<p>三个核心方法：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, text: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;编码文本（含 BOS/EOS）→ token id 列表&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> <span class="variable language_">self</span>.tokenizer.encode(text).ids</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, ids: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;解码 token id 列表 → 文本（自动过滤特殊 token）&quot;&quot;&quot;</span></span><br><span class="line">    skip = &#123;<span class="variable language_">self</span>.PAD, <span class="variable language_">self</span>.BOS, <span class="variable language_">self</span>.EOS&#125;</span><br><span class="line">    filtered = [i <span class="keyword">for</span> i <span class="keyword">in</span> ids <span class="keyword">if</span> i <span class="keyword">not</span> <span class="keyword">in</span> skip]</span><br><span class="line">    <span class="keyword">return</span> <span class="variable language_">self</span>.tokenizer.decode(filtered)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">save</span>(<span class="params">self, path: <span class="built_in">str</span></span>):</span><br><span class="line">    <span class="variable language_">self</span>.tokenizer.save(path)</span><br><span class="line"></span><br><span class="line"><span class="meta">@classmethod</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">load</span>(<span class="params">cls, path: <span class="built_in">str</span></span>) -&gt; <span class="string">&quot;BPEVocab&quot;</span>:</span><br><span class="line">    obj = cls.__new__(cls)</span><br><span class="line">    obj.tokenizer = Tokenizer.from_file(path)</span><br><span class="line">    obj.PAD = obj.tokenizer.token_to_id(cls.PAD_TOKEN)</span><br><span class="line">    obj.BOS = obj.tokenizer.token_to_id(cls.BOS_TOKEN)</span><br><span class="line">    obj.EOS = obj.tokenizer.token_to_id(cls.EOS_TOKEN)</span><br><span class="line">    <span class="keyword">return</span> obj</span><br></pre></td></tr></table></figure>
+
+<h3 id="Decoder-实现"><a href="#Decoder-实现" class="headerlink" title="Decoder 实现"></a>Decoder 实现</h3><h4 id="位置嵌入"><a href="#位置嵌入" class="headerlink" title="位置嵌入"></a>位置嵌入</h4><p>Transformer 本身没有”顺序”的概念，所有位置是并行处理的。为了让模型知道每个 token 在序列中的位置，我们需要为每个位置加一个<strong>位置嵌入</strong>，位置嵌入在训练中得到，然后将它与词嵌入相加：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">最终嵌入 = 词嵌入 + 位置嵌入</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># TransformerDecoder.py</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PositionalEmbedding</span>(layers.Layer):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, sequence_length, input_dim, output_dim, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(**kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.token_embeddings    = layers.Embedding(input_dim=input_dim,        output_dim=output_dim)</span><br><span class="line">        <span class="variable language_">self</span>.position_embeddings = layers.Embedding(input_dim=sequence_length,  output_dim=output_dim)</span><br><span class="line">        <span class="variable language_">self</span>.sequence_length = sequence_length</span><br><span class="line">        <span class="variable language_">self</span>.input_dim  = input_dim</span><br><span class="line">        <span class="variable language_">self</span>.output_dim = output_dim</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, inputs</span>):</span><br><span class="line">        length    = tf.shape(inputs)[-<span class="number">1</span>]</span><br><span class="line">        positions = tf.<span class="built_in">range</span>(start=<span class="number">0</span>, limit=length, delta=<span class="number">1</span>)</span><br><span class="line">        embedded_tokens    = <span class="variable language_">self</span>.token_embeddings(inputs)</span><br><span class="line">        embedded_positions = <span class="variable language_">self</span>.position_embeddings(positions)</span><br><span class="line">        <span class="keyword">return</span> embedded_tokens + embedded_positions</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">compute_mask</span>(<span class="params">self, inputs, mask=<span class="literal">None</span></span>):</span><br><span class="line">        <span class="comment"># 告诉后续层哪些位置是真实 token（非 PAD）</span></span><br><span class="line">        <span class="keyword">return</span> ops.not_equal(inputs, <span class="number">0</span>)</span><br></pre></td></tr></table></figure>
+
+<h4 id="因果注意力掩码"><a href="#因果注意力掩码" class="headerlink" title="因果注意力掩码"></a>因果注意力掩码</h4><p>在语言模型训练时，我们希望位置 $i$ 的 token 只能”看到”它之前的 token（包括自身），不能看到未来的信息——否则模型直接把答案”抄”过来，根本学不到任何东西。</p>
+<p>这通过<strong>因果掩码</strong>（保留下三角）实现：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">get_causal_attention_mask</span>(<span class="params">self, inputs</span>):</span><br><span class="line">    input_shape = tf.shape(inputs)</span><br><span class="line">    batch_size, sequence_length = input_shape[<span class="number">0</span>], input_shape[<span class="number">1</span>]</span><br><span class="line">    i = tf.<span class="built_in">range</span>(sequence_length)[:, tf.newaxis]</span><br><span class="line">    j = tf.<span class="built_in">range</span>(sequence_length)</span><br><span class="line">    mask = tf.cast(i &gt;= j, dtype=<span class="string">&quot;int32&quot;</span>)          <span class="comment"># 下三角矩阵</span></span><br><span class="line">    mask = tf.reshape(mask, (<span class="number">1</span>, sequence_length, sequence_length))</span><br><span class="line">    mult = tf.concat([tf.expand_dims(batch_size, -<span class="number">1</span>),</span><br><span class="line">                      tf.constant([<span class="number">1</span>, <span class="number">1</span>], dtype=tf.int32)], axis=<span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> tf.tile(mask, mult)                      <span class="comment"># 扩展到 batch 维度</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Transformer-Decoder-层"><a href="#Transformer-Decoder-层" class="headerlink" title="Transformer Decoder 层"></a>Transformer Decoder 层</h4><p>标准 Decoder 有两个注意力子层：一个用于自注意力，一个用于交叉注意力（与 Encoder 交互）。在 <strong>Decoder-Only</strong> 架构中，我们没有 Encoder，所以把交叉注意力的 key&#x2F;value 也换成自身，退化为第二次自注意力（实际上两次都作用于同一输入 <code>x</code>）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TransformerDecoder</span>(layers.Layer):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, embed_dim, dense_dim, num_heads, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(**kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.attention_1   = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)</span><br><span class="line">        <span class="variable language_">self</span>.attention_2   = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)</span><br><span class="line">        <span class="variable language_">self</span>.dense_proj    = keras.Sequential([</span><br><span class="line">            layers.Dense(dense_dim, activation=<span class="string">&quot;relu&quot;</span>),</span><br><span class="line">            layers.Dense(embed_dim),</span><br><span class="line">        ])</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_1   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_2   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_3   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.supports_masking = <span class="literal">True</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, inputs, encoder_outputs, mask=<span class="literal">None</span></span>):</span><br><span class="line">        causal_mask = <span class="variable language_">self</span>.get_causal_attention_mask(inputs)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># padding mask 与 causal mask 取交集</span></span><br><span class="line">        <span class="keyword">if</span> mask <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">            padding_mask = tf.cast(mask[:, tf.newaxis, :], dtype=<span class="string">&quot;int32&quot;</span>)</span><br><span class="line">            padding_mask = tf.minimum(padding_mask, causal_mask)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            padding_mask = causal_mask</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 第一个注意力：因果自注意力</span></span><br><span class="line">        attn1 = <span class="variable language_">self</span>.attention_1(query=inputs, value=inputs, key=inputs,</span><br><span class="line">                                 attention_mask=causal_mask)</span><br><span class="line">        attn1 = <span class="variable language_">self</span>.layernorm_1(inputs + attn1)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 第二个注意力：Decoder-Only 中 key/value 也来自自身</span></span><br><span class="line">        attn2 = <span class="variable language_">self</span>.attention_2(query=attn1, value=encoder_outputs, key=encoder_outputs,</span><br><span class="line">                                 attention_mask=padding_mask)</span><br><span class="line">        attn2 = <span class="variable language_">self</span>.layernorm_2(attn1 + attn2)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 前馈网络</span></span><br><span class="line">        proj = <span class="variable language_">self</span>.dense_proj(attn2)</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.layernorm_3(attn2 + proj)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>每个子层之后都有<strong>残差连接</strong>（<code>inputs + attn</code>）和<strong>层归一化</strong>，这是 Transformer 保持训练稳定的关键设计。</p>
+</blockquote>
+<h3 id="训练"><a href="#训练" class="headerlink" title="训练"></a>训练</h3><h4 id="构造训练数据对"><a href="#构造训练数据对" class="headerlink" title="构造训练数据对"></a>构造训练数据对</h4><p>语言模型的训练目标是：<strong>给定前 $n$ 个 token，预测第 $n+1$ 个 token</strong>。</p>
+<p>因此，对于一段编码后的序列 <code>[&lt;bos&gt;, t1, t2, ..., tn, &lt;eos&gt;]</code>，我们把它切成一对：</p>
+<ul>
+<li><strong>input</strong>：<code>[&lt;bos&gt;, t1, t2, ..., tn]</code>（去掉最后一个）</li>
+<li><strong>target</strong>：<code>[t1, t2, ..., tn, &lt;eos&gt;]</code>（去掉第一个）</li>
+</ul>
+<p>这样模型在每个位置 $i$ 的输出，就是对应位置 $i+1$ 的真实 token。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">encode_texts</span>(<span class="params">texts, vocab, seq_len</span>):</span><br><span class="line">    pad_id = vocab.PAD</span><br><span class="line">    inputs_list, targets_list = [], []</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> text <span class="keyword">in</span> texts:</span><br><span class="line">        ids = vocab.encode(text)          <span class="comment"># 含 BOS … EOS</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(ids) &gt; seq_len:</span><br><span class="line">            ids = ids[:seq_len]</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(ids) &lt; <span class="number">2</span>:</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">        inp = ids[:-<span class="number">1</span>]                    <span class="comment"># input:  去掉最后一个 token</span></span><br><span class="line">        tgt = ids[<span class="number">1</span>:]                     <span class="comment"># target: 去掉第一个 token</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># 不足 seq_len-1 的部分用 PAD 补齐</span></span><br><span class="line">        pad_len = (seq_len - <span class="number">1</span>) - <span class="built_in">len</span>(inp)</span><br><span class="line">        inp = inp + [pad_id] * pad_len</span><br><span class="line">        tgt = tgt + [pad_id] * pad_len</span><br><span class="line"></span><br><span class="line">        inputs_list.append(inp)</span><br><span class="line">        targets_list.append(tgt)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> np.array(inputs_list, dtype=np.int32), np.array(targets_list, dtype=np.int32)</span><br></pre></td></tr></table></figure>
+
+<h4 id="构建训练数据集"><a href="#构建训练数据集" class="headerlink" title="构建训练数据集"></a>构建训练数据集</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">make_dataset</span>(<span class="params">inputs, targets, batch_size, shuffle=<span class="literal">True</span></span>):</span><br><span class="line">    <span class="comment"># sparse_categorical_crossentropy 要求 target 有最后一个维度</span></span><br><span class="line">    targets_expanded = targets[..., np.newaxis]</span><br><span class="line">    dataset = tf.data.Dataset.from_tensor_slices((inputs, targets_expanded))</span><br><span class="line">    <span class="keyword">if</span> shuffle:</span><br><span class="line">        dataset = dataset.shuffle(buffer_size=<span class="built_in">min</span>(<span class="built_in">len</span>(inputs), <span class="number">10000</span>))</span><br><span class="line">    <span class="keyword">return</span> dataset.batch(batch_size, drop_remainder=<span class="literal">True</span>).prefetch(tf.data.AUTOTUNE)</span><br></pre></td></tr></table></figure>
+
+<h4 id="搭建模型"><a href="#搭建模型" class="headerlink" title="搭建模型"></a>搭建模型</h4><p>把位置嵌入层和多层 Decoder 堆叠起来，顶层加一个 <code>Dense</code> 层输出每个位置上词表所有词的概率分布：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">build_model</span>(<span class="params">vocab_size, seq_len, embed_dim, dense_dim, num_heads, num_layers</span>):</span><br><span class="line">    inputs = keras.Input(shape=(<span class="literal">None</span>,), dtype=<span class="string">&quot;int64&quot;</span>, name=<span class="string">&quot;token_ids&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 位置嵌入</span></span><br><span class="line">    x = PositionalEmbedding(seq_len, vocab_size, embed_dim)(inputs)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 堆叠 Decoder 层（Decoder-Only：传入 x, x）</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(num_layers):</span><br><span class="line">        x = TransformerDecoder(embed_dim, dense_dim, num_heads)(x, x)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 语言模型头：输出词表上的概率分布</span></span><br><span class="line">    outputs = layers.Dense(vocab_size, activation=<span class="string">&quot;softmax&quot;</span>)(x)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> keras.Model(inputs, outputs)</span><br></pre></td></tr></table></figure>
+
+<h4 id="训练配置与启动"><a href="#训练配置与启动" class="headerlink" title="训练配置与启动"></a>训练配置与启动</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">train</span>():</span><br><span class="line">    os.makedirs(SAVE_DIR, exist_ok=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 1. 加载文本</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;[1/5] 加载数据：<span class="subst">&#123;DATA_PATH&#125;</span>&quot;</span>)</span><br><span class="line">    texts = load_texts(DATA_PATH, max_lines=MAX_LINES)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      共加载 <span class="subst">&#123;<span class="built_in">len</span>(texts)&#125;</span> 条文本&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 训练 BPE 词表</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[2/5] 训练 BPE 分词器 ...&quot;</span>)</span><br><span class="line">    vocab = BPEVocab(texts, vocab_size=VOCAB_SIZE)</span><br><span class="line">    vocab.save(TOKENIZER_PATH)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      词表已保存至 <span class="subst">&#123;TOKENIZER_PATH&#125;</span>&quot;</span>)</span><br><span class="line">    actual_vocab_size = <span class="built_in">len</span>(vocab)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 编码 &amp; 构造训练对</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[3/5] 编码文本，构造自回归训练对 ...&quot;</span>)</span><br><span class="line">    inputs_arr, targets_arr = encode_texts(texts, vocab, SEQUENCE_LENGTH)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      训练样本数：<span class="subst">&#123;<span class="built_in">len</span>(inputs_arr)&#125;</span>，序列长度：<span class="subst">&#123;inputs_arr.shape[<span class="number">1</span>]&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 4. 划分训练 / 验证集（90% / 10%）</span></span><br><span class="line">    split = <span class="built_in">int</span>(<span class="built_in">len</span>(inputs_arr) * <span class="number">0.9</span>)</span><br><span class="line">    train_ds = make_dataset(inputs_arr[:split],  targets_arr[:split],  BATCH_SIZE, shuffle=<span class="literal">True</span>)</span><br><span class="line">    val_ds   = make_dataset(inputs_arr[split:],  targets_arr[split:],  BATCH_SIZE, shuffle=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 5. 构建模型</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[4/5] 构建模型 ...&quot;</span>)</span><br><span class="line">    model = build_model(</span><br><span class="line">        vocab_size  = actual_vocab_size,</span><br><span class="line">        seq_len     = SEQUENCE_LENGTH,</span><br><span class="line">        embed_dim   = EMBED_DIM,</span><br><span class="line">        dense_dim   = DENSE_DIM,</span><br><span class="line">        num_heads   = NUM_HEADS,</span><br><span class="line">        num_layers  = NUM_LAYERS,</span><br><span class="line">    )</span><br><span class="line">    model.summary()</span><br><span class="line"></span><br><span class="line">    optimizer = keras.optimizers.Adam(learning_rate=LEARNING_RATE)</span><br><span class="line">    model.<span class="built_in">compile</span>(</span><br><span class="line">        optimizer = optimizer,</span><br><span class="line">        loss      = <span class="string">&quot;sparse_categorical_crossentropy&quot;</span>,</span><br><span class="line">        metrics   = [<span class="string">&quot;sparse_categorical_accuracy&quot;</span>],</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 回调：ModelCheckpoint + EarlyStopping</span></span><br><span class="line">    ckpt_path = os.path.join(SAVE_DIR, <span class="string">&quot;model_epoch&#123;epoch:02d&#125;_val&#123;val_loss:.4f&#125;.weights.h5&quot;</span>)</span><br><span class="line">    callbacks = [</span><br><span class="line">        <span class="comment">#保存验证集 loss 最低的权重</span></span><br><span class="line">        keras.callbacks.ModelCheckpoint(</span><br><span class="line">            filepath          = ckpt_path,</span><br><span class="line">            save_weights_only = <span class="literal">True</span>,</span><br><span class="line">            monitor           = <span class="string">&quot;val_loss&quot;</span>,</span><br><span class="line">            save_best_only    = <span class="literal">True</span>,</span><br><span class="line">            verbose           = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">        <span class="comment"># 验证集 loss 连续 3 轮不下降则停止</span></span><br><span class="line">        keras.callbacks.EarlyStopping(</span><br><span class="line">            monitor   = <span class="string">&quot;val_loss&quot;</span>,</span><br><span class="line">            patience  = <span class="number">3</span>,</span><br><span class="line">            restore_best_weights = <span class="literal">True</span>,</span><br><span class="line">            verbose   = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">        <span class="comment"># 验证集 loss 连续 2 轮不下降则学习率减半</span></span><br><span class="line">        keras.callbacks.ReduceLROnPlateau(</span><br><span class="line">            monitor  = <span class="string">&quot;val_loss&quot;</span>,</span><br><span class="line">            factor   = <span class="number">0.5</span>,</span><br><span class="line">            patience = <span class="number">2</span>,</span><br><span class="line">            min_lr   = <span class="number">1e-5</span>,</span><br><span class="line">            verbose  = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">    ]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 6. 训练</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[5/5] 开始训练 ...&quot;</span>)</span><br><span class="line">    model.fit(</span><br><span class="line">        train_ds,</span><br><span class="line">        epochs          = EPOCHS,</span><br><span class="line">        validation_data = val_ds,</span><br><span class="line">        callbacks       = callbacks,</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 保存最终权重</span></span><br><span class="line">    final_weights = os.path.join(SAVE_DIR, <span class="string">&quot;model_final.weights.h5&quot;</span>)</span><br><span class="line">    model.save_weights(final_weights)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;\n训练完成！最终权重已保存至 <span class="subst">&#123;final_weights&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>损失函数选用 <code>sparse_categorical_crossentropy</code>：与 <code>categorical_crossentropy</code> 的区别在于，它直接接受整数形式的标签（token id），不需要提前做 one-hot 编码，对词表较大的场景更节省内存。</p>
+<h3 id="推理"><a href="#推理" class="headerlink" title="推理"></a>推理</h3><h4 id="温度采样"><a href="#温度采样" class="headerlink" title="温度采样"></a>温度采样</h4><p>模型输出的是词表上每个 token 的概率分布，最简单的做法是取概率最大的词（贪心解码），但这样生成的文本往往重复、单调。<strong>温度采样</strong>通过调整分布来控制随机性：</p>
+<ul>
+<li>$T &lt; 1$：分布变尖锐，高概率词被进一步放大，输出更保守；</li>
+<li>$T &#x3D; 1$：保持原始分布；</li>
+<li>$T &gt; 1$：分布变平坦，低概率词也有机会被选中，输出更随机、更有创意。</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">sample_next</span>(<span class="params">predictions, temperature=<span class="number">1.0</span></span>):</span><br><span class="line">    predictions = np.asarray(predictions).astype(<span class="string">&quot;float64&quot;</span>)</span><br><span class="line">    predictions = np.log(predictions + <span class="number">1e-8</span>) / temperature  <span class="comment"># 避免 log(0)</span></span><br><span class="line">    exp_preds   = np.exp(predictions - predictions.<span class="built_in">max</span>())   <span class="comment"># 减 max 防数值溢出</span></span><br><span class="line">    predictions = exp_preds / exp_preds.<span class="built_in">sum</span>()</span><br><span class="line">    probas = np.random.multinomial(<span class="number">1</span>, predictions, <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">return</span> np.argmax(probas)</span><br></pre></td></tr></table></figure>
+
+<h4 id="自回归生成"><a href="#自回归生成" class="headerlink" title="自回归生成"></a>自回归生成</h4><p>推理时，我们把输入(prompt)编码为 token id 序列，然后循环地：</p>
+<ol>
+<li>把当前序列送入模型，得到每个位置的概率分布；</li>
+<li>取<strong>最后一个有效位置</strong>的概率分布，采样出下一个 token；</li>
+<li>把新 token 追加到序列末尾；</li>
+<li>重复，直到生成 <code>&lt;eos&gt;</code> 或达到最大长度。</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">generate</span>(<span class="params">model, vocab, prompt, generate_length=<span class="number">100</span>,</span></span><br><span class="line"><span class="params">             model_input_length=<span class="number">127</span>, temperature=<span class="number">1.0</span></span>):</span><br><span class="line"></span><br><span class="line">    prompt_ids    = vocab.encode(prompt)      <span class="comment"># 含 BOS</span></span><br><span class="line">    generated_ids = <span class="built_in">list</span>(prompt_ids)</span><br><span class="line">    prompt_length = <span class="built_in">len</span>(prompt_ids)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(generate_length):</span><br><span class="line">        <span class="comment"># 超出窗口时，只取最近的 model_input_length 个 token</span></span><br><span class="line">        window    = generated_ids[-model_input_length:]</span><br><span class="line">        pad_len   = model_input_length - <span class="built_in">len</span>(window)</span><br><span class="line">        padded    = window + [vocab.PAD] * pad_len</span><br><span class="line">        inp       = np.array([padded], dtype=np.int32)</span><br><span class="line"></span><br><span class="line">        predictions = model(inp, training=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 当前&quot;下一个 token&quot;对应的预测位置</span></span><br><span class="line">        pred_pos         = <span class="built_in">min</span>(prompt_length - <span class="number">1</span> + i, model_input_length - <span class="number">1</span>)</span><br><span class="line">        next_token_probs = predictions[<span class="number">0</span>, pred_pos, :].numpy()</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 屏蔽特殊 token，不让模型生成 PAD 或 BOS</span></span><br><span class="line">        next_token_probs[vocab.PAD] = <span class="number">0.0</span></span><br><span class="line">        next_token_probs[vocab.BOS] = <span class="number">0.0</span></span><br><span class="line"></span><br><span class="line">        next_id = sample_next(next_token_probs, temperature)</span><br><span class="line">        generated_ids.append(<span class="built_in">int</span>(next_id))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">int</span>(next_id) == vocab.EOS:</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> vocab.decode(generated_ids)</span><br></pre></td></tr></table></figure>
+
+<h4 id="文本生成"><a href="#文本生成" class="headerlink" title="文本生成"></a>文本生成</h4><p>加载词表和模型权重，重建模型来生成文本：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">inference</span>():</span><br><span class="line">    args = parse_args()</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 1. 加载词表</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;[1/3] 加载词表：<span class="subst">&#123;args.tokenizer&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> os.path.exists(args.tokenizer):</span><br><span class="line">        <span class="keyword">raise</span> FileNotFoundError(<span class="string">f&quot;词表不存在：<span class="subst">&#123;args.tokenizer&#125;</span>，请先运行 pre_train.py&quot;</span>)</span><br><span class="line">    vocab = BPEVocab.load(args.tokenizer)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      词表大小：<span class="subst">&#123;<span class="built_in">len</span>(vocab)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 重建模型并加载权重</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;[2/3] 加载权重：<span class="subst">&#123;args.weights&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> os.path.exists(args.weights):</span><br><span class="line">        <span class="keyword">raise</span> FileNotFoundError(<span class="string">f&quot;权重不存在：<span class="subst">&#123;args.weights&#125;</span>，请先运行 pre_train.py&quot;</span>)</span><br><span class="line">    model = build_model(<span class="built_in">len</span>(vocab), SEQUENCE_LENGTH, EMBED_DIM,</span><br><span class="line">                        DENSE_DIM, NUM_HEADS, NUM_LAYERS)</span><br><span class="line">    model(np.zeros((<span class="number">1</span>, <span class="number">10</span>), dtype=np.int32), training=<span class="literal">False</span>)  <span class="comment"># 触发初始化</span></span><br><span class="line">    model.load_weights(args.weights)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;      权重加载完成。\n&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 推理</span></span><br><span class="line">    model_input_length = SEQUENCE_LENGTH - <span class="number">1</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">run_prompt</span>(<span class="params">prompt: <span class="built_in">str</span></span>):</span><br><span class="line">        <span class="keyword">for</span> temperature <span class="keyword">in</span> args.temperatures:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f&quot;== Generating with temperature <span class="subst">&#123;temperature&#125;</span>&quot;</span>)</span><br><span class="line">            result = generate(model, vocab, prompt,</span><br><span class="line">                              generate_length    = args.generate_length,</span><br><span class="line">                              model_input_length = model_input_length,</span><br><span class="line">                              temperature        = temperature)</span><br><span class="line">            <span class="built_in">print</span>(result)</span><br><span class="line">        <span class="built_in">print</span>()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> args.prompt:</span><br><span class="line">        run_prompt(args.prompt)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="comment"># 交互模式</span></span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;交互模式（输入 quit 退出）&quot;</span>)</span><br><span class="line">        <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                prompt = <span class="built_in">input</span>(<span class="string">&quot;\n&gt;&gt;&gt; Prompt: &quot;</span>).strip()</span><br><span class="line">            <span class="keyword">except</span> (EOFError, KeyboardInterrupt):</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> prompt:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            <span class="keyword">if</span> prompt.lower() <span class="keyword">in</span> &#123;<span class="string">&quot;quit&quot;</span>, <span class="string">&quot;exit&quot;</span>&#125;:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            run_prompt(prompt)</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Transformer/" rel="tag"># Transformer</a>
+              <a href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/" rel="tag"># 深度学习</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" rel="prev" title="Transformer 的整体架构">
+      <i class="fa fa-chevron-left"></i> Transformer 的整体架构
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E5%87%86%E5%A4%87"><span class="nav-number">2.</span> <span class="nav-text">文本数据准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E8%AF%8D%E8%A1%A8"><span class="nav-number">3.</span> <span class="nav-text">构建词表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Decoder-%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.</span> <span class="nav-text">Decoder 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BD%8D%E7%BD%AE%E5%B5%8C%E5%85%A5"><span class="nav-number">4.1.</span> <span class="nav-text">位置嵌入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9B%A0%E6%9E%9C%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%8E%A9%E7%A0%81"><span class="nav-number">4.2.</span> <span class="nav-text">因果注意力掩码</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Transformer-Decoder-%E5%B1%82"><span class="nav-number">4.3.</span> <span class="nav-text">Transformer Decoder 层</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%AD%E7%BB%83"><span class="nav-number">5.</span> <span class="nav-text">训练</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E9%80%A0%E8%AE%AD%E7%BB%83%E6%95%B0%E6%8D%AE%E5%AF%B9"><span class="nav-number">5.1.</span> <span class="nav-text">构造训练数据对</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E8%AE%AD%E7%BB%83%E6%95%B0%E6%8D%AE%E9%9B%86"><span class="nav-number">5.2.</span> <span class="nav-text">构建训练数据集</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%90%AD%E5%BB%BA%E6%A8%A1%E5%9E%8B"><span class="nav-number">5.3.</span> <span class="nav-text">搭建模型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%AD%E7%BB%83%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%90%AF%E5%8A%A8"><span class="nav-number">5.4.</span> <span class="nav-text">训练配置与启动</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A8%E7%90%86"><span class="nav-number">6.</span> <span class="nav-text">推理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B8%A9%E5%BA%A6%E9%87%87%E6%A0%B7"><span class="nav-number">6.1.</span> <span class="nav-text">温度采样</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%87%AA%E5%9B%9E%E5%BD%92%E7%94%9F%E6%88%90"><span class="nav-number">6.2.</span> <span class="nav-text">自回归生成</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%87%E6%9C%AC%E7%94%9F%E6%88%90"><span class="nav-number">6.3.</span> <span class="nav-text">文本生成</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="laixiaoming"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">laixiaoming</p>
+  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2026</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
+<script src="/js/algolia-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+  
+    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
+  
+</body>
+</html>
