@@ -1,0 +1,984 @@
+{
+  "version": 1,
+  "images": {
+    "http://storage.laixiaoming.space/blog/1791730583155.png": {
+      "updatedAt": "2026-11-22T06:40:36.962Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1148,
+        "height": 1266
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          245.6281,
+          28.4468,
+          98.5529,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/1794715607262.png": {
+      "updatedAt": "2026-11-22T06:40:45.656Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 5613,
+        "height": 8332
+      },
+      "error": "Input image exceeds pixel limit",
+      "retryAfter": 1795416045656
+    },
+    "http://storage.laixiaoming.space/blog/1p.jpg": {
+      "updatedAt": "2026-11-22T06:40:53.974Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 321,
+        "height": 181
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          96.0146,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/1pc-error.jpg": {
+      "updatedAt": "2026-11-22T06:40:54.698Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 321,
+        "height": 181
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          95.9658,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/2p.jpg": {
+      "updatedAt": "2026-11-22T06:40:54.037Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 321,
+        "height": 181
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          96.0572,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/2pc-error.jpg": {
+      "updatedAt": "2026-11-22T06:40:54.474Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 321,
+        "height": 181
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          96.0158,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/active_and_passive_arch.png": {
+      "updatedAt": "2026-11-22T06:40:47.671Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 477,
+        "height": 243
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          93.1658,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/add-order-rocketmq.jpg": {
+      "updatedAt": "2026-11-22T06:40:54.326Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 578,
+        "height": 581
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          97.0141,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/add-order.jpg": {
+      "updatedAt": "2026-11-22T06:40:53.588Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 577,
+        "height": 431
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          97.5438,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/AnnotationAwareAspectJAutoProxyCreator.jpg": {
+      "updatedAt": "2026-11-22T06:40:51.512Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 2624,
+        "height": 1080
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          170.9369,
+          0.654,
+          18.8473,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/AutoConfigurationImportSelector.jpg": {
+      "updatedAt": "2026-11-22T06:40:52.530Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1520,
+        "height": 296
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          67.8094,
+          2.22,
+          19.7919,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg": {
+      "updatedAt": "2026-11-22T06:40:51.882Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1380,
+        "height": 481
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          60.4118,
+          1.6531,
+          19.6372,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/circular_dependency.jpg": {
+      "updatedAt": "2026-11-22T06:40:51.211Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 691,
+        "height": 1001
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          97.0503,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/cpu_cache.jpg": {
+      "updatedAt": "2026-11-22T06:40:52.875Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 581,
+        "height": 551
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          96.834,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/dag.png": {
+      "updatedAt": "2026-11-22T06:40:48.870Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 289,
+        "height": 327
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          95.6786,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/datapipeline_complex.png": {
+      "updatedAt": "2026-11-22T06:40:48.915Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 709,
+        "height": 244
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          90.9665,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/datapipeline_simple.png": {
+      "updatedAt": "2026-11-22T06:40:47.824Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 704,
+        "height": 295
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          95.002,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/full-stack.png": {
+      "updatedAt": "2026-11-22T06:40:49.580Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 320,
+        "height": 314
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          94.3457,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20220511233922833.png": {
+      "updatedAt": "2026-11-22T06:40:51.866Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1490,
+        "height": 460
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          82.7058,
+          1.1825,
+          20.2998,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20220531064102379.png": {
+      "updatedAt": "2026-11-22T06:40:50.590Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 525,
+        "height": 378
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          204.3907,
+          4.891,
+          27.0635,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20240413174621857.png": {
+      "updatedAt": "2026-11-22T06:40:50.217Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1522,
+        "height": 546
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          188.3612,
+          1.1604,
+          20.5946,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20240420181952931.png": {
+      "updatedAt": "2026-11-22T06:40:49.809Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1860,
+        "height": 974
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          217.4087,
+          2.0123,
+          22.8105,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20240630164051353.png": {
+      "updatedAt": "2026-11-22T06:40:47.010Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1561,
+        "height": 597
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          163.5,
+          0.8491,
+          19.844,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20240630212039912.png": {
+      "updatedAt": "2026-11-22T06:40:46.976Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 2067,
+        "height": 1071
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          178.4966,
+          0.6448,
+          18.9625,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20240713190631268.png": {
+      "updatedAt": "2026-11-22T06:40:46.879Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 4176,
+        "height": 904
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          148.5138,
+          0.6547,
+          18.2163,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20240928154310365.png": {
+      "updatedAt": "2026-11-22T06:40:45.999Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1513,
+        "height": 881
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          195.7348,
+          0.752,
+          18.4337,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241103205114718.png": {
+      "updatedAt": "2026-11-22T06:40:45.183Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 2007,
+        "height": 691
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          177.1226,
+          0.8909,
+          19.8841,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241103213436547.png": {
+      "updatedAt": "2026-11-22T06:40:46.349Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1965,
+        "height": 546
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          172.0731,
+          1.168,
+          20.7365,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241116160613820.png": {
+      "updatedAt": "2026-11-22T06:40:43.985Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1742,
+        "height": 722
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          208.8596,
+          4.1636,
+          25.2365,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241116173530035.png": {
+      "updatedAt": "2026-11-22T06:40:44.257Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1489,
+        "height": 412
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          215.4434,
+          8.8124,
+          24.568,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241116194509525.png": {
+      "updatedAt": "2026-11-22T06:40:45.009Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1605,
+        "height": 348
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          215.4865,
+          11.8263,
+          24.7792,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221162635379.png": {
+      "updatedAt": "2026-11-22T06:40:39.231Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1093,
+        "height": 750
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          228.1793,
+          29.4722,
+          13.28,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221163133550.png": {
+      "updatedAt": "2026-11-22T06:40:40.560Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 2074,
+        "height": 1058
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          227.3142,
+          25.6944,
+          14.5227,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221174003993.png": {
+      "updatedAt": "2026-11-22T06:40:40.922Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1372,
+        "height": 796
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          357.9592,
+          1.0616,
+          18.3451,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221175332687.png": {
+      "updatedAt": "2026-11-22T06:40:41.589Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1125,
+        "height": 922
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          359.3466,
+          4.273,
+          18.7386,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221180132904.png": {
+      "updatedAt": "2026-11-22T06:40:41.940Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1729,
+        "height": 850
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          5.2272,
+          1.6991,
+          18.5611,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221181724042.png": {
+      "updatedAt": "2026-11-22T06:40:42.491Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1214,
+        "height": 343
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          8.3296,
+          4.4664,
+          18.6389,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20241221182622468.png": {
+      "updatedAt": "2026-11-22T06:40:42.890Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1259,
+        "height": 629
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          56.0032,
+          3.818,
+          19.0478,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20250629222842692.png": {
+      "updatedAt": "2026-11-22T06:40:38.244Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 2036,
+        "height": 692
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          166.7614,
+          1.2632,
+          26.3824,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20250629223030460.png": {
+      "updatedAt": "2026-11-22T06:40:38.274Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 1671,
+        "height": 801
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          173.6446,
+          1.372,
+          26.3867,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/image-20260829220906304.png": {
+      "updatedAt": "2026-11-22T06:40:36.968Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 2355,
+        "height": 1365
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          163.0189,
+          2.6773,
+          93.2793,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/kafka%E6%97%B6%E9%97%B4%E8%BD%AE%E7%BB%93%E6%9E%84.png": {
+      "updatedAt": "2026-11-22T06:40:43.277Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 643,
+        "height": 339
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          96.8379,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/log_compaction_0.png": {
+      "updatedAt": "2026-11-22T06:40:49.297Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 592,
+        "height": 399
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          48.1163,
+          0.4747
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/log_subscription.png": {
+      "updatedAt": "2026-11-22T06:40:47.892Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 320,
+        "height": 305
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          94.862,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/log.png": {
+      "updatedAt": "2026-11-22T06:40:47.530Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 396,
+        "height": 187
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          95.9367,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/partitioned_log.png": {
+      "updatedAt": "2026-11-22T06:40:48.467Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 352,
+        "height": 206
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          93.2608,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/pipeline_ownership.png": {
+      "updatedAt": "2026-11-22T06:40:48.535Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 464,
+        "height": 306
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          94.0402,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/ringbuffer_read.jpg": {
+      "updatedAt": "2026-11-22T06:40:53.566Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 601,
+        "height": 551
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          98.5568,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/ringbuffer_write.jpg": {
+      "updatedAt": "2026-11-22T06:40:53.249Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 441,
+        "height": 442
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          97.9631,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/ringbuffer.jpg": {
+      "updatedAt": "2026-11-22T06:40:52.717Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 432,
+        "height": 302
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          97.8156,
+          1
+        ]
+      }
+    },
+    "http://storage.laixiaoming.space/blog/system.png": {
+      "updatedAt": "2026-11-22T06:40:49.412Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 192,
+        "height": 331
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          46.8521,
+          0.4443
+        ]
+      }
+    },
+    "https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=http%3A%2F%2Flaixiaoming.space%2F2025%2F01%2F18%2F%25E9%25AB%2598%25E6%2580%25A7%25E8%2583%25BD%25E6%2595%25B0%25E6%258D%25AE%25E5%25BA%2593%25E8%25BF%259E%25E6%258E%25A5%25E6%25B1%25A0HikariCP%25EF%25BC%259A%25E6%25BA%2590%25E7%25A0%2581%25E5%25AD%25A6%25E4%25B9%25A0%2F": {
+      "updatedAt": "2026-11-22T06:40:40.004Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 256,
+        "height": 256
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          0,
+          0,
+          50.9704,
+          1
+        ]
+      }
+    }
+  }
+}

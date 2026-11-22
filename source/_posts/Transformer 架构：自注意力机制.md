@@ -32,7 +32,19 @@ tags:
 
 ### 工作原理
 
-在计算自注意力时，Query、Key、Value 都来自**同一个序列**。其核心公式为：
+在计算自注意力时，Query、Key、Value 都来自**同一个序列**。其核心流程如下：
+
+```mermaid
+graph LR
+    Input[输入序列 X] --> Q[Query]
+    Input --> K[Key]
+    Input --> V[Value]
+    Q & K --> MatMul[计算相关度得分]
+    MatMul --> Softmax[Softmax 归一化]
+    Softmax & V --> Output[加权注意力输出]
+```
+
+其核心公式为：
 
 $$\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V$$
 

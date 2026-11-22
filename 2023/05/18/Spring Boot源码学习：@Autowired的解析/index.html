@@ -1,481 +1,579 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
-<meta name="theme-color" content="#222">
-<meta name="generator" content="Hexo 8.1.1">
-  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
-  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
-
-<link rel="stylesheet" href="/css/main.css">
-
-
-<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
-
-<script id="hexo-configurations">
-    var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"0fe5a76c65503aa1e49ff34206b789ec","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+<!DOCTYPE html><html lang="zh-CN"><head>
+  
+  <meta charset="utf-8">
+  <meta name="hexo-theme" content="https://github.com/xaoxuu/hexo-theme-stellar/tree/2.0.0" theme-name="Stellar" theme-version="2.0.0">
+  
+  
+  <meta name="generator" content="Hexo 8.1.1">
+  <meta http-equiv="x-dns-prefetch-control" content="on">
+  
+  <meta name="renderer" content="webkit">
+  <meta name="force-rendering" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <meta name="HandheldFriendly" content="True">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000">
+  <meta name="theme-color" content="#f9fafb">
+  <title data-stellar-page-meta="">Spring Boot源码学习：@Autowired的解析 - 赖小明</title>
+  <script data-stellar-script="core">
+    (function () {
+      var key = 'stellar:v2:leftbar-state';
+      var fallback = "expanded";
+      try {
+        var value = localStorage.getItem(key);
+        document.documentElement.dataset.leftbarState = value === 'collapsed' || value === 'expanded' ? value : fallback;
+      } catch (error) {
+        document.documentElement.dataset.leftbarState = fallback;
+      }
+    })();
   </script>
 
-  <meta name="description" content="前言@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Spring Boot源码学习：@Autowired的解析">
-<meta property="og:url" content="http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/index.html">
-<meta property="og:site_name" content="赖小明">
-<meta property="og:description" content="前言@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？">
-<meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg">
-<meta property="article:published_time" content="2023-05-18T00:49:43.000Z">
-<meta property="article:modified_time" content="2024-02-16T12:20:40.000Z">
-<meta property="article:author" content="laixiaoming">
-<meta property="article:tag" content="Spring Boot">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg">
+  <meta name="description" content="前言 @Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？" data-stellar-page-meta="">
+<meta property="og:type" content="article" data-stellar-page-meta="">
+<meta property="og:title" content="Spring Boot源码学习：@Autowired的解析" data-stellar-page-meta="">
+<meta property="og:url" content="http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/" data-stellar-page-meta="">
+<meta property="og:site_name" content="赖小明" data-stellar-page-meta="">
+<meta property="og:description" content="前言 @Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？" data-stellar-page-meta="">
+<meta property="og:locale" content="zh_CN" data-stellar-page-meta="">
+<meta property="og:image" content="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg" data-stellar-page-meta="">
+<meta property="article:author" content="laixiaoming" data-stellar-page-meta="">
+<meta property="article:published_time" content="2023-05-18T00:49:43.000Z" data-stellar-page-meta="">
+<meta property="article:modified_time" content="2024-02-16T12:20:40.000Z" data-stellar-page-meta="">
+<meta property="article:tag" content="Spring Boot" data-stellar-page-meta="">
+<meta name="twitter:card" content="summary" data-stellar-page-meta="">
+<meta name="twitter:image" content="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg" data-stellar-page-meta=""><meta name="twitter:title" content="Spring Boot源码学习：@Autowired的解析" data-stellar-page-meta="">
+  
+  
+  <meta name="keywords" content="Spring Boot" data-stellar-page-meta="">
 
-<link rel="canonical" href="http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/">
-
-
-<script id="page-configurations">
-  // https://hexo.io/docs/variables.html
-  CONFIG.page = {
-    sidebar: "",
-    isHome : false,
-    isPost : true,
-    lang   : 'zh-CN'
-  };
-</script>
-
-  <title>Spring Boot源码学习：@Autowired的解析 | 赖小明</title>
+  <!-- feed -->
   
 
+  <link rel="preload" href="/css/main.css?v=2.0.0" as="style">
+  <link rel="stylesheet" href="/css/main.css?v=2.0.0">
+  <style>:root{--text-loading:"正在加载";--text-loading-error:"加载失败，请稍后重试。"}</style>
 
 
+  
 
+  
 
+  <script type="application/ld+json" data-stellar-page-meta="">{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"laixiaoming","sameAs":[]},"dateCreated":"2023-05-18T08:49:43+08:00","dateModified":"2024-02-16T20:20:40+08:00","datePublished":"2023-05-18T08:49:43+08:00","description":"前言\n@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？","headline":"Spring Boot源码学习：@Autowired的解析","mainEntityOfPage":{"@type":"WebPage","@id":"http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/"},"publisher":{"@type":"Organization","name":"laixiaoming","sameAs":[]},"url":"http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/","image":["http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg"],"keywords":"Spring Boot","thumbnailUrl":"http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg"}</script>
+  
 
-  <noscript>
-  <style>
-  .use-motion .brand,
-  .use-motion .menu-item,
-  .sidebar-inner,
-  .use-motion .post-block,
-  .use-motion .pagination,
-  .use-motion .comments,
-  .use-motion .post-header,
-  .use-motion .post-body,
-  .use-motion .collection-header { opacity: initial; }
-
-  .use-motion .site-title,
-  .use-motion .site-subtitle {
-    opacity: initial;
-    top: initial;
-  }
-
-  .use-motion .logo-line-before i { left: initial; }
-  .use-motion .logo-line-after i { right: initial; }
-  </style>
-</noscript>
-
+  <link rel="stylesheet" href="/css/stellar-icons.css?v=7c185ad1a9a79674">
+  <link rel="preload" as="script" href="/js/stellar-icons.js?v=39c6ac17e854ffe2">
+  
+  
 </head>
+<body data-page-type="content" data-page-layout="post" data-article-style="tech"><div data-stellar-runtime-region="" id="site-cover" class="site-cover"></div><div class="site-shell" id="start" data-regions="leftbar rightbar"><div class="site-workspace">
+<aside data-stellar-runtime-region="" id="leftbar-region" class="site-region site-region--leftbar" data-region="leftbar" aria-label="Leftbar"><div class="site-region__surface ui-surface"><div class="site-region__decoration" aria-hidden="true"></div><div class="site-region__viewport"><header class="site-region__header site-region__zone site-region__zone--top">
+    <div class="widget-instance widget-instance--brand" data-widget-id="leftbar:fixed:brand" data-presentation="leftbar" data-leftbar-rail="">
+<header class="brand-header brand-header--regular brand-header--site"><div class="brand-wrap"><a class="brand-image brand-image--avatar" href="/"><img no-lazy="" src="https://github.com/crazylai1996.png" alt="" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;"></a><a class="brand-title" href="/"><div class="brand-name">赖小明</div><div class="brand-tagline cap">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div></a></div><div class="brand-search">
 
-<body itemscope itemtype="http://schema.org/WebPage">
-  <div class="container use-motion">
-    <div class="headband"></div>
+<div class="ui-collection" data-layout="list" data-variant="nav" data-density="auto">
+  
+    
+<button class="ui-collection__item ui-interactive card-hover card-hover--spotlight search-trigger has-hover-surface" type="button" title="搜索" aria-label="搜索" data-shell-action="open-search" data-search-instance="leftbar-brand-search" data-search-domain="blog" data-search-domain-label="博客" data-search-domain-blog="true">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Adapted from Google Material Icons by Material Design Authors - https://github.com/material-icons/material-icons/blob/master/LICENSE --><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3M3 13h3M3 18h8M16.83 13.83l3.76 3.76"></path><circle cx="14" cy="11" r="4"></circle></g></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">搜索</span>
+      
+      
+    </span>
+  
+  <kbd class="search-shortcut" aria-hidden="true">⌘K</kbd>
 
-    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-container">
-  <div class="site-nav-toggle">
-    <div class="toggle" aria-label="切换导航栏">
-      <span class="toggle-line toggle-line-first"></span>
-      <span class="toggle-line toggle-line-middle"></span>
-      <span class="toggle-line toggle-line-last"></span>
-    </div>
-  </div>
+  
+</button>
 
-  <div class="site-meta">
-
-    <a href="/" class="brand" rel="start">
-      <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">赖小明</h1>
-      <span class="logo-line-after"><i></i></span>
-    </a>
-  </div>
-
-  <div class="site-nav-right">
-    <div class="toggle popup-trigger">
-        <i class="fa fa-search fa-fw fa-lg"></i>
-    </div>
-  </div>
+  
 </div>
 
 
+</div></header>
+</div>
+  </header>
+  <div class="site-region__body site-region__zone site-region__zone--body">
+    <div class="widget-instance widget-instance--menu" data-widget-id="leftbar:fixed:menu" data-presentation="leftbar" data-leftbar-rail="">
 
 
-<nav class="site-nav">
-  <ul id="menu" class="main-menu menu">
-        <li class="menu-item menu-item-home">
+<nav class="menu dis-select">
+<div class="ui-collection" data-layout="list" data-variant="nav" data-density="auto">
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight is-active" href="/" title="博客" aria-current="page">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M5.879 2.879C5 3.757 5 5.172 5 8v8c0 2.828 0 4.243.879 5.121C6.757 22 8.172 22 11 22h2c2.828 0 4.243 0 5.121-.879C19 20.243 19 18.828 19 16V8c0-2.828 0-4.243-.879-5.121C17.243 2 15.828 2 13 2h-2c-2.828 0-4.243 0-5.121.879M8.25 17a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75M9 12.25a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zM8.25 9A.75.75 0 0 1 9 8.25h6a.75.75 0 0 1 0 1.5H9A.75.75 0 0 1 8.25 9" clip-rule="evenodd"></path><path fill="currentColor" d="M5.235 4.058C5 4.941 5 6.177 5 8v8c0 1.823 0 3.058.235 3.942L5 19.924c-.975-.096-1.631-.313-2.121-.803C2 18.243 2 16.828 2 14v-4c0-2.829 0-4.243.879-5.121c.49-.49 1.146-.707 2.121-.803zm13.53 15.884C19 19.058 19 17.822 19 16V8c0-1.823 0-3.059-.235-3.942l.235.018c.975.096 1.631.313 2.121.803C22 5.757 22 7.17 22 9.999v4c0 2.83 0 4.243-.879 5.122c-.49.49-1.146.707-2.121.803z" opacity=".5"></path></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">博客</span>
+      
+      
+    </span>
+  
+  
+  <span class="ui-collection__indicator"></span>
+</a>
 
-    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/tags/" title="标签">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" fill-rule="evenodd" d="M10.7226 3.20068C10.8335 2.80158 10.5998 2.38817 10.2007 2.27731C9.80163 2.16645 9.38822 2.40011 9.27736 2.79921L7.76327 8.24995H4C3.58579 8.24995 3.25 8.58573 3.25 8.99995C3.25 9.41416 3.58579 9.74995 4 9.74995H7.3466L5.81882 15.2499H2C1.58579 15.2499 1.25 15.5857 1.25 15.9999C1.25 16.4142 1.58579 16.7499 2 16.7499H5.40216L4.27736 20.7992C4.1665 21.1983 4.40016 21.6117 4.79927 21.7226C5.19837 21.8334 5.61178 21.5998 5.72264 21.2007L6.95895 16.7499H14.4022L13.2774 20.7992C13.1665 21.1983 13.4002 21.6117 13.7993 21.7226C14.1984 21.8334 14.6118 21.5998 14.7226 21.2007L15.959 16.7499H20C20.4142 16.7499 20.75 16.4142 20.75 15.9999C20.75 15.5857 20.4142 15.2499 20 15.2499H16.3756L17.9034 9.74995H22C22.4142 9.74995 22.75 9.41416 22.75 8.99995C22.75 8.58573 22.4142 8.24995 22 8.24995H18.3201L19.7226 3.20068C19.8335 2.80158 19.5998 2.38817 19.2007 2.27731C18.8016 2.16645 18.3882 2.40011 18.2774 2.79921L16.7633 8.24995H9.32006L10.7226 3.20068ZM14.8188 15.2499L16.3466 9.74995H8.9034L7.37562 15.2499H14.8188Z" clip-rule="evenodd"></path></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">标签</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
-  </li>
-        <li class="menu-item menu-item-tags">
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/archives/" title="归档">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><g fill="currentColor"><path d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"></path><path d="M21.9995 14.0001V12.0001C21.9995 11.161 21.9963 9.66527 21.9834 9H2.00917C1.99626 9.66527 1.99953 11.161 1.99953 12.0001V14.0001C1.99953 17.7713 1.99953 19.6569 3.1711 20.8285C4.34267 22.0001 6.22829 22.0001 9.99953 22.0001H13.9995C17.7708 22.0001 19.6564 22.0001 20.828 20.8285C21.9995 19.6569 21.9995 17.7713 21.9995 14.0001Z" opacity=".5"></path><path d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z"></path><path d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z"></path><path d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z"></path><path d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z"></path><path d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z"></path><path d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z"></path></g></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">归档</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+  
+</div>
 
-  </li>
-        <li class="menu-item menu-item-archives">
-
-    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
-
-  </li>
-      <li class="menu-item menu-item-search">
-        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
-        </a>
-      </li>
-  </ul>
 </nav>
 
-
-
-  <div class="search-pop-overlay">
-    <div class="popup search-popup">
-        <div class="search-header">
-  <span class="search-icon">
-    <i class="fa fa-search"></i>
-  </span>
-  <div class="search-input-container"></div>
-  <span class="popup-btn-close">
-    <i class="fa fa-times-circle"></i>
-  </span>
 </div>
-<div class="algolia-results">
-  <div id="algolia-stats"></div>
-  <div id="algolia-hits"></div>
-  <div id="algolia-pagination" class="algolia-pagination"></div>
-</div>
+    <div class="widgets widget-stack widget-stack--leftbar widget-stack--body"><div class="widget-instance widget-instance--recent" data-widget-id="leftbar:0:recent" data-presentation="leftbar">
 
+<widget class="widget-wrapper slide-up recent-widget">
+  
+    <div class="widget-header dis-select">
+      <span class="name">最近更新</span>
       
     </div>
-  </div>
-
-</div>
-    </header>
-
+  
+  <div class="widget-body"><div class="ui-collection" data-layout="list" data-variant="nav" data-density="compact">
+  
     
-  <div class="back-to-top">
-    <i class="fa fa-arrow-up"></i>
-    <span>0%</span>
-  </div>
-
-
-    <main class="main">
-      <div class="main-inner">
-        <div class="content-wrap">
-          
-
-          <div class="content post posts-expand">
-            
-
-    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/07/Transformer%20%E6%9E%B6%E6%9E%84%EF%BC%9A%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6/" title="Transformer 架构：自注意力机制" data-stellar-navigation="">
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          Spring Boot源码学习：@Autowired的解析
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-05-18 08:49:43" itemprop="dateCreated datePublished" datetime="2023-05-18T08:49:43+08:00">2023-05-18</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-02-16 20:20:40" itemprop="dateModified" datetime="2024-02-16T20:20:40+08:00">2024-02-16</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
       
-        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？</p>
-<span id="more"></span>
+      <span class="ui-collection__title">Transformer 架构：自注意力机制</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/" title="Transformer：实现一个简单的大语言模型" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Transformer：实现一个简单的大语言模型</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" title="Transformer 的整体架构" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Transformer 的整体架构</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/10/28/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E7%9A%84%E8%A1%A8%E7%A4%BA%E6%96%B9%E6%B3%95/" title="深度学习：文本数据的表示方法" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">深</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">深度学习：文本数据的表示方法</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/10/11/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E5%85%A5%E9%97%A8%EF%BC%9A%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E4%B8%AD%E7%9A%84%E6%95%B0%E5%AD%A6%E5%9F%BA%E7%A1%80/" title="深度学习入门：神经网络中的数学基础" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">深</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">深度学习入门：神经网络中的数学基础</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/08/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%80%97%E5%B0%BD/" title="问题记录：数据库连接池耗尽" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">问</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">问题记录：数据库连接池耗尽</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/06/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AController%20%E6%B3%A8%E5%85%A5%E7%A9%BA%E6%8C%87%E9%92%88%E5%BC%82%E5%B8%B8/" title="问题记录：Controller 注入空指针异常" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">问</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">问题记录：Controller 注入空指针异常</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/04/04/Nacos%20%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0/" title="Nacos 客户端高可用机制学习" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">N</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Nacos 客户端高可用机制学习</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/01/18/%E9%AB%98%E6%80%A7%E8%83%BD%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0HikariCP%EF%BC%9A%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0/" title="高性能数据库连接池HikariCP：源码学习" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">高</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">高性能数据库连接池HikariCP：源码学习</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/01/12/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BC%98%E9%9B%85%E5%85%B3%E9%97%AD/" title="Dubbo源码学习：优雅关闭" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">D</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Dubbo源码学习：优雅关闭</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+</div></div>
+  
+</widget>
+
+
+</div></div>
+  </div>
+  <footer class="site-region__footer">
+    
+    <div class="site-region__system ui-collection" data-layout="inline" data-variant="nav" data-density="compact">
+      <div class="site-region__settings"><div class="widget-instance widget-instance--settings" data-widget-id="leftbar:fixed:settings" data-presentation="leftbar" data-leftbar-rail="">
+<a class="settings-widget ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/settings/" data-profile-provider="giscus" data-profile-identity-enabled="false" data-profile-fallback-avatar="https://gcore.jsdelivr.net/gh/cdn-x/placeholder@1.0.12/avatar/round/3442075.svg" data-settings-placement="leftbar" data-settings-label="设置" aria-label="设置" title="设置">
+  <span class="settings-widget__avatar" aria-hidden="true">
+    <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="currentColor"><path fill-rule="evenodd" d="M12.4277 2C11.3139 2 10.2995 2.6007 8.27081 3.80211L7.58466 4.20846C5.55594 5.40987 4.54158 6.01057 3.98466 7C3.42773 7.98943 3.42773 9.19084 3.42773 11.5937V12.4063C3.42773 14.8092 3.42773 16.0106 3.98466 17C4.54158 17.9894 5.55594 18.5901 7.58466 19.7915L8.27081 20.1979C10.2995 21.3993 11.3139 22 12.4277 22C13.5416 22 14.5559 21.3993 16.5847 20.1979L17.2708 19.7915C19.2995 18.5901 20.3139 17.9894 20.8708 17C21.4277 16.0106 21.4277 14.8092 21.4277 12.4063V11.5937C21.4277 9.19084 21.4277 7.98943 20.8708 7C20.3139 6.01057 19.2995 5.40987 17.2708 4.20846L16.5847 3.80211C14.5559 2.6007 13.5416 2 12.4277 2Z" clip-rule="evenodd" opacity=".5"></path><path d="M12.4277 8.25C10.3567 8.25 8.67773 9.92893 8.67773 12C8.67773 14.0711 10.3567 15.75 12.4277 15.75C14.4988 15.75 16.1777 14.0711 16.1777 12C16.1777 9.92893 14.4988 8.25 12.4277 8.25Z"></path></g></svg></span>
+  </span>
+  <span class="settings-widget__name ui-collection__title">设置</span>
+</a>
+</div></div>
+      <button type="button" class="leftbar-state-toggle ui-collection__item ui-interactive card-hover card-hover--spotlight is-icon-only" aria-label="Collapse leftbar" aria-expanded="true" data-shell-action="toggle-leftbar"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M3.172 4.172C2 5.343 2 7.229 2 11v2c0 3.771 0 5.657 1.172 6.828S6.229 21 10 21h5V3h-5C6.229 3 4.343 3 3.172 4.172" clip-rule="evenodd" opacity=".5"></path><path fill="currentColor" d="M5.5 9.25a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zm1 4a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5zM22 13v-2c0-3.771 0-5.657-1.172-6.828c-.974-.975-3.192-1.139-5.828-1.166v17.988c2.636-.027 4.854-.191 5.828-1.166C22 18.657 22 16.771 22 13"></path></svg></span></button>
+    </div>
+  </footer></div></div></aside>
+<main data-stellar-runtime-region="" class="site-main" id="main">
+
+
+<div class="article-banner-wrap slide-up"><div class="article banner top">
+  <div class="content">
+    
+    <div class="top bread-nav footnote"><div class="top-row"><div class="left" id="breadcrumb"><a class="cap breadcrumb" href="/">主页</a>
+<span class="sep"></span><a class="cap breadcrumb" href="/">文章</a>
+</div><div class="right"><span class="cap reading">2041 字 · 预计阅读 7 分钟</span></div></div><div class="meta-row">
+<div class="flex-row" id="post-meta"><span class="text created">发布于：<time datetime="2023-05-18T00:49:43.000Z">2023-05-18</time></span><span class="sep updated"></span><span class="text updated">更新于：<time datetime="2024-02-16T12:20:40.000Z">2024-02-16</time></span></div>
+</div></div>
+    
+    <div class="bottom only-title">
+      
+      <div class="text-area">
+        <h1 class="text title"><span>Spring Boot源码学习：@Autowired的解析</span></h1>
+        
+      </div>
+    </div>
+    
+  </div>
+  </div></div>
+<article class="md-text content slide-up"><h2 id="前言">前言</h2>
+<p>@Autowired是开发中常用的注解，我们可以使用@Autowired将其标记在构造函数、成员变量、setter方法上，并由Spring自动完成依赖注入的工作。但是，这个过程是怎么完成的呢？</p>
+<span id="more"></span>
 <p>理解这个之前，我们需要先了解一下<strong>BeanPostProcessor</strong>概念。</p>
 <blockquote>
 <p>以下内容基于Spring Boot 2.1.9.RELEASE版本</p>
 </blockquote>
-<h3 id="BeanPostProcessor是什么"><a href="#BeanPostProcessor是什么" class="headerlink" title="BeanPostProcessor是什么"></a>BeanPostProcessor是什么</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Factory hook that allows for custom modification of new bean instances,</span></span><br><span class="line"><span class="comment"> * e.g. checking for marker interfaces or wrapping them with proxies.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;ApplicationContexts can autodetect BeanPostProcessor beans in their</span></span><br><span class="line"><span class="comment"> * bean definitions and apply them to any beans subsequently created.</span></span><br><span class="line"><span class="comment"> * Plain bean factories allow for programmatic registration of post-processors,</span></span><br><span class="line"><span class="comment"> * applying to all beans created through this factory.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;Typically, post-processors that populate beans via marker interfaces</span></span><br><span class="line"><span class="comment"> * or the like will implement &#123;<span class="doctag">@link</span> #postProcessBeforeInitialization&#125;,</span></span><br><span class="line"><span class="comment"> * while post-processors that wrap beans with proxies will normally</span></span><br><span class="line"><span class="comment"> * implement &#123;<span class="doctag">@link</span> #postProcessAfterInitialization&#125;.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">BeanPostProcessor</span> &#123;</span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">default</span> Object <span class="title function_">postProcessBeforeInitialization</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">		<span class="keyword">return</span> bean;</span><br><span class="line">	&#125;</span><br><span class="line">    <span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">default</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">		<span class="keyword">return</span> bean;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<h3 id="BeanPostProcessor是什么">BeanPostProcessor是什么</h3>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Factory hook that allows for custom modification of new bean instances,</span></span><br><span class="line"><span class="comment"> * e.g. checking for marker interfaces or wrapping them with proxies.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;ApplicationContexts can autodetect BeanPostProcessor beans in their</span></span><br><span class="line"><span class="comment"> * bean definitions and apply them to any beans subsequently created.</span></span><br><span class="line"><span class="comment"> * Plain bean factories allow for programmatic registration of post-processors,</span></span><br><span class="line"><span class="comment"> * applying to all beans created through this factory.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;Typically, post-processors that populate beans via marker interfaces</span></span><br><span class="line"><span class="comment"> * or the like will implement {<span class="doctag">@link</span> #postProcessBeforeInitialization},</span></span><br><span class="line"><span class="comment"> * while post-processors that wrap beans with proxies will normally</span></span><br><span class="line"><span class="comment"> * implement {<span class="doctag">@link</span> #postProcessAfterInitialization}.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">BeanPostProcessor</span> {</span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">default</span> Object <span class="title function_">postProcessBeforeInitialization</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException {</span><br><span class="line">		<span class="keyword">return</span> bean;</span><br><span class="line">	}</span><br><span class="line">    <span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">default</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException {</span><br><span class="line">		<span class="keyword">return</span> bean;</span><br><span class="line">	}</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>由注释我们可以看到，我们可以通过<strong>BeanPostProcessor</strong>修改bean的实例，例如检查bean的接口或将将bean包装为代理对象。接口中提供了两个方法，通常情况下，<strong>postProcessBeforeInitialization</strong>被用于填充bean的属性，而<strong>postProcessAfterInitialization</strong>用于返回bean的代理对象，另外需要注意的是，如果该方法返回了null，则表示后续的BeanPostProcessors不会再被调用。</p>
 <p>了解<strong>BeanPostProcessor</strong>，我们不禁猜测，@Autowire注解会不会也是由<strong>BeanPostProcessor</strong>解析和注入的呢，没错，它正是由<strong>BeanPostProcessor</strong>的实现类<strong>AutowiredAnnotationBeanPostProcessor</strong>处理的。</p>
-<h2 id="理解AutowiredAnnotationBeanPostProcessor"><a href="#理解AutowiredAnnotationBeanPostProcessor" class="headerlink" title="理解AutowiredAnnotationBeanPostProcessor"></a>理解AutowiredAnnotationBeanPostProcessor</h2><p><img src="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg" alt="AutowiredAnnotationBeanPostProcessor"></p>
+<h2 id="理解AutowiredAnnotationBeanPostProcessor">理解AutowiredAnnotationBeanPostProcessor</h2>
+<p><img class="lazy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAADa6r/EAAAAC0lEQVQIHWNgAAIAAAUAAY27m/MAAAAASUVORK5CYII=" data-src="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg" alt="AutowiredAnnotationBeanPostProcessor" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;" width="1380" height="481" data-stellar-image-dimensions="true" data-stellar-image-color="{&quot;size&quot;:64,&quot;hsla&quot;:[60.4118,1.6531,19.6372,1]}" data-stellar-image-source="http://storage.laixiaoming.space/blog/AutowiredAnnotationBeanPostProcessor.jpg"></p>
 <p>但查看<strong>AutowiredAnnotationBeanPostProcessor</strong>的类继承关系图我们会发现，<strong>AutowiredAnnotationBeanPostProcessor</strong></p>
 <p>并不是直接实现<strong>BeanPostProcessor</strong>，而是实现自<strong>BeanPostProcessor</strong>的子接口，<strong>MergedBeanDefinitionPostProcessor</strong>和<strong>SmartInstantiationAwareBeanPostProcessor</strong>。</p>
 <p>回到<strong>AutowiredAnnotationBeanPostProcessor</strong>的源码，我们看到它主要有实现了几个关键的方法：determineCandidateConstructors、postProcessMergedBeanDefinition、postProcessProperties，我们逐个看。</p>
-<h3 id="determineCandidateConstructors"><a href="#determineCandidateConstructors" class="headerlink" title="determineCandidateConstructors"></a>determineCandidateConstructors</h3><p>这个方法是<strong>SmartInstantiationAwareBeanPostProcessor</strong>接口中定义的，从方法注释我们可以知道，该方法用于确定给定bean的构造函数，这里我们不展开细说。</p>
-<h3 id="postProcessMergedBeanDefinition"><a href="#postProcessMergedBeanDefinition" class="headerlink" title="postProcessMergedBeanDefinition"></a>postProcessMergedBeanDefinition</h3><p>这个方法是<strong>MergedBeanDefinitionPostProcessor</strong>接口中定义的，查看其实现：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">postProcessMergedBeanDefinition</span><span class="params">(RootBeanDefinition beanDefinition, Class&lt;?&gt; beanType, String beanName)</span> &#123;</span><br><span class="line">    <span class="type">InjectionMetadata</span> <span class="variable">metadata</span> <span class="operator">=</span> findAutowiringMetadata(beanName, beanType, <span class="literal">null</span>);</span><br><span class="line">    metadata.checkConfigMembers(beanDefinition);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="findAutowiringMetadata"><a href="#findAutowiringMetadata" class="headerlink" title="findAutowiringMetadata"></a>findAutowiringMetadata</h4><p>该方法作用是构建Autowired的元数据，深入发现，其核心是调用了org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor#buildAutowiringMetadata：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> InjectionMetadata <span class="title function_">buildAutowiringMetadata</span><span class="params">(<span class="keyword">final</span> Class&lt;?&gt; clazz)</span> &#123;</span><br><span class="line">    List&lt;InjectionMetadata.InjectedElement&gt; elements = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">    Class&lt;?&gt; targetClass = clazz;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> List&lt;InjectionMetadata.InjectedElement&gt; currElements = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">		<span class="comment">//解析类所有属性字段，将其封装为AutowiredFieldElement</span></span><br><span class="line">        ReflectionUtils.doWithLocalFields(targetClass, field -&gt; &#123;</span><br><span class="line">            <span class="comment">//解析该字段上的@Autowired注解，查看该方法可以发现，该处理器不仅解析了@Autowired注解，还有@Value及@Inject注解</span></span><br><span class="line">            <span class="type">AnnotationAttributes</span> <span class="variable">ann</span> <span class="operator">=</span> findAutowiredAnnotation(field);</span><br><span class="line">            <span class="keyword">if</span> (ann != <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="comment">//忽略static字段</span></span><br><span class="line">                <span class="keyword">if</span> (Modifier.isStatic(field.getModifiers())) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                        logger.info(<span class="string">&quot;Autowired annotation is not supported on static fields: &quot;</span> + field);</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="type">boolean</span> <span class="variable">required</span> <span class="operator">=</span> determineRequiredStatus(ann);</span><br><span class="line">                currElements.add(<span class="keyword">new</span> <span class="title class_">AutowiredFieldElement</span>(field, required));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//解析类方法，将其封装为AutowiredMethodElement</span></span><br><span class="line">        ReflectionUtils.doWithLocalMethods(targetClass, method -&gt; &#123;</span><br><span class="line">            <span class="type">Method</span> <span class="variable">bridgedMethod</span> <span class="operator">=</span> BridgeMethodResolver.findBridgedMethod(method);</span><br><span class="line">            <span class="keyword">if</span> (!BridgeMethodResolver.isVisibilityBridgeMethodPair(method, bridgedMethod)) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//解析该方法上的@Autowire注解</span></span><br><span class="line">            <span class="type">AnnotationAttributes</span> <span class="variable">ann</span> <span class="operator">=</span> findAutowiredAnnotation(bridgedMethod);</span><br><span class="line">            <span class="keyword">if</span> (ann != <span class="literal">null</span> &amp;&amp; method.equals(ClassUtils.getMostSpecificMethod(method, clazz))) &#123;</span><br><span class="line">                <span class="comment">//忽略静态方法</span></span><br><span class="line">                <span class="keyword">if</span> (Modifier.isStatic(method.getModifiers())) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                        logger.info(<span class="string">&quot;Autowired annotation is not supported on static methods: &quot;</span> + method);</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">//忽略无参方法</span></span><br><span class="line">                <span class="keyword">if</span> (method.getParameterCount() == <span class="number">0</span>) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                        logger.info(<span class="string">&quot;Autowired annotation should only be used on methods with parameters: &quot;</span> +</span><br><span class="line">                                    method);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="type">boolean</span> <span class="variable">required</span> <span class="operator">=</span> determineRequiredStatus(ann);</span><br><span class="line">                <span class="type">PropertyDescriptor</span> <span class="variable">pd</span> <span class="operator">=</span> BeanUtils.findPropertyForMethod(bridgedMethod, clazz);</span><br><span class="line">                currElements.add(<span class="keyword">new</span> <span class="title class_">AutowiredMethodElement</span>(method, required, pd));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        elements.addAll(<span class="number">0</span>, currElements);</span><br><span class="line">        targetClass = targetClass.getSuperclass();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//循环解析父类</span></span><br><span class="line">    <span class="keyword">while</span> (targetClass != <span class="literal">null</span> &amp;&amp; targetClass != Object.class);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">InjectionMetadata</span>(clazz, elements);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<h3 id="determineCandidateConstructors">determineCandidateConstructors</h3>
+<p>这个方法是<strong>SmartInstantiationAwareBeanPostProcessor</strong>接口中定义的，从方法注释我们可以知道，该方法用于确定给定bean的构造函数，这里我们不展开细说。</p>
+<h3 id="postProcessMergedBeanDefinition">postProcessMergedBeanDefinition</h3>
+<p>这个方法是<strong>MergedBeanDefinitionPostProcessor</strong>接口中定义的，查看其实现：</p>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">postProcessMergedBeanDefinition</span><span class="params">(RootBeanDefinition beanDefinition, Class&lt;?&gt; beanType, String beanName)</span> {</span><br><span class="line">    <span class="type">InjectionMetadata</span> <span class="variable">metadata</span> <span class="operator">=</span> findAutowiringMetadata(beanName, beanType, <span class="literal">null</span>);</span><br><span class="line">    metadata.checkConfigMembers(beanDefinition);</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="findAutowiringMetadata">findAutowiringMetadata</h4>
+<p>该方法作用是构建Autowired的元数据，深入发现，其核心是调用了org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor#buildAutowiringMetadata：</p>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> InjectionMetadata <span class="title function_">buildAutowiringMetadata</span><span class="params">(<span class="keyword">final</span> Class&lt;?&gt; clazz)</span> {</span><br><span class="line">    List&lt;InjectionMetadata.InjectedElement&gt; elements = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">    Class&lt;?&gt; targetClass = clazz;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">do</span> {</span><br><span class="line">        <span class="keyword">final</span> List&lt;InjectionMetadata.InjectedElement&gt; currElements = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">		<span class="comment">//解析类所有属性字段，将其封装为AutowiredFieldElement</span></span><br><span class="line">        ReflectionUtils.doWithLocalFields(targetClass, field -&gt; {</span><br><span class="line">            <span class="comment">//解析该字段上的@Autowired注解，查看该方法可以发现，该处理器不仅解析了@Autowired注解，还有@Value及@Inject注解</span></span><br><span class="line">            <span class="type">AnnotationAttributes</span> <span class="variable">ann</span> <span class="operator">=</span> findAutowiredAnnotation(field);</span><br><span class="line">            <span class="keyword">if</span> (ann != <span class="literal">null</span>) {</span><br><span class="line">                <span class="comment">//忽略static字段</span></span><br><span class="line">                <span class="keyword">if</span> (Modifier.isStatic(field.getModifiers())) {</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) {</span><br><span class="line">                        logger.info(<span class="string">"Autowired annotation is not supported on static fields: "</span> + field);</span><br><span class="line">                    }</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                }</span><br><span class="line">                <span class="type">boolean</span> <span class="variable">required</span> <span class="operator">=</span> determineRequiredStatus(ann);</span><br><span class="line">                currElements.add(<span class="keyword">new</span> <span class="title class_">AutowiredFieldElement</span>(field, required));</span><br><span class="line">            }</span><br><span class="line">        });</span><br><span class="line"></span><br><span class="line">        <span class="comment">//解析类方法，将其封装为AutowiredMethodElement</span></span><br><span class="line">        ReflectionUtils.doWithLocalMethods(targetClass, method -&gt; {</span><br><span class="line">            <span class="type">Method</span> <span class="variable">bridgedMethod</span> <span class="operator">=</span> BridgeMethodResolver.findBridgedMethod(method);</span><br><span class="line">            <span class="keyword">if</span> (!BridgeMethodResolver.isVisibilityBridgeMethodPair(method, bridgedMethod)) {</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            }</span><br><span class="line">            <span class="comment">//解析该方法上的@Autowire注解</span></span><br><span class="line">            <span class="type">AnnotationAttributes</span> <span class="variable">ann</span> <span class="operator">=</span> findAutowiredAnnotation(bridgedMethod);</span><br><span class="line">            <span class="keyword">if</span> (ann != <span class="literal">null</span> &amp;&amp; method.equals(ClassUtils.getMostSpecificMethod(method, clazz))) {</span><br><span class="line">                <span class="comment">//忽略静态方法</span></span><br><span class="line">                <span class="keyword">if</span> (Modifier.isStatic(method.getModifiers())) {</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) {</span><br><span class="line">                        logger.info(<span class="string">"Autowired annotation is not supported on static methods: "</span> + method);</span><br><span class="line">                    }</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                }</span><br><span class="line">                <span class="comment">//忽略无参方法</span></span><br><span class="line">                <span class="keyword">if</span> (method.getParameterCount() == <span class="number">0</span>) {</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) {</span><br><span class="line">                        logger.info(<span class="string">"Autowired annotation should only be used on methods with parameters: "</span> +</span><br><span class="line">                                    method);</span><br><span class="line">                    }</span><br><span class="line">                }</span><br><span class="line">                <span class="type">boolean</span> <span class="variable">required</span> <span class="operator">=</span> determineRequiredStatus(ann);</span><br><span class="line">                <span class="type">PropertyDescriptor</span> <span class="variable">pd</span> <span class="operator">=</span> BeanUtils.findPropertyForMethod(bridgedMethod, clazz);</span><br><span class="line">                currElements.add(<span class="keyword">new</span> <span class="title class_">AutowiredMethodElement</span>(method, required, pd));</span><br><span class="line">            }</span><br><span class="line">        });</span><br><span class="line"></span><br><span class="line">        elements.addAll(<span class="number">0</span>, currElements);</span><br><span class="line">        targetClass = targetClass.getSuperclass();</span><br><span class="line">    }</span><br><span class="line">    <span class="comment">//循环解析父类</span></span><br><span class="line">    <span class="keyword">while</span> (targetClass != <span class="literal">null</span> &amp;&amp; targetClass != Object.class);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">InjectionMetadata</span>(clazz, elements);</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>可以看出，buildAutowiringMetadata主要是收集被@Autowired修饰的字段以及方法。</p>
-<h4 id="checkConfigMembers"><a href="#checkConfigMembers" class="headerlink" title="checkConfigMembers"></a>checkConfigMembers</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">checkConfigMembers</span><span class="params">(RootBeanDefinition beanDefinition)</span> &#123;</span><br><span class="line">    Set&lt;InjectedElement&gt; checkedElements = <span class="keyword">new</span> <span class="title class_">LinkedHashSet</span>&lt;&gt;(<span class="built_in">this</span>.injectedElements.size());</span><br><span class="line">    <span class="keyword">for</span> (InjectedElement element : <span class="built_in">this</span>.injectedElements) &#123;</span><br><span class="line">        <span class="type">Member</span> <span class="variable">member</span> <span class="operator">=</span> element.getMember();</span><br><span class="line">        <span class="keyword">if</span> (!beanDefinition.isExternallyManagedConfigMember(member)) &#123;</span><br><span class="line">            beanDefinition.registerExternallyManagedConfigMember(member);</span><br><span class="line">            checkedElements.add(element);</span><br><span class="line">            <span class="keyword">if</span> (logger.isTraceEnabled()) &#123;</span><br><span class="line">                logger.trace(<span class="string">&quot;Registered injected element on class [&quot;</span> + <span class="built_in">this</span>.targetClass.getName() + <span class="string">&quot;]: &quot;</span> + element);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">this</span>.checkedElements = checkedElements;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<h4 id="checkConfigMembers">checkConfigMembers</h4>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">checkConfigMembers</span><span class="params">(RootBeanDefinition beanDefinition)</span> {</span><br><span class="line">    Set&lt;InjectedElement&gt; checkedElements = <span class="keyword">new</span> <span class="title class_">LinkedHashSet</span>&lt;&gt;(<span class="built_in">this</span>.injectedElements.size());</span><br><span class="line">    <span class="keyword">for</span> (InjectedElement element : <span class="built_in">this</span>.injectedElements) {</span><br><span class="line">        <span class="type">Member</span> <span class="variable">member</span> <span class="operator">=</span> element.getMember();</span><br><span class="line">        <span class="keyword">if</span> (!beanDefinition.isExternallyManagedConfigMember(member)) {</span><br><span class="line">            beanDefinition.registerExternallyManagedConfigMember(member);</span><br><span class="line">            checkedElements.add(element);</span><br><span class="line">            <span class="keyword">if</span> (logger.isTraceEnabled()) {</span><br><span class="line">                logger.trace(<span class="string">"Registered injected element on class ["</span> + <span class="built_in">this</span>.targetClass.getName() + <span class="string">"]: "</span> + element);</span><br><span class="line">            }</span><br><span class="line">        }</span><br><span class="line">    }</span><br><span class="line">    <span class="built_in">this</span>.checkedElements = checkedElements;</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>这里会缓存已经检验过的注入点，但是这个作用是什么，查看checkConfigMembers的调用位置，发现除了被 用于<strong>AutowiredAnnotationBeanPostProcessor</strong>这个处理器外，还在<strong>CommonAnnotationBeanPostProcessor</strong>中出现，而<strong>CommonAnnotationBeanPostProcessor</strong>是用于解析@Resource注解的，不难看出，这里主要是避免重复注入的问题。</p>
-<h3 id="postProcessProperties"><a href="#postProcessProperties" class="headerlink" title="postProcessProperties"></a>postProcessProperties</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> PropertyValues <span class="title function_">postProcessProperties</span><span class="params">(PropertyValues pvs, Object bean, String beanName)</span> &#123;</span><br><span class="line">    <span class="type">InjectionMetadata</span> <span class="variable">metadata</span> <span class="operator">=</span> findAutowiringMetadata(beanName, bean.getClass(), pvs);</span><br><span class="line"> 	<span class="comment">//省略...</span></span><br><span class="line">    <span class="comment">//注入</span></span><br><span class="line">    metadata.inject(bean, beanName, pvs);</span><br><span class="line">    <span class="comment">//省略...</span></span><br><span class="line">    <span class="keyword">return</span> pvs;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">inject</span><span class="params">(Object target, <span class="meta">@Nullable</span> String beanName, <span class="meta">@Nullable</span> PropertyValues pvs)</span> <span class="keyword">throws</span> Throwable &#123;</span><br><span class="line">    Collection&lt;InjectedElement&gt; checkedElements = <span class="built_in">this</span>.checkedElements;</span><br><span class="line">    Collection&lt;InjectedElement&gt; elementsToIterate =</span><br><span class="line">        (checkedElements != <span class="literal">null</span> ? checkedElements : <span class="built_in">this</span>.injectedElements);</span><br><span class="line">    <span class="keyword">if</span> (!elementsToIterate.isEmpty()) &#123;</span><br><span class="line">        <span class="keyword">for</span> (InjectedElement element : elementsToIterate) &#123;</span><br><span class="line">            element.inject(target, beanName, pvs);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<h3 id="postProcessProperties">postProcessProperties</h3>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> PropertyValues <span class="title function_">postProcessProperties</span><span class="params">(PropertyValues pvs, Object bean, String beanName)</span> {</span><br><span class="line">    <span class="type">InjectionMetadata</span> <span class="variable">metadata</span> <span class="operator">=</span> findAutowiringMetadata(beanName, bean.getClass(), pvs);</span><br><span class="line"> 	<span class="comment">//省略...</span></span><br><span class="line">    <span class="comment">//注入</span></span><br><span class="line">    metadata.inject(bean, beanName, pvs);</span><br><span class="line">    <span class="comment">//省略...</span></span><br><span class="line">    <span class="keyword">return</span> pvs;</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">inject</span><span class="params">(Object target, <span class="meta">@Nullable</span> String beanName, <span class="meta">@Nullable</span> PropertyValues pvs)</span> <span class="keyword">throws</span> Throwable {</span><br><span class="line">    Collection&lt;InjectedElement&gt; checkedElements = <span class="built_in">this</span>.checkedElements;</span><br><span class="line">    Collection&lt;InjectedElement&gt; elementsToIterate =</span><br><span class="line">        (checkedElements != <span class="literal">null</span> ? checkedElements : <span class="built_in">this</span>.injectedElements);</span><br><span class="line">    <span class="keyword">if</span> (!elementsToIterate.isEmpty()) {</span><br><span class="line">        <span class="keyword">for</span> (InjectedElement element : elementsToIterate) {</span><br><span class="line">            element.inject(target, beanName, pvs);</span><br><span class="line">        }</span><br><span class="line">    }</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>拿到了前面解析过程得到的@Autowired元数据后，进行值的注入，我们以字段的注入为例，查看其注入流程，来到AutowiredFieldElement#inject方法：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">inject</span><span class="params">(Object bean, <span class="meta">@Nullable</span> String beanName, <span class="meta">@Nullable</span> PropertyValues pvs)</span> <span class="keyword">throws</span> Throwable &#123;</span><br><span class="line">    <span class="type">Field</span> <span class="variable">field</span> <span class="operator">=</span> (Field) <span class="built_in">this</span>.member;</span><br><span class="line">    Object value;</span><br><span class="line">    <span class="comment">//从缓存中读取值</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">this</span>.cached) &#123;</span><br><span class="line">        value = resolvedCachedArgument(beanName, <span class="built_in">this</span>.cachedFieldValue);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="type">DependencyDescriptor</span> <span class="variable">desc</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DependencyDescriptor</span>(field, <span class="built_in">this</span>.required);</span><br><span class="line">        desc.setContainingClass(bean.getClass());</span><br><span class="line">        Set&lt;String&gt; autowiredBeanNames = <span class="keyword">new</span> <span class="title class_">LinkedHashSet</span>&lt;&gt;(<span class="number">1</span>);</span><br><span class="line">        Assert.state(beanFactory != <span class="literal">null</span>, <span class="string">&quot;No BeanFactory available&quot;</span>);</span><br><span class="line">        <span class="type">TypeConverter</span> <span class="variable">typeConverter</span> <span class="operator">=</span> beanFactory.getTypeConverter();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">//从beanFactory中解析依赖的bean</span></span><br><span class="line">            value = beanFactory.resolveDependency(desc, beanName, autowiredBeanNames, typeConverter);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> (BeansException ex) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">UnsatisfiedDependencyException</span>(<span class="literal">null</span>, beanName, <span class="keyword">new</span> <span class="title class_">InjectionPoint</span>(field), ex);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">synchronized</span> (<span class="built_in">this</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (!<span class="built_in">this</span>.cached) &#123;</span><br><span class="line">                <span class="keyword">if</span> (value != <span class="literal">null</span> || <span class="built_in">this</span>.required) &#123;</span><br><span class="line">                    <span class="built_in">this</span>.cachedFieldValue = desc;</span><br><span class="line">                    <span class="comment">//注册依赖关系</span></span><br><span class="line">                    registerDependentBeans(beanName, autowiredBeanNames);</span><br><span class="line">                    <span class="keyword">if</span> (autowiredBeanNames.size() == <span class="number">1</span>) &#123;</span><br><span class="line">                        <span class="type">String</span> <span class="variable">autowiredBeanName</span> <span class="operator">=</span> autowiredBeanNames.iterator().next();</span><br><span class="line">                        <span class="keyword">if</span> (beanFactory.containsBean(autowiredBeanName) &amp;&amp;</span><br><span class="line">                            beanFactory.isTypeMatch(autowiredBeanName, field.getType())) &#123;</span><br><span class="line">                            <span class="built_in">this</span>.cachedFieldValue = <span class="keyword">new</span> <span class="title class_">ShortcutDependencyDescriptor</span>(</span><br><span class="line">                                desc, autowiredBeanName, field.getType());</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="built_in">this</span>.cachedFieldValue = <span class="literal">null</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="built_in">this</span>.cached = <span class="literal">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (value != <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="comment">//通过反射设置依赖值</span></span><br><span class="line">        ReflectionUtils.makeAccessible(field);</span><br><span class="line">        field.set(bean, value);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">inject</span><span class="params">(Object bean, <span class="meta">@Nullable</span> String beanName, <span class="meta">@Nullable</span> PropertyValues pvs)</span> <span class="keyword">throws</span> Throwable {</span><br><span class="line">    <span class="type">Field</span> <span class="variable">field</span> <span class="operator">=</span> (Field) <span class="built_in">this</span>.member;</span><br><span class="line">    Object value;</span><br><span class="line">    <span class="comment">//从缓存中读取值</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">this</span>.cached) {</span><br><span class="line">        value = resolvedCachedArgument(beanName, <span class="built_in">this</span>.cachedFieldValue);</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">else</span> {</span><br><span class="line">        <span class="type">DependencyDescriptor</span> <span class="variable">desc</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DependencyDescriptor</span>(field, <span class="built_in">this</span>.required);</span><br><span class="line">        desc.setContainingClass(bean.getClass());</span><br><span class="line">        Set&lt;String&gt; autowiredBeanNames = <span class="keyword">new</span> <span class="title class_">LinkedHashSet</span>&lt;&gt;(<span class="number">1</span>);</span><br><span class="line">        Assert.state(beanFactory != <span class="literal">null</span>, <span class="string">"No BeanFactory available"</span>);</span><br><span class="line">        <span class="type">TypeConverter</span> <span class="variable">typeConverter</span> <span class="operator">=</span> beanFactory.getTypeConverter();</span><br><span class="line">        <span class="keyword">try</span> {</span><br><span class="line">            <span class="comment">//从beanFactory中解析依赖的bean</span></span><br><span class="line">            value = beanFactory.resolveDependency(desc, beanName, autowiredBeanNames, typeConverter);</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">catch</span> (BeansException ex) {</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">UnsatisfiedDependencyException</span>(<span class="literal">null</span>, beanName, <span class="keyword">new</span> <span class="title class_">InjectionPoint</span>(field), ex);</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">synchronized</span> (<span class="built_in">this</span>) {</span><br><span class="line">            <span class="keyword">if</span> (!<span class="built_in">this</span>.cached) {</span><br><span class="line">                <span class="keyword">if</span> (value != <span class="literal">null</span> || <span class="built_in">this</span>.required) {</span><br><span class="line">                    <span class="built_in">this</span>.cachedFieldValue = desc;</span><br><span class="line">                    <span class="comment">//注册依赖关系</span></span><br><span class="line">                    registerDependentBeans(beanName, autowiredBeanNames);</span><br><span class="line">                    <span class="keyword">if</span> (autowiredBeanNames.size() == <span class="number">1</span>) {</span><br><span class="line">                        <span class="type">String</span> <span class="variable">autowiredBeanName</span> <span class="operator">=</span> autowiredBeanNames.iterator().next();</span><br><span class="line">                        <span class="keyword">if</span> (beanFactory.containsBean(autowiredBeanName) &amp;&amp;</span><br><span class="line">                            beanFactory.isTypeMatch(autowiredBeanName, field.getType())) {</span><br><span class="line">                            <span class="built_in">this</span>.cachedFieldValue = <span class="keyword">new</span> <span class="title class_">ShortcutDependencyDescriptor</span>(</span><br><span class="line">                                desc, autowiredBeanName, field.getType());</span><br><span class="line">                        }</span><br><span class="line">                    }</span><br><span class="line">                }</span><br><span class="line">                <span class="keyword">else</span> {</span><br><span class="line">                    <span class="built_in">this</span>.cachedFieldValue = <span class="literal">null</span>;</span><br><span class="line">                }</span><br><span class="line">                <span class="built_in">this</span>.cached = <span class="literal">true</span>;</span><br><span class="line">            }</span><br><span class="line">        }</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">if</span> (value != <span class="literal">null</span>) {</span><br><span class="line">        <span class="comment">//通过反射设置依赖值</span></span><br><span class="line">        ReflectionUtils.makeAccessible(field);</span><br><span class="line">        field.set(bean, value);</span><br><span class="line">    }</span><br><span class="line">}</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>其中关键是使用DefaultListableBeanFactory#resolveDependency解析依赖值，查看其实现，主要逻辑在DefaultListableBeanFactory#doResolveDependency：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> Object <span class="title function_">doResolveDependency</span><span class="params">(DependencyDescriptor descriptor, <span class="meta">@Nullable</span> String beanName,</span></span><br><span class="line"><span class="params">			<span class="meta">@Nullable</span> Set&lt;String&gt; autowiredBeanNames, <span class="meta">@Nullable</span> TypeConverter typeConverter)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line"></span><br><span class="line">    <span class="type">InjectionPoint</span> <span class="variable">previousInjectionPoint</span> <span class="operator">=</span> ConstructorResolver.setCurrentInjectionPoint(descriptor);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="type">Object</span> <span class="variable">shortcut</span> <span class="operator">=</span> descriptor.resolveShortcut(<span class="built_in">this</span>);</span><br><span class="line">        <span class="keyword">if</span> (shortcut != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> shortcut;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理@Value注解，并获取对应值</span></span><br><span class="line">        Class&lt;?&gt; type = descriptor.getDependencyType();</span><br><span class="line">        <span class="type">Object</span> <span class="variable">value</span> <span class="operator">=</span> getAutowireCandidateResolver().getSuggestedValue(descriptor);</span><br><span class="line">        <span class="keyword">if</span> (value != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (value <span class="keyword">instanceof</span> String) &#123;</span><br><span class="line">                <span class="type">String</span> <span class="variable">strVal</span> <span class="operator">=</span> resolveEmbeddedValue((String) value);</span><br><span class="line">                <span class="type">BeanDefinition</span> <span class="variable">bd</span> <span class="operator">=</span> (beanName != <span class="literal">null</span> &amp;&amp; containsBean(beanName) ?</span><br><span class="line">                                     getMergedBeanDefinition(beanName) : <span class="literal">null</span>);</span><br><span class="line">                value = evaluateBeanDefinitionString(strVal, bd);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="type">TypeConverter</span> <span class="variable">converter</span> <span class="operator">=</span> (typeConverter != <span class="literal">null</span> ? typeConverter : getTypeConverter());</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> converter.convertIfNecessary(value, type, descriptor.getTypeDescriptor());</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">catch</span> (UnsupportedOperationException ex) &#123;</span><br><span class="line">                <span class="comment">// A custom TypeConverter which does not support TypeDescriptor resolution...</span></span><br><span class="line">                <span class="keyword">return</span> (descriptor.getField() != <span class="literal">null</span> ?</span><br><span class="line">                        converter.convertIfNecessary(value, type, descriptor.getField()) :</span><br><span class="line">                        converter.convertIfNecessary(value, type, descriptor.getMethodParameter()));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理集合bean的注入</span></span><br><span class="line">        <span class="type">Object</span> <span class="variable">multipleBeans</span> <span class="operator">=</span> resolveMultipleBeans(descriptor, beanName, autowiredBeanNames, typeConverter);</span><br><span class="line">        <span class="keyword">if</span> (multipleBeans != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> multipleBeans;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理单个bean的注入</span></span><br><span class="line">        Map&lt;String, Object&gt; matchingBeans = findAutowireCandidates(beanName, type, descriptor);</span><br><span class="line">        <span class="keyword">if</span> (matchingBeans.isEmpty()) &#123;</span><br><span class="line">            <span class="keyword">if</span> (isRequired(descriptor)) &#123;</span><br><span class="line">                raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        String autowiredBeanName;</span><br><span class="line">        Object instanceCandidate;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//如果获取到的bean有多个，将根据@Primary及@Priority确定最优的一个</span></span><br><span class="line">        <span class="keyword">if</span> (matchingBeans.size() &gt; <span class="number">1</span>) &#123;</span><br><span class="line">            autowiredBeanName = determineAutowireCandidate(matchingBeans, descriptor);</span><br><span class="line">            <span class="keyword">if</span> (autowiredBeanName == <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="keyword">if</span> (isRequired(descriptor) || !indicatesMultipleBeans(type)) &#123;</span><br><span class="line">                    <span class="keyword">return</span> descriptor.resolveNotUnique(descriptor.getResolvableType(), matchingBeans);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="comment">// In case of an optional Collection/Map, silently ignore a non-unique case:</span></span><br><span class="line">                    <span class="comment">// possibly it was meant to be an empty collection of multiple regular beans</span></span><br><span class="line">                    <span class="comment">// (before 4.3 in particular when we didn&#x27;t even look for collection beans).</span></span><br><span class="line">                    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            instanceCandidate = matchingBeans.get(autowiredBeanName);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// We have exactly one match.</span></span><br><span class="line">            Map.Entry&lt;String, Object&gt; entry = matchingBeans.entrySet().iterator().next();</span><br><span class="line">            autowiredBeanName = entry.getKey();</span><br><span class="line">            instanceCandidate = entry.getValue();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (autowiredBeanNames != <span class="literal">null</span>) &#123;</span><br><span class="line">            autowiredBeanNames.add(autowiredBeanName);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (instanceCandidate <span class="keyword">instanceof</span> Class) &#123;</span><br><span class="line">            <span class="comment">//根据beanName，从beanFactory获取bean实例</span></span><br><span class="line">            instanceCandidate = descriptor.resolveCandidate(autowiredBeanName, type, <span class="built_in">this</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">Object</span> <span class="variable">result</span> <span class="operator">=</span> instanceCandidate;</span><br><span class="line">        <span class="keyword">if</span> (result <span class="keyword">instanceof</span> NullBean) &#123;</span><br><span class="line">            <span class="keyword">if</span> (isRequired(descriptor)) &#123;</span><br><span class="line">                raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);</span><br><span class="line">            &#125;</span><br><span class="line">            result = <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (!ClassUtils.isAssignableValue(type, result)) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BeanNotOfRequiredTypeException</span>(autowiredBeanName, type, instanceCandidate.getClass());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">finally</span> &#123;</span><br><span class="line">        ConstructorResolver.setCurrentInjectionPoint(previousInjectionPoint);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> Object <span class="title function_">doResolveDependency</span><span class="params">(DependencyDescriptor descriptor, <span class="meta">@Nullable</span> String beanName,</span></span><br><span class="line"><span class="params">			<span class="meta">@Nullable</span> Set&lt;String&gt; autowiredBeanNames, <span class="meta">@Nullable</span> TypeConverter typeConverter)</span> <span class="keyword">throws</span> BeansException {</span><br><span class="line"></span><br><span class="line">    <span class="type">InjectionPoint</span> <span class="variable">previousInjectionPoint</span> <span class="operator">=</span> ConstructorResolver.setCurrentInjectionPoint(descriptor);</span><br><span class="line">    <span class="keyword">try</span> {</span><br><span class="line">        <span class="type">Object</span> <span class="variable">shortcut</span> <span class="operator">=</span> descriptor.resolveShortcut(<span class="built_in">this</span>);</span><br><span class="line">        <span class="keyword">if</span> (shortcut != <span class="literal">null</span>) {</span><br><span class="line">            <span class="keyword">return</span> shortcut;</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理@Value注解，并获取对应值</span></span><br><span class="line">        Class&lt;?&gt; type = descriptor.getDependencyType();</span><br><span class="line">        <span class="type">Object</span> <span class="variable">value</span> <span class="operator">=</span> getAutowireCandidateResolver().getSuggestedValue(descriptor);</span><br><span class="line">        <span class="keyword">if</span> (value != <span class="literal">null</span>) {</span><br><span class="line">            <span class="keyword">if</span> (value <span class="keyword">instanceof</span> String) {</span><br><span class="line">                <span class="type">String</span> <span class="variable">strVal</span> <span class="operator">=</span> resolveEmbeddedValue((String) value);</span><br><span class="line">                <span class="type">BeanDefinition</span> <span class="variable">bd</span> <span class="operator">=</span> (beanName != <span class="literal">null</span> &amp;&amp; containsBean(beanName) ?</span><br><span class="line">                                     getMergedBeanDefinition(beanName) : <span class="literal">null</span>);</span><br><span class="line">                value = evaluateBeanDefinitionString(strVal, bd);</span><br><span class="line">            }</span><br><span class="line">            <span class="type">TypeConverter</span> <span class="variable">converter</span> <span class="operator">=</span> (typeConverter != <span class="literal">null</span> ? typeConverter : getTypeConverter());</span><br><span class="line">            <span class="keyword">try</span> {</span><br><span class="line">                <span class="keyword">return</span> converter.convertIfNecessary(value, type, descriptor.getTypeDescriptor());</span><br><span class="line">            }</span><br><span class="line">            <span class="keyword">catch</span> (UnsupportedOperationException ex) {</span><br><span class="line">                <span class="comment">// A custom TypeConverter which does not support TypeDescriptor resolution...</span></span><br><span class="line">                <span class="keyword">return</span> (descriptor.getField() != <span class="literal">null</span> ?</span><br><span class="line">                        converter.convertIfNecessary(value, type, descriptor.getField()) :</span><br><span class="line">                        converter.convertIfNecessary(value, type, descriptor.getMethodParameter()));</span><br><span class="line">            }</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理集合bean的注入</span></span><br><span class="line">        <span class="type">Object</span> <span class="variable">multipleBeans</span> <span class="operator">=</span> resolveMultipleBeans(descriptor, beanName, autowiredBeanNames, typeConverter);</span><br><span class="line">        <span class="keyword">if</span> (multipleBeans != <span class="literal">null</span>) {</span><br><span class="line">            <span class="keyword">return</span> multipleBeans;</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理单个bean的注入</span></span><br><span class="line">        Map&lt;String, Object&gt; matchingBeans = findAutowireCandidates(beanName, type, descriptor);</span><br><span class="line">        <span class="keyword">if</span> (matchingBeans.isEmpty()) {</span><br><span class="line">            <span class="keyword">if</span> (isRequired(descriptor)) {</span><br><span class="line">                raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);</span><br><span class="line">            }</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">        String autowiredBeanName;</span><br><span class="line">        Object instanceCandidate;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//如果获取到的bean有多个，将根据@Primary及@Priority确定最优的一个</span></span><br><span class="line">        <span class="keyword">if</span> (matchingBeans.size() &gt; <span class="number">1</span>) {</span><br><span class="line">            autowiredBeanName = determineAutowireCandidate(matchingBeans, descriptor);</span><br><span class="line">            <span class="keyword">if</span> (autowiredBeanName == <span class="literal">null</span>) {</span><br><span class="line">                <span class="keyword">if</span> (isRequired(descriptor) || !indicatesMultipleBeans(type)) {</span><br><span class="line">                    <span class="keyword">return</span> descriptor.resolveNotUnique(descriptor.getResolvableType(), matchingBeans);</span><br><span class="line">                }</span><br><span class="line">                <span class="keyword">else</span> {</span><br><span class="line">                    <span class="comment">// In case of an optional Collection/Map, silently ignore a non-unique case:</span></span><br><span class="line">                    <span class="comment">// possibly it was meant to be an empty collection of multiple regular beans</span></span><br><span class="line">                    <span class="comment">// (before 4.3 in particular when we didn't even look for collection beans).</span></span><br><span class="line">                    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">                }</span><br><span class="line">            }</span><br><span class="line">            instanceCandidate = matchingBeans.get(autowiredBeanName);</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">else</span> {</span><br><span class="line">            <span class="comment">// We have exactly one match.</span></span><br><span class="line">            Map.Entry&lt;String, Object&gt; entry = matchingBeans.entrySet().iterator().next();</span><br><span class="line">            autowiredBeanName = entry.getKey();</span><br><span class="line">            instanceCandidate = entry.getValue();</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (autowiredBeanNames != <span class="literal">null</span>) {</span><br><span class="line">            autowiredBeanNames.add(autowiredBeanName);</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">if</span> (instanceCandidate <span class="keyword">instanceof</span> Class) {</span><br><span class="line">            <span class="comment">//根据beanName，从beanFactory获取bean实例</span></span><br><span class="line">            instanceCandidate = descriptor.resolveCandidate(autowiredBeanName, type, <span class="built_in">this</span>);</span><br><span class="line">        }</span><br><span class="line">        <span class="type">Object</span> <span class="variable">result</span> <span class="operator">=</span> instanceCandidate;</span><br><span class="line">        <span class="keyword">if</span> (result <span class="keyword">instanceof</span> NullBean) {</span><br><span class="line">            <span class="keyword">if</span> (isRequired(descriptor)) {</span><br><span class="line">                raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);</span><br><span class="line">            }</span><br><span class="line">            result = <span class="literal">null</span>;</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">if</span> (!ClassUtils.isAssignableValue(type, result)) {</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BeanNotOfRequiredTypeException</span>(autowiredBeanName, type, instanceCandidate.getClass());</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">finally</span> {</span><br><span class="line">        ConstructorResolver.setCurrentInjectionPoint(previousInjectionPoint);</span><br><span class="line">    }</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>了解了<strong>AutowiredAnnotationBeanPostProcessor</strong>的处理流程，那该处理器是在什么时候被调用的呢？</p>
-<h3 id="AutowiredAnnotationBeanPostProcessor的调用时机"><a href="#AutowiredAnnotationBeanPostProcessor的调用时机" class="headerlink" title="AutowiredAnnotationBeanPostProcessor的调用时机"></a>AutowiredAnnotationBeanPostProcessor的调用时机</h3><p>查看其方法调用位置，不难看出：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">AbstractAutowireCapableBeanFactory#createBean</span><br><span class="line">	-&gt;AbstractAutowireCapableBeanFactory#doCreateBean</span><br><span class="line">        -&gt;AbstractAutowireCapableBeanFactory#applyMergedBeanDefinitionPostProcessors</span><br><span class="line">        	-&gt;MergedBeanDefinitionPostProcessor#postProcessMergedBeanDefinition</span><br><span class="line">        -&gt;AbstractAutowireCapableBeanFactory#populateBean</span><br><span class="line">            -&gt;InstantiationAwareBeanPostProcessor#postProcessProperties</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ol>
+<h3 id="AutowiredAnnotationBeanPostProcessor的调用时机">AutowiredAnnotationBeanPostProcessor的调用时机</h3>
+<p>查看其方法调用位置，不难看出：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">AbstractAutowireCapableBeanFactory#createBean</span><br><span class="line">	-&gt;AbstractAutowireCapableBeanFactory#doCreateBean</span><br><span class="line">        -&gt;AbstractAutowireCapableBeanFactory#applyMergedBeanDefinitionPostProcessors</span><br><span class="line">        	-&gt;MergedBeanDefinitionPostProcessor#postProcessMergedBeanDefinition</span><br><span class="line">        -&gt;AbstractAutowireCapableBeanFactory#populateBean</span><br><span class="line">            -&gt;InstantiationAwareBeanPostProcessor#postProcessProperties</span><br></pre></td></tr></tbody></table></figure>
+<h2 id="总结">总结</h2>
+<ol>
 <li>@Autowired、@Value等是由<strong>AutowiredAnnotationBeanPostProcessor</strong>处理的；</li>
 <li><strong>AutowiredAnnotationBeanPostProcessor</strong>的postProcessMergedBeanDefinition方法用于解析构建@Autowired元数据，而postProcessProperties方法则用于@Autowired解析后值的注入；</li>
 </ol>
+</article>
+<div class="article-tags slide-up"><a class="tag" href="/tags/Spring-Boot/"><svg class="icon" viewBox="0 0 1 1" data-icon="default:hashtag" aria-hidden="true"></svg>Spring Boot</a></div>
 
+
+  <div class="article-share slide-up" id="share">
+    <div class="body">
+      <div class="social-wrap dis-select"><a class="social share-item qrcode ui-interactive is-icon-only" onclick="util.toggle(&quot;share-qrcode&quot;)" aria-label="分享文章: QR Code" title="分享文章: QR Code"><span class="share-item__icon ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="M10.553 13.447c-.424-.424-.95-.596-1.535-.675c-.553-.074-1.25-.074-2.086-.074H5.827c-.58 0-1.065 0-1.459.037c-.411.04-.795.124-1.146.34c-.345.21-.634.5-.845.844c-.216.352-.3.735-.34 1.147C2 15.459 2 15.944 2 16.525v.068c0 .884 0 1.597.055 2.17c.056.592.175 1.108.459 1.571c.288.47.682.864 1.152 1.152c.463.284.979.403 1.57.46C5.81 22 6.524 22 7.407 22h.07c.58 0 1.064 0 1.458-.037c.412-.04.795-.124 1.147-.34c.344-.21.633-.5.844-.844c.216-.352.3-.736.34-1.147c.037-.394.037-.879.037-1.46v-1.104c0-.836 0-1.533-.074-2.086c-.079-.584-.251-1.111-.675-1.535m-1.62-11.41c.412.04.795.124 1.147.34c.344.21.633.5.844.845c.216.351.3.735.34 1.146c.037.394.037.879.037 1.46v1.104c0 .836 0 1.533-.074 2.086c-.079.584-.251 1.111-.675 1.535s-.95.596-1.535.675c-.553.074-1.25.074-2.086.074H5.827c-.58 0-1.065 0-1.459-.037c-.411-.04-.795-.124-1.146-.34a2.56 2.56 0 0 1-.845-.844c-.216-.352-.3-.735-.34-1.147C2 8.54 2 8.056 2 7.475v-.068c0-.884 0-1.597.055-2.17c.056-.592.175-1.108.459-1.571c.288-.47.682-.864 1.152-1.152c.463-.284.979-.403 1.57-.46C5.81 2 6.524 2 7.407 2h.07c.58 0 1.064 0 1.458.037M16.593 2h-.068c-.58 0-1.065 0-1.46.037c-.41.04-.794.124-1.146.34c-.344.21-.633.5-.844.845c-.216.351-.3.735-.34 1.146c-.037.394-.037.879-.037 1.46v1.104c0 .836 0 1.533.074 2.086c.079.584.251 1.111.675 1.535s.95.596 1.535.675c.553.074 1.25.074 2.086.074h1.105c.58 0 1.065 0 1.459-.037c.411-.04.795-.124 1.146-.34c.345-.21.634-.5.845-.844c.216-.352.3-.735.34-1.147C22 8.54 22 8.056 22 7.475v-.068c0-.884 0-1.597-.055-2.17c-.056-.592-.175-1.108-.459-1.571a3.5 3.5 0 0 0-1.152-1.152c-.463-.284-.979-.403-1.57-.46C18.19 2 17.477 2 16.594 2" opacity=".5"></path><path fill="currentColor" d="M14.093 21.302a.698.698 0 1 1-1.396 0v-2.79h1.396z" opacity=".4"></path><path fill="currentColor" d="M21.302 12.698a.7.7 0 0 0-.697.697v3.256H22v-3.256a.7.7 0 0 0-.698-.697" opacity=".5"></path><path fill="currentColor" d="M16.076 16.617c-.076.184-.076.417-.076.883s0 .699.076.883a1 1 0 0 0 .541.54c.184.077.417.077.883.077s.699 0 .883-.076a1 1 0 0 0 .54-.541c.077-.184.077-.417.077-.883s0-.699-.076-.883a1 1 0 0 0-.541-.54C18.199 16 17.966 16 17.5 16s-.699 0-.883.076a1 1 0 0 0-.54.541"></path><path fill="currentColor" d="M22 18.535v-.023h-1.396c0 .443 0 .74-.016.97c-.015.224-.043.333-.073.405a1.16 1.16 0 0 1-.629.63c-.072.029-.18.056-.405.072c-.23.015-.527.016-.97.016h-1.86V22h1.883c.414 0 .759 0 1.042-.02a2.6 2.6 0 0 0 .844-.175a2.56 2.56 0 0 0 1.384-1.384c.112-.27.156-.549.176-.844c.02-.283.02-.628.02-1.042" opacity=".7"></path><path fill="currentColor" d="M12.697 16.616v.035h1.396c0-.668 0-1.116.035-1.458c.034-.33.093-.482.16-.583a1.2 1.2 0 0 1 .321-.32c.101-.068.254-.128.584-.161c.342-.035.79-.036 1.458-.036h1.86v-1.395h-1.896c-.623 0-1.142 0-1.563.043c-.44.044-.85.142-1.218.388c-.28.187-.519.426-.706.706c-.246.368-.343.777-.388 1.217c-.043.421-.043.94-.043 1.564" opacity=".6"></path><path fill="currentColor" d="M5.508 18.69c.219.155.528.155 1.146.155c.619 0 .928 0 1.146-.155a.8.8 0 0 0 .2-.199c.154-.218.154-.527.154-1.146s0-.927-.155-1.146A.8.8 0 0 0 7.8 16c-.218-.155-.527-.155-1.146-.155s-.927 0-1.146.155a.8.8 0 0 0-.199.2c-.155.218-.155.527-.155 1.145c0 .619 0 .928.155 1.146a.8.8 0 0 0 .2.2M6.654 8.155c-.618 0-.927 0-1.146-.155a.8.8 0 0 1-.199-.2c-.155-.217-.155-.527-.155-1.145c0-.619 0-.928.155-1.146a.8.8 0 0 1 .2-.2c.218-.154.527-.154 1.145-.154c.619 0 .928 0 1.146.155a.8.8 0 0 1 .2.199c.154.218.154.527.154 1.146s0 .928-.155 1.146A.8.8 0 0 1 7.8 8c-.218.155-.527.155-1.146.155M16.2 8c.218.155.527.155 1.146.155s.927 0 1.146-.155a.8.8 0 0 0 .199-.199c.155-.218.155-.528.155-1.146c0-.619 0-.928-.155-1.146a.8.8 0 0 0-.2-.2c-.218-.154-.527-.154-1.145-.154c-.619 0-.928 0-1.146.155a.8.8 0 0 0-.2.199c-.154.218-.154.527-.154 1.146s0 .928.155 1.146A.8.8 0 0 0 16.2 8"></path></svg></span></a><a class="social share-item x ui-interactive is-icon-only" href="https://x.com/intent/tweet?text=Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%40Autowired%E7%9A%84%E8%A7%A3%E6%9E%90%20-%20%E8%B5%96%E5%B0%8F%E6%98%8E&amp;url=http%3A%2F%2Flaixiaoming.space%2F2023%2F05%2F18%2FSpring%2520Boot%25E6%25BA%2590%25E7%25A0%2581%25E5%25AD%25A6%25E4%25B9%25A0%25EF%25BC%259A%40Autowired%25E7%259A%2584%25E8%25A7%25A3%25E6%259E%2590%2F" target="_blank" rel="external nofollow noopener noreferrer" aria-label="分享文章: X" title="分享文章: X"><span class="share-item__icon ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Simple Icons - https://creativecommons.org/publicdomain/zero/1.0/ --><path fill="currentColor" d="M14.234 10.162L22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299l-.929-1.329L3.076 1.56h3.182l5.965 8.532l.929 1.329l7.754 11.09h-3.182z"></path></svg></span></a></div>
+      <div class="share-qrcode" id="share-qrcode" style="opacity:0;height:0"><img class="lazy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAADa6r/EAAAAC0lEQVQIHWNgAAIAAAUAAY27m/MAAAAASUVORK5CYII=" data-src="https://api.qrserver.com/v1/create-qr-code/?size=256x256&amp;data=http%3A%2F%2Flaixiaoming.space%2F2023%2F05%2F18%2FSpring%2520Boot%25E6%25BA%2590%25E7%25A0%2581%25E5%25AD%25A6%25E4%25B9%25A0%25EF%25BC%259A%40Autowired%25E7%259A%2584%25E8%25A7%25A3%25E6%259E%2590%2F" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;"></div>
     </div>
+  </div>
 
+<div class="article-footer slide-up">
+    <section id="license">
+      <div class="header"><span>许可协议</span></div>
+      <div class="body"><p>本文采用 <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">署名-非商业性使用-相同方式共享 4.0 国际</a> 许可协议，转载请注明出处。</p>
+</div>
+    </section></div>
+
+<div class="related-wrap slide-up" id="read-next"><section class="body"><div class="item" id="prev"><div class="note"><svg class="icon" viewBox="0 0 1 1" data-icon="default:arrow-left" aria-hidden="true"></svg> 较新文章</div><a href="/2023/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" data-stellar-navigation="">Spring Boot源码学习：getBean方法解析</a></div><div class="item" id="next"><div class="note">较早文章 <svg class="icon" viewBox="0 0 1 1" data-icon="default:arrow-right" aria-hidden="true"></svg></div><a href="/2023/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/" data-stellar-navigation="">Spring Boot源码学习：@Configuration类的解析</a></div></section></div>
+
+
+
+
+  <div class="related-wrap md-text slide-up" id="comments">
     
     
-    
+    <section class="body cmt-body giscus">
+      
 
-      <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/Spring-Boot/" rel="tag"># Spring Boot</a>
-          </div>
+<div class="lazy-icon"></div>
 
-        
+<div id="giscus" data-repo="crazylai1996/crazylai1996.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzNDA5MzA3ODI=" data-category="General" data-category-id="DIC_kwDOFFIw3s4DLs7v" data-mapping="pathname" data-strict="0" data-reactions-enabled="1" data-emit-metadata="0" data-input-position="bottom" data-theme="preferred_color_scheme" data-lang="zh-CN" data-loading="lazy" crossorigin="anonymous"></div>
+
+    </section>
+  </div>
 
 
-        
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2023/05/04/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Configuration%E7%B1%BB%E7%9A%84%E8%A7%A3%E6%9E%90/" rel="prev" title="Spring Boot源码学习：@Configuration类的解析">
-      <i class="fa fa-chevron-left"></i> Spring Boot源码学习：@Configuration类的解析
-    </a></div>
-      <div class="post-nav-item">
-    <a href="/2023/05/30/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9AgetBean%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" rel="next" title="Spring Boot源码学习：getBean方法解析">
-      Spring Boot源码学习：getBean方法解析 <i class="fa fa-chevron-right"></i>
-    </a></div>
+
+<footer class="page-footer slide-up footnote"><hr><div class="text"><p>本站由 <a href="/">laixiaoming</a> 使用 <a target="_blank" rel="noopener" href="https://github.com/xaoxuu/hexo-theme-stellar/tree/2.0.0">Stellar 2.0.0</a> 主题创建。<br>
+本博客所有文章除特别声明外，均采用 <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议，转载请注明出处。</p>
+</div></footer>
+</main>
+<aside data-stellar-runtime-region="" id="rightbar-region" class="site-region site-region--rightbar" data-region="rightbar" aria-label="Rightbar"><div class="site-region__surface ui-drawer-surface"><div class="site-region__viewport"><div class="widgets widget-stack widget-stack--rightbar widget-stack--rightbar"><div class="widget-instance widget-instance--toc" data-widget-id="rightbar:0:toc" data-presentation="rightbar">
+
+
+<widget class="widget-wrapper slide-up toc" id="data-toc" collapse="false">
+  
+    <div class="widget-header dis-select">
+      <span class="name">本文目录</span>
+      <button type="button" class="cap-action ui-interactive card-hover card-hover--spotlight" data-shell-action="toggle-toc" aria-label="Toggle table of contents" aria-pressed="false"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h11m-11 6h11m-11 6h11M4 6h1v4m-1 0h2m0 8H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg></span></button>
     </div>
-      </footer>
+  
+  <div class="widget-body"><ol class="toc ui-collection-adapter"><li class="toc-item toc-level-2"><a class="toc-link ui-interactive" href="#%E5%89%8D%E8%A8%80" data-stellar-navigation=""><span class="toc-text">前言</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#BeanPostProcessor%E6%98%AF%E4%BB%80%E4%B9%88" data-stellar-navigation=""><span class="toc-text">BeanPostProcessor是什么</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link ui-interactive" href="#%E7%90%86%E8%A7%A3AutowiredAnnotationBeanPostProcessor" data-stellar-navigation=""><span class="toc-text">理解AutowiredAnnotationBeanPostProcessor</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#determineCandidateConstructors" data-stellar-navigation=""><span class="toc-text">determineCandidateConstructors</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#postProcessMergedBeanDefinition" data-stellar-navigation=""><span class="toc-text">postProcessMergedBeanDefinition</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#findAutowiringMetadata" data-stellar-navigation=""><span class="toc-text">findAutowiringMetadata</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#checkConfigMembers" data-stellar-navigation=""><span class="toc-text">checkConfigMembers</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#postProcessProperties" data-stellar-navigation=""><span class="toc-text">postProcessProperties</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#AutowiredAnnotationBeanPostProcessor%E7%9A%84%E8%B0%83%E7%94%A8%E6%97%B6%E6%9C%BA" data-stellar-navigation=""><span class="toc-text">AutowiredAnnotationBeanPostProcessor的调用时机</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link ui-interactive" href="#%E6%80%BB%E7%BB%93" data-stellar-navigation=""><span class="toc-text">总结</span></a></li></ol></div>
+  <div class="widget-footer"><a class="top ui-interactive" onclick="util.scrollTop()"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="M20.536 3.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464" opacity=".5"></path><path fill="currentColor" d="M9.53 12.03a.75.75 0 0 1-1.06-1.06l3-3a.75.75 0 0 1 1.06 0l3 3a.75.75 0 1 1-1.06 1.06L12 9.56z"></path><path fill="currentColor" d="M9.53 16.03a.75.75 0 0 1-1.06-1.06l3-3a.75.75 0 0 1 1.06 0l3 3a.75.75 0 1 1-1.06 1.06L12 13.56z"></path></svg></span><span>回到顶部</span></a><a class="buttom ui-interactive" onclick="util.scrollComment()"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="m13.629 20.472l-.542.916c-.483.816-1.69.816-2.174 0l-.542-.916c-.42-.71-.63-1.066-.968-1.262c-.338-.197-.763-.204-1.613-.219c-1.256-.021-2.043-.098-2.703-.372a5 5 0 0 1-2.706-2.706C2 14.995 2 13.83 2 11.5v-1c0-3.273 0-4.91.737-6.112a5 5 0 0 1 1.65-1.651C5.59 2 7.228 2 10.5 2h3c3.273 0 4.91 0 6.113.737a5 5 0 0 1 1.65 1.65C22 5.59 22 7.228 22 10.5v1c0 2.33 0 3.495-.38 4.413a5 5 0 0 1-2.707 2.706c-.66.274-1.447.35-2.703.372c-.85.015-1.275.022-1.613.219c-.338.196-.548.551-.968 1.262" opacity=".5"></path><path fill="currentColor" d="M7.25 9A.75.75 0 0 1 8 8.25h8a.75.75 0 0 1 0 1.5H8A.75.75 0 0 1 7.25 9m0 3.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75"></path></svg></span><span>参与讨论</span></a></div>
+</widget>
+
+
+</div></div></div></div></aside>
+</div><button type="button" class="site-scrim" data-shell-action="dismiss-drawer" aria-label="Close navigation" tabindex="-1"></button><div data-stellar-runtime-region="" class="site-dock" role="group" aria-label="Layout panels">
+  <button type="button" class="site-dock__button site-dock__button--rightbar ui-interactive" aria-label="Open rightbar" aria-controls="rightbar-region" aria-expanded="false" data-shell-action="toggle-rightbar-drawer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h11m-11 6h11m-11 6h11M4 6h1v4m-1 0h2m0 8H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+  </button>
+  <button type="button" class="site-dock__button site-dock__button--leftbar ui-interactive" aria-label="Open leftbar" aria-controls="leftbar-region" aria-expanded="false" data-shell-action="toggle-leftbar-drawer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 11c0-3.771 0-5.657 1.172-6.828C4.343 3 6.229 3 10 3h4c3.771 0 5.657 0 6.828 1.172C22 5.343 22 7.229 22 11v2c0 3.771 0 5.657-1.172 6.828C19.657 21 17.771 21 14 21h-4c-3.771 0-5.657 0-6.828-1.172C2 18.657 2 16.771 2 13z"></path><path id="sep" stroke-linecap="round" d="M5.5 10h6m-5 4h4m4.5 7V3"></path></g></svg>
+  </button>
+</div>
+
+<dialog data-stellar-runtime-region="" class="search-dialog" id="site-search-dialog" aria-labelledby="site-search-title">
+  <div class="search-dialog__panel search-wrapper" id="site-search-wrapper" searching="false">
+    <div class="search-dialog__header">
+      <div class="search-form" role="search">
+        <span class="search-button" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Adapted from Google Material Icons by Material Design Authors - https://github.com/material-icons/material-icons/blob/master/LICENSE --><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3M3 13h3M3 18h8M16.83 13.83l3.76 3.76"></path><circle cx="14" cy="11" r="4"></circle></g></svg></span>
+        <input type="search" class="search-input" id="site-search-input" aria-labelledby="site-search-title" placeholder="搜索">
+      </div>
+      <button type="button" class="search-dialog__close" data-shell-action="close-search" aria-label="关闭搜索">×</button>
+    </div>
     
-  </article>
-  
-  
-  
+      <div class="search-dialog__scope" role="radiogroup" aria-labelledby="site-search-title" hidden="">
+        <label class="search-dialog__scope-option" data-search-scope-option="all">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="all">
+          <span>全站</span>
+        </label>
+        <label class="search-dialog__scope-option" data-search-scope-option="blog" hidden="">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="blog">
+          <span>博客</span>
+        </label>
+        <label class="search-dialog__scope-option" data-search-scope-option="current" hidden="">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="current">
+          <span data-search-scope-current-label=""></span>
+        </label>
+      </div>
+    
+    <h2 class="search-dialog__title" id="site-search-title">站内搜索</h2>
+    <div class="search-result" id="site-search-result"></div>
+    <div class="search-no-result">没有找到内容！</div>
+  </div>
+</dialog>
+</div><div class="site-scripts">
+<script data-stellar-script="core" src="/js/stellar-icons.js?v=39c6ac17e854ffe2"></script>
 
-
-
-          </div>
-          
-
-<script>
-  window.addEventListener('tabs:register', () => {
-    let { activeClass } = CONFIG.comments;
-    if (CONFIG.comments.storage) {
-      activeClass = localStorage.getItem('comments_active') || activeClass;
-    }
-    if (activeClass) {
-      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
-      if (activeTab) {
-        activeTab.click();
-      }
-    }
-  });
-  if (CONFIG.comments.storage) {
-    window.addEventListener('tabs:click', event => {
-      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
-      let commentClass = event.target.classList[1];
-      localStorage.setItem('comments_active', commentClass);
-    });
-  }
+<script data-stellar-script="defines">
+  window.canonical = window.stellarClientData.canonical;
+  const ctx = window.stellarClientData.ctx;
+  window.canonical.param = {permalink: "http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/", checklink: ctx.services.video.js};
+  ctx.date_suffix = {"just":"刚刚","min":"分钟前","hour":"小时前","day":"天前"};
+  if (ctx.search) Object.assign(ctx.search, {"more":"更多","no_more":"没有更多了"});
+  const def = window.stellarClientData.def;
+  window.ctx = ctx;
+  window.def = def;
 </script>
 
-        </div>
-          
-  
-  <div class="toggle sidebar-toggle">
-    <span class="toggle-line toggle-line-first"></span>
-    <span class="toggle-line toggle-line-middle"></span>
-    <span class="toggle-line toggle-line-last"></span>
-  </div>
 
-  <aside class="sidebar">
-    <div class="sidebar-inner">
+<!-- core: 迁移期 DOM/资源兼容工具；Extension 注册与生命周期由 ESM runtime 所有 -->
+<script data-stellar-script="core" src="/js/utils.js?v=2.0.0"></script>
+<script data-stellar-script="core" src="/js/main.js?v=2.0.0" defer=""></script>
+<script data-stellar-script="core" defer="" src="/js/profile.js?v=2.0.0"></script>
 
-      <ul class="sidebar-nav motion-element">
-        <li class="sidebar-nav-toc">
-          文章目录
-        </li>
-        <li class="sidebar-nav-overview">
-          站点概览
-        </li>
-      </ul>
 
-      <!--noindex-->
-      <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#BeanPostProcessor%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-number">1.1.</span> <span class="nav-text">BeanPostProcessor是什么</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%90%86%E8%A7%A3AutowiredAnnotationBeanPostProcessor"><span class="nav-number">2.</span> <span class="nav-text">理解AutowiredAnnotationBeanPostProcessor</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#determineCandidateConstructors"><span class="nav-number">2.1.</span> <span class="nav-text">determineCandidateConstructors</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#postProcessMergedBeanDefinition"><span class="nav-number">2.2.</span> <span class="nav-text">postProcessMergedBeanDefinition</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#findAutowiringMetadata"><span class="nav-number">2.2.1.</span> <span class="nav-text">findAutowiringMetadata</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#checkConfigMembers"><span class="nav-number">2.2.2.</span> <span class="nav-text">checkConfigMembers</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#postProcessProperties"><span class="nav-number">2.3.</span> <span class="nav-text">postProcessProperties</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AutowiredAnnotationBeanPostProcessor%E7%9A%84%E8%B0%83%E7%94%A8%E6%97%B6%E6%9C%BA"><span class="nav-number">2.4.</span> <span class="nav-text">AutowiredAnnotationBeanPostProcessor的调用时机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">3.</span> <span class="nav-text">总结</span></a></li></ol></div>
-      </div>
-      <!--/noindex-->
 
-      <div class="site-overview-wrap sidebar-panel">
-        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-    <img class="site-author-image" itemprop="image" alt="laixiaoming"
-      src="/images/avatar.gif">
-  <p class="site-author-name" itemprop="name">laixiaoming</p>
-  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
-</div>
-<div class="site-state-wrap motion-element">
-  <nav class="site-state">
-      <div class="site-state-item site-state-posts">
-          <a href="/archives/">
-        
-          <span class="site-state-item-count">38</span>
-          <span class="site-state-item-name">日志</span>
-        </a>
-      </div>
-      <div class="site-state-item site-state-tags">
-            <a href="/tags/">
-          
-        <span class="site-state-item-count">14</span>
-        <span class="site-state-item-name">标签</span></a>
-      </div>
-  </nav>
+
+
+<link data-stellar-page-style="" rel="stylesheet" href="/css/katex/katex.min.css">
+
+<script data-stellar-script="core" type="application/json" id="stellar-runtime-config">{"version":1,"root":"/","policy":{"cache":{"enabled":true,"defaultTtl":3600,"ttl":{"giscus":600,"waline":600,"artalk":600,"memos":600,"memos-user":86400,"sites":86400,"friends":86400,"friends_and_posts":86400,"siteinfo":86400},"maxEntries":200},"request":{"retries":2,"timeoutMs":5000,"idleTimeoutMs":3000,"maxCacheEntryBytes":204800},"features":{"codeCopyToastMs":2500},"providers":{"linkPrefetch":"flying_pages","lightbox":"fancybox","diagrams":"mermaid"}},"extensions":[{"id":"pin-slider","module":"/js/runtime/extensions/pin-slider.js","scope":"region","when":{"selector":".pin-slider"},"config":{}},{"id":"page-controls","module":"/js/runtime/extensions/page-controls.js","scope":"region","when":{"always":true},"config":{"highlight":"/js/search/highlight.js","tagtree":"/js/tagtree.js"}},{"id":"partial-navigation","module":"/js/runtime/extensions/partial-navigation.js","scope":"document","when":{"always":true},"config":{}},{"id":"search","module":"/js/runtime/extensions/search.js","scope":"document","when":{"selector":".search-input"},"config":{"provider":"local","options":{"scope":"all","includeContent":true,"cacheTtlSeconds":86400},"assets":{"client":null,"provider":"/js/search/local-search.js","shortcut":"/js/search/shortcut.js"}}},{"id":"hero-parallax","module":"/js/runtime/extensions/hero-parallax.js","scope":"region","when":{"selector":".wiki-hero"},"config":{}},{"id":"hero-effect","module":"/js/runtime/extensions/hero-effect.js","scope":"region","when":{"selector":"canvas[data-hero-effect]"},"config":{}},{"id":"lazy-loading","module":"/js/runtime/extensions/lazy-loading.js","scope":"document","when":{"always":true},"config":{"asset":"https://gcore.jsdelivr.net/npm/vanilla-lazyload@19.1/dist/lazyload.min.js"}},{"id":"deferred-icons","module":"/js/runtime/extensions/deferred-icons.js","scope":"region","when":{"selector":"svg.icon[data-icon]"},"config":{}},{"id":"dropdown","module":"/js/runtime/extensions/dropdown.js","scope":"region","when":{"selector":"details.dropdown"},"config":{}},{"id":"services","module":"/js/runtime/extensions/services.js","scope":"region","when":{"selector":"#artalk_container, #twikoo_container, #waline_container, .data-service, [class*='ds-'], a[cardlink], a[data-md-link][data-siteinfo-api], .site-card [data-siteinfo-api], .voice\u003eaudio, .video\u003evideo, .chat-file"},"config":{"marked":"https://gcore.jsdelivr.net/npm/marked@13.0/lib/marked.umd.min.js"}},{"id":"comments","module":"/js/runtime/extensions/comments.js","scope":"region","when":{"selector":"#comments"},"config":{"provider":"giscus","options":{"data-repo":"crazylai1996/crazylai1996.github.io","data-repo-id":"MDEwOlJlcG9zaXRvcnkzNDA5MzA3ODI=","data-category":"General","data-category-id":"DIC_kwDOFFIw3s4DLs7v","data-mapping":"pathname","data-strict":0,"data-reactions-enabled":1,"data-emit-metadata":0,"data-input-position":"bottom","data-theme":"preferred_color_scheme","data-lang":"zh-CN","data-loading":"lazy","crossorigin":"anonymous"},"pageTitle":"Spring Boot源码学习：@Autowired的解析","assets":{"js":"https://giscus.app/client.js"}}},{"id":"settings","module":"/js/runtime/extensions/settings.js","scope":"region","when":{"selector":".settings-page"},"config":{}},{"id":"link-prefetch","module":"/js/runtime/extensions/link-prefetch.js","scope":"document","when":{"always":true},"config":{"asset":"https://gcore.jsdelivr.net/npm/flying-pages@2/flying-pages.min.js"}},{"id":"lightbox","module":"/js/runtime/extensions/lightbox.js","scope":"region","when":{"selector":"[data-fancybox]:not(.error), .with-fancybox, .ds-memos, .timenode p\u003eimg"},"config":{"enabled":true,"selector":".timenode p\u003eimg","assets":{"localCss":"/css/plugins/fancybox.css","js":"https://gcore.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js","css":"https://gcore.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"}}},{"id":"reveal","module":"/js/runtime/extensions/reveal.js","scope":"region","when":{"selector":".slide-up"},"config":{"enabled":true,"duration":800,"interval":200,"distance":8,"blur":4}},{"id":"diagrams","module":"/js/runtime/extensions/diagrams.js","scope":"region","when":{"selector":".mermaid"},"config":{"theme":"neutral","provider":"mermaid","assets":{"js":"https://gcore.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"},"colorScheme":"auto"}},{"id":"code-copy","module":"/js/runtime/extensions/code-copy.js","scope":"region","when":{"selector":".code"},"config":{"assets":{"js":"/js/plugins/copycode.js"},"messages":{"label":"复制","copied":"复制成功","denied":"未获得剪贴板权限","unsupported":"当前浏览器不支持剪贴板或页面不是 HTTPS"}}},{"id":"adaptive-text","module":"/js/runtime/extensions/adaptive-text.js","scope":"region","when":{"selector":"[data-text-adaptive]"},"config":{"assets":{"colorJs":"/js/color.js","js":"/js/plugins/adaptive-text.js"}}},{"id":"swiper","module":"/js/runtime/extensions/swiper.js","scope":"region","when":{"selector":"#swiper-api"},"config":{"assets":{"localCss":"/css/plugins/swiper.css","js":"https://unpkg.com/swiper@10.3/swiper-bundle.min.js","css":"https://unpkg.com/swiper@10.3/swiper-bundle.min.css"}}}]}</script>
+<script data-stellar-script="core" type="module" src="/js/runtime/index.js?v=2.0.0&amp;runtime=1"></script>
+
+
+<!-- inject -->
+
+
+<script data-stellar-script="core" defer="" src="/js/navigation-init.js?v=2.0.0"></script>
 </div>
 
-
-
-      </div>
-
-    </div>
-  </aside>
-  <div id="sidebar-dimmer"></div>
-
-
-      </div>
-    </main>
-
-    <footer class="footer">
-      <div class="footer-inner">
-        
-
-        
-
-<div class="copyright">
-  
-  &copy; 
-  <span itemprop="copyrightYear">2026</span>
-  <span class="with-love">
-    <i class="fa fa-heart"></i>
-  </span>
-  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
-</div>
-  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
-  </div>
-
-        
-
-
-
-
-
-
-
-
-      </div>
-    </footer>
-  </div>
-
-  
-  <script src="/lib/anime.min.js"></script>
-  <script src="/lib/velocity/velocity.min.js"></script>
-  <script src="/lib/velocity/velocity.ui.min.js"></script>
-
-<script src="/js/utils.js"></script>
-
-<script src="/js/motion.js"></script>
-
-
-<script src="/js/schemes/pisces.js"></script>
-
-
-<script src="/js/next-boot.js"></script>
-
-
-
-
-  
-
-
-
-
-  
-<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
-<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
-<script src="/js/algolia-search.js"></script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-  
-
-  
-  
-    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
-  
-</body>
-</html>
+<script type="application/json" id="stellar-navigation-config">{"collection":"[\"post\",\"post\"]","url":"http://laixiaoming.space/2023/05/18/Spring%20Boot%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A@Autowired%E7%9A%84%E8%A7%A3%E6%9E%90/","signature":"df54fa6c68cf7bfe09c7a808d3bb717a321e150c2e9eafbacc6fb55b5590c1c8"}</script></body></html>

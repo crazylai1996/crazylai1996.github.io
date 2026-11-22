@@ -1,505 +1,609 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
-<meta name="theme-color" content="#222">
-<meta name="generator" content="Hexo 8.1.1">
-  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
-  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
-
-<link rel="stylesheet" href="/css/main.css">
-
-
-<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
-
-<script id="hexo-configurations">
-    var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"0fe5a76c65503aa1e49ff34206b789ec","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+<!DOCTYPE html><html lang="zh-CN"><head>
+  
+  <meta charset="utf-8">
+  <meta name="hexo-theme" content="https://github.com/xaoxuu/hexo-theme-stellar/tree/2.0.0" theme-name="Stellar" theme-version="2.0.0">
+  
+  
+  <meta name="generator" content="Hexo 8.1.1">
+  <meta http-equiv="x-dns-prefetch-control" content="on">
+  
+  <meta name="renderer" content="webkit">
+  <meta name="force-rendering" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <meta name="HandheldFriendly" content="True">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000">
+  <meta name="theme-color" content="#f9fafb">
+  <title data-stellar-page-meta="">Transformer：实现一个简单的大语言模型 - 赖小明</title>
+  <script data-stellar-script="core">
+    (function () {
+      var key = 'stellar:v2:leftbar-state';
+      var fallback = "expanded";
+      try {
+        var value = localStorage.getItem(key);
+        document.documentElement.dataset.leftbarState = value === 'collapsed' || value === 'expanded' ? value : fallback;
+      } catch (error) {
+        document.documentElement.dataset.leftbarState = fallback;
+      }
+    })();
   </script>
 
-  <meta name="description" content="前言了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Deco">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Transformer：实现一个简单的大语言模型">
-<meta property="og:url" content="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/index.html">
-<meta property="og:site_name" content="赖小明">
-<meta property="og:description" content="前言了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Deco">
-<meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2026-11-15T07:47:31.000Z">
-<meta property="article:modified_time" content="2026-11-21T08:32:53.639Z">
-<meta property="article:author" content="laixiaoming">
-<meta property="article:tag" content="Transformer">
-<meta property="article:tag" content="深度学习">
-<meta name="twitter:card" content="summary">
+  <meta name="description" content="前言 了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Dec" data-stellar-page-meta="">
+<meta property="og:type" content="article" data-stellar-page-meta="">
+<meta property="og:title" content="Transformer：实现一个简单的大语言模型" data-stellar-page-meta="">
+<meta property="og:url" content="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/" data-stellar-page-meta="">
+<meta property="og:site_name" content="赖小明" data-stellar-page-meta="">
+<meta property="og:description" content="前言 了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Dec" data-stellar-page-meta="">
+<meta property="og:locale" content="zh_CN" data-stellar-page-meta="">
+<meta property="article:author" content="laixiaoming" data-stellar-page-meta="">
+<meta property="article:published_time" content="2026-11-15T07:47:31.000Z" data-stellar-page-meta="">
+<meta property="article:modified_time" content="2026-11-21T08:32:53.000Z" data-stellar-page-meta="">
+<meta property="article:tag" content="Transformer" data-stellar-page-meta="">
+<meta property="article:tag" content="深度学习" data-stellar-page-meta="">
+<meta name="twitter:card" content="summary" data-stellar-page-meta=""><meta name="twitter:title" content="Transformer：实现一个简单的大语言模型" data-stellar-page-meta="">
+  
+  
+  <meta name="keywords" content="Transformer,深度学习" data-stellar-page-meta="">
 
-<link rel="canonical" href="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/">
-
-
-<script id="page-configurations">
-  // https://hexo.io/docs/variables.html
-  CONFIG.page = {
-    sidebar: "",
-    isHome : false,
-    isPost : true,
-    lang   : 'zh-CN'
-  };
-</script>
-
-  <title>Transformer：实现一个简单的大语言模型 | 赖小明</title>
+  <!-- feed -->
   
 
+  <link rel="preload" href="/css/main.css?v=2.0.0" as="style">
+  <link rel="stylesheet" href="/css/main.css?v=2.0.0">
+  <style>:root{--text-loading:"正在加载";--text-loading-error:"加载失败，请稍后重试。"}</style>
 
 
+  
 
+  
 
+  <script type="application/ld+json" data-stellar-page-meta="">{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"laixiaoming","sameAs":[]},"dateCreated":"2026-11-15T15:47:31+08:00","dateModified":"2026-11-21T16:32:53+08:00","datePublished":"2026-11-15T15:47:31+08:00","description":"前言\n了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 Decoder-Only 架构，它摒弃了 Encoder，只使用 Decoder 来完成文本生成任务，而这也是 GPT 模型采用的构架。\n下面我们基于 Transformer 的 Decoder 来实现一个简单的“文本生成”语言模型。","headline":"Transformer：实现一个简单的大语言模型","mainEntityOfPage":{"@type":"WebPage","@id":"http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/"},"publisher":{"@type":"Organization","name":"laixiaoming","sameAs":[]},"url":"http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/","image":["https://gcore.jsdelivr.net/gh/cdn-x/placeholder@1.0.12/cover/76b86c0226ffd.svg"],"keywords":"Transformer, 深度学习","thumbnailUrl":"https://gcore.jsdelivr.net/gh/cdn-x/placeholder@1.0.12/cover/76b86c0226ffd.svg"}</script>
+  
 
-  <noscript>
-  <style>
-  .use-motion .brand,
-  .use-motion .menu-item,
-  .sidebar-inner,
-  .use-motion .post-block,
-  .use-motion .pagination,
-  .use-motion .comments,
-  .use-motion .post-header,
-  .use-motion .post-body,
-  .use-motion .collection-header { opacity: initial; }
-
-  .use-motion .site-title,
-  .use-motion .site-subtitle {
-    opacity: initial;
-    top: initial;
-  }
-
-  .use-motion .logo-line-before i { left: initial; }
-  .use-motion .logo-line-after i { right: initial; }
-  </style>
-</noscript>
-
+  <link rel="stylesheet" href="/css/stellar-icons.css?v=7c185ad1a9a79674">
+  <link rel="preload" as="script" href="/js/stellar-icons.js?v=39c6ac17e854ffe2">
+  
+  
 </head>
+<body data-page-type="content" data-page-layout="post" data-article-style="tech"><div data-stellar-runtime-region="" id="site-cover" class="site-cover"></div><div class="site-shell" id="start" data-regions="leftbar rightbar"><div class="site-workspace">
+<aside data-stellar-runtime-region="" id="leftbar-region" class="site-region site-region--leftbar" data-region="leftbar" aria-label="Leftbar"><div class="site-region__surface ui-surface"><div class="site-region__decoration" aria-hidden="true"></div><div class="site-region__viewport"><header class="site-region__header site-region__zone site-region__zone--top">
+    <div class="widget-instance widget-instance--brand" data-widget-id="leftbar:fixed:brand" data-presentation="leftbar" data-leftbar-rail="">
+<header class="brand-header brand-header--regular brand-header--site"><div class="brand-wrap"><a class="brand-image brand-image--avatar" href="/"><img no-lazy="" src="https://github.com/crazylai1996.png" alt="" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;"></a><a class="brand-title" href="/"><div class="brand-name">赖小明</div><div class="brand-tagline cap">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div></a></div><div class="brand-search">
 
-<body itemscope itemtype="http://schema.org/WebPage">
-  <div class="container use-motion">
-    <div class="headband"></div>
+<div class="ui-collection" data-layout="list" data-variant="nav" data-density="auto">
+  
+    
+<button class="ui-collection__item ui-interactive card-hover card-hover--spotlight search-trigger has-hover-surface" type="button" title="搜索" aria-label="搜索" data-shell-action="open-search" data-search-instance="leftbar-brand-search" data-search-domain="blog" data-search-domain-label="博客" data-search-domain-blog="true">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Adapted from Google Material Icons by Material Design Authors - https://github.com/material-icons/material-icons/blob/master/LICENSE --><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3M3 13h3M3 18h8M16.83 13.83l3.76 3.76"></path><circle cx="14" cy="11" r="4"></circle></g></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">搜索</span>
+      
+      
+    </span>
+  
+  <kbd class="search-shortcut" aria-hidden="true">⌘K</kbd>
 
-    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-container">
-  <div class="site-nav-toggle">
-    <div class="toggle" aria-label="切换导航栏">
-      <span class="toggle-line toggle-line-first"></span>
-      <span class="toggle-line toggle-line-middle"></span>
-      <span class="toggle-line toggle-line-last"></span>
-    </div>
-  </div>
+  
+</button>
 
-  <div class="site-meta">
-
-    <a href="/" class="brand" rel="start">
-      <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">赖小明</h1>
-      <span class="logo-line-after"><i></i></span>
-    </a>
-  </div>
-
-  <div class="site-nav-right">
-    <div class="toggle popup-trigger">
-        <i class="fa fa-search fa-fw fa-lg"></i>
-    </div>
-  </div>
+  
 </div>
 
 
+</div></header>
+</div>
+  </header>
+  <div class="site-region__body site-region__zone site-region__zone--body">
+    <div class="widget-instance widget-instance--menu" data-widget-id="leftbar:fixed:menu" data-presentation="leftbar" data-leftbar-rail="">
 
 
-<nav class="site-nav">
-  <ul id="menu" class="main-menu menu">
-        <li class="menu-item menu-item-home">
+<nav class="menu dis-select">
+<div class="ui-collection" data-layout="list" data-variant="nav" data-density="auto">
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight is-active" href="/" title="博客" aria-current="page">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M5.879 2.879C5 3.757 5 5.172 5 8v8c0 2.828 0 4.243.879 5.121C6.757 22 8.172 22 11 22h2c2.828 0 4.243 0 5.121-.879C19 20.243 19 18.828 19 16V8c0-2.828 0-4.243-.879-5.121C17.243 2 15.828 2 13 2h-2c-2.828 0-4.243 0-5.121.879M8.25 17a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75M9 12.25a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zM8.25 9A.75.75 0 0 1 9 8.25h6a.75.75 0 0 1 0 1.5H9A.75.75 0 0 1 8.25 9" clip-rule="evenodd"></path><path fill="currentColor" d="M5.235 4.058C5 4.941 5 6.177 5 8v8c0 1.823 0 3.058.235 3.942L5 19.924c-.975-.096-1.631-.313-2.121-.803C2 18.243 2 16.828 2 14v-4c0-2.829 0-4.243.879-5.121c.49-.49 1.146-.707 2.121-.803zm13.53 15.884C19 19.058 19 17.822 19 16V8c0-1.823 0-3.059-.235-3.942l.235.018c.975.096 1.631.313 2.121.803C22 5.757 22 7.17 22 9.999v4c0 2.83 0 4.243-.879 5.122c-.49.49-1.146.707-2.121.803z" opacity=".5"></path></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">博客</span>
+      
+      
+    </span>
+  
+  
+  <span class="ui-collection__indicator"></span>
+</a>
 
-    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/tags/" title="标签">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" fill-rule="evenodd" d="M10.7226 3.20068C10.8335 2.80158 10.5998 2.38817 10.2007 2.27731C9.80163 2.16645 9.38822 2.40011 9.27736 2.79921L7.76327 8.24995H4C3.58579 8.24995 3.25 8.58573 3.25 8.99995C3.25 9.41416 3.58579 9.74995 4 9.74995H7.3466L5.81882 15.2499H2C1.58579 15.2499 1.25 15.5857 1.25 15.9999C1.25 16.4142 1.58579 16.7499 2 16.7499H5.40216L4.27736 20.7992C4.1665 21.1983 4.40016 21.6117 4.79927 21.7226C5.19837 21.8334 5.61178 21.5998 5.72264 21.2007L6.95895 16.7499H14.4022L13.2774 20.7992C13.1665 21.1983 13.4002 21.6117 13.7993 21.7226C14.1984 21.8334 14.6118 21.5998 14.7226 21.2007L15.959 16.7499H20C20.4142 16.7499 20.75 16.4142 20.75 15.9999C20.75 15.5857 20.4142 15.2499 20 15.2499H16.3756L17.9034 9.74995H22C22.4142 9.74995 22.75 9.41416 22.75 8.99995C22.75 8.58573 22.4142 8.24995 22 8.24995H18.3201L19.7226 3.20068C19.8335 2.80158 19.5998 2.38817 19.2007 2.27731C18.8016 2.16645 18.3882 2.40011 18.2774 2.79921L16.7633 8.24995H9.32006L10.7226 3.20068ZM14.8188 15.2499L16.3466 9.74995H8.9034L7.37562 15.2499H14.8188Z" clip-rule="evenodd"></path></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">标签</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
-  </li>
-        <li class="menu-item menu-item-tags">
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/archives/" title="归档">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><g fill="currentColor"><path d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"></path><path d="M21.9995 14.0001V12.0001C21.9995 11.161 21.9963 9.66527 21.9834 9H2.00917C1.99626 9.66527 1.99953 11.161 1.99953 12.0001V14.0001C1.99953 17.7713 1.99953 19.6569 3.1711 20.8285C4.34267 22.0001 6.22829 22.0001 9.99953 22.0001H13.9995C17.7708 22.0001 19.6564 22.0001 20.828 20.8285C21.9995 19.6569 21.9995 17.7713 21.9995 14.0001Z" opacity=".5"></path><path d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z"></path><path d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z"></path><path d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z"></path><path d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z"></path><path d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z"></path><path d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z"></path></g></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">归档</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+  
+</div>
 
-  </li>
-        <li class="menu-item menu-item-archives">
-
-    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
-
-  </li>
-      <li class="menu-item menu-item-search">
-        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
-        </a>
-      </li>
-  </ul>
 </nav>
 
-
-
-  <div class="search-pop-overlay">
-    <div class="popup search-popup">
-        <div class="search-header">
-  <span class="search-icon">
-    <i class="fa fa-search"></i>
-  </span>
-  <div class="search-input-container"></div>
-  <span class="popup-btn-close">
-    <i class="fa fa-times-circle"></i>
-  </span>
 </div>
-<div class="algolia-results">
-  <div id="algolia-stats"></div>
-  <div id="algolia-hits"></div>
-  <div id="algolia-pagination" class="algolia-pagination"></div>
-</div>
+    <div class="widgets widget-stack widget-stack--leftbar widget-stack--body"><div class="widget-instance widget-instance--recent" data-widget-id="leftbar:0:recent" data-presentation="leftbar">
 
+<widget class="widget-wrapper slide-up recent-widget">
+  
+    <div class="widget-header dis-select">
+      <span class="name">最近更新</span>
       
     </div>
-  </div>
-
-</div>
-    </header>
-
+  
+  <div class="widget-body"><div class="ui-collection" data-layout="list" data-variant="nav" data-density="compact">
+  
     
-  <div class="back-to-top">
-    <i class="fa fa-arrow-up"></i>
-    <span>0%</span>
-  </div>
-
-
-    <main class="main">
-      <div class="main-inner">
-        <div class="content-wrap">
-          
-
-          <div class="content post posts-expand">
-            
-
-    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/07/Transformer%20%E6%9E%B6%E6%9E%84%EF%BC%9A%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6/" title="Transformer 架构：自注意力机制" data-stellar-navigation="">
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          Transformer：实现一个简单的大语言模型
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2026-11-15 15:47:31" itemprop="dateCreated datePublished" datetime="2026-11-15T15:47:31+08:00">2026-11-15</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2026-11-21 16:32:53" itemprop="dateModified" datetime="2026-11-21T16:32:53+08:00">2026-11-21</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
       
-        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 <strong>Decoder-Only</strong> 架构，它摒弃了 Encoder，只使用 Decoder 来完成文本生成任务，而这也是 GPT 模型采用的构架。</p>
+      <span class="ui-collection__title">Transformer 架构：自注意力机制</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/" title="Transformer：实现一个简单的大语言模型" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Transformer：实现一个简单的大语言模型</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" title="Transformer 的整体架构" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Transformer 的整体架构</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/10/28/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E7%9A%84%E8%A1%A8%E7%A4%BA%E6%96%B9%E6%B3%95/" title="深度学习：文本数据的表示方法" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">深</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">深度学习：文本数据的表示方法</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/10/11/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E5%85%A5%E9%97%A8%EF%BC%9A%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E4%B8%AD%E7%9A%84%E6%95%B0%E5%AD%A6%E5%9F%BA%E7%A1%80/" title="深度学习入门：神经网络中的数学基础" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">深</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">深度学习入门：神经网络中的数学基础</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/08/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%80%97%E5%B0%BD/" title="问题记录：数据库连接池耗尽" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">问</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">问题记录：数据库连接池耗尽</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/06/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AController%20%E6%B3%A8%E5%85%A5%E7%A9%BA%E6%8C%87%E9%92%88%E5%BC%82%E5%B8%B8/" title="问题记录：Controller 注入空指针异常" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">问</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">问题记录：Controller 注入空指针异常</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/04/04/Nacos%20%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0/" title="Nacos 客户端高可用机制学习" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">N</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Nacos 客户端高可用机制学习</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/01/18/%E9%AB%98%E6%80%A7%E8%83%BD%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0HikariCP%EF%BC%9A%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0/" title="高性能数据库连接池HikariCP：源码学习" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">高</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">高性能数据库连接池HikariCP：源码学习</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/01/12/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BC%98%E9%9B%85%E5%85%B3%E9%97%AD/" title="Dubbo源码学习：优雅关闭" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">D</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Dubbo源码学习：优雅关闭</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+</div></div>
+  
+</widget>
+
+
+</div></div>
+  </div>
+  <footer class="site-region__footer">
+    
+    <div class="site-region__system ui-collection" data-layout="inline" data-variant="nav" data-density="compact">
+      <div class="site-region__settings"><div class="widget-instance widget-instance--settings" data-widget-id="leftbar:fixed:settings" data-presentation="leftbar" data-leftbar-rail="">
+<a class="settings-widget ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/settings/" data-profile-provider="giscus" data-profile-identity-enabled="false" data-profile-fallback-avatar="https://gcore.jsdelivr.net/gh/cdn-x/placeholder@1.0.12/avatar/round/3442075.svg" data-settings-placement="leftbar" data-settings-label="设置" aria-label="设置" title="设置">
+  <span class="settings-widget__avatar" aria-hidden="true">
+    <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="currentColor"><path fill-rule="evenodd" d="M12.4277 2C11.3139 2 10.2995 2.6007 8.27081 3.80211L7.58466 4.20846C5.55594 5.40987 4.54158 6.01057 3.98466 7C3.42773 7.98943 3.42773 9.19084 3.42773 11.5937V12.4063C3.42773 14.8092 3.42773 16.0106 3.98466 17C4.54158 17.9894 5.55594 18.5901 7.58466 19.7915L8.27081 20.1979C10.2995 21.3993 11.3139 22 12.4277 22C13.5416 22 14.5559 21.3993 16.5847 20.1979L17.2708 19.7915C19.2995 18.5901 20.3139 17.9894 20.8708 17C21.4277 16.0106 21.4277 14.8092 21.4277 12.4063V11.5937C21.4277 9.19084 21.4277 7.98943 20.8708 7C20.3139 6.01057 19.2995 5.40987 17.2708 4.20846L16.5847 3.80211C14.5559 2.6007 13.5416 2 12.4277 2Z" clip-rule="evenodd" opacity=".5"></path><path d="M12.4277 8.25C10.3567 8.25 8.67773 9.92893 8.67773 12C8.67773 14.0711 10.3567 15.75 12.4277 15.75C14.4988 15.75 16.1777 14.0711 16.1777 12C16.1777 9.92893 14.4988 8.25 12.4277 8.25Z"></path></g></svg></span>
+  </span>
+  <span class="settings-widget__name ui-collection__title">设置</span>
+</a>
+</div></div>
+      <button type="button" class="leftbar-state-toggle ui-collection__item ui-interactive card-hover card-hover--spotlight is-icon-only" aria-label="Collapse leftbar" aria-expanded="true" data-shell-action="toggle-leftbar"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M3.172 4.172C2 5.343 2 7.229 2 11v2c0 3.771 0 5.657 1.172 6.828S6.229 21 10 21h5V3h-5C6.229 3 4.343 3 3.172 4.172" clip-rule="evenodd" opacity=".5"></path><path fill="currentColor" d="M5.5 9.25a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zm1 4a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5zM22 13v-2c0-3.771 0-5.657-1.172-6.828c-.974-.975-3.192-1.139-5.828-1.166v17.988c2.636-.027 4.854-.191 5.828-1.166C22 18.657 22 16.771 22 13"></path></svg></span></button>
+    </div>
+  </footer></div></div></aside>
+<main data-stellar-runtime-region="" class="site-main" id="main">
+
+
+<div class="article-banner-wrap slide-up"><div class="article banner top">
+  <div class="content">
+    
+    <div class="top bread-nav footnote"><div class="top-row"><div class="left" id="breadcrumb"><a class="cap breadcrumb" href="/">主页</a>
+<span class="sep"></span><a class="cap breadcrumb" href="/">文章</a>
+</div><div class="right"><span class="cap reading">3538 字 · 预计阅读 12 分钟</span></div></div><div class="meta-row">
+<div class="flex-row" id="post-meta"><span class="text created">发布于：<time datetime="2026-11-15T07:47:31.000Z">2026-11-15</time></span><span class="sep updated"></span><span class="text updated">更新于：<time datetime="2026-11-21T08:32:53.000Z">2026-11-21</time></span></div>
+</div></div>
+    
+    <div class="bottom only-title">
+      
+      <div class="text-area">
+        <h1 class="text title"><span>Transformer：实现一个简单的大语言模型</span></h1>
+        
+      </div>
+    </div>
+    
+  </div>
+  </div></div>
+<article class="md-text content slide-up"><h3 id="前言">前言</h3>
+<p>了解了 Transformer 的整体架构后，我们知道，在实现机器翻译时，我们可以将源序列输入编码器，然后将编码后的源序列与目标序列输入到解码器，解码器会尝试预测下一个词元。那我们可不可以使用它来生成文本呢？当然可以，其实无论是机器翻译、或者文本生成，它本质都是根据一个已有的文本，来预测下一个词元，基于这个想法，出现了 <strong>Decoder-Only</strong> 架构，它摒弃了 Encoder，只使用 Decoder 来完成文本生成任务，而这也是 GPT 模型采用的构架。</p>
 <p>下面我们基于 Transformer 的 Decoder 来实现一个简单的“文本生成”语言模型。</p>
 <span id="more"></span>
-
 <blockquote>
 <p>《Python深度学习》笔记</p>
 </blockquote>
-<h3 id="文本数据准备"><a href="#文本数据准备" class="headerlink" title="文本数据准备"></a>文本数据准备</h3><p>训练语言模型的第一步是加载原始文本。我们的数据集是一个 <code>.jsonl</code> 文件（数据来自 jingyaogong&#x2F;minimind_dataset），每行是一个 JSON 对象，其中 <code>text</code> 字段存放了一条训练文本。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># DataLoader.py</span></span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">load_texts</span>(<span class="params">path: <span class="built_in">str</span>, max_lines: <span class="built_in">int</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">str</span>]:</span><br><span class="line">    texts = []</span><br><span class="line">    <span class="keyword">with</span> <span class="built_in">open</span>(path, <span class="string">&#x27;r&#x27;</span>, encoding=<span class="string">&#x27;utf-8&#x27;</span>) <span class="keyword">as</span> f:</span><br><span class="line">        <span class="keyword">for</span> i, line <span class="keyword">in</span> <span class="built_in">enumerate</span>(f):</span><br><span class="line">            <span class="keyword">if</span> i &gt;= max_lines:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                data = json.loads(line)</span><br><span class="line">                text = data.get(<span class="string">&quot;text&quot;</span>, <span class="string">&quot;&quot;</span>)</span><br><span class="line">                <span class="keyword">if</span> text:</span><br><span class="line">                    texts.append(text)</span><br><span class="line">            <span class="keyword">except</span> json.JSONDecodeError:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">    <span class="keyword">return</span> texts</span><br></pre></td></tr></table></figure>
-
-<h3 id="构建词表"><a href="#构建词表" class="headerlink" title="构建词表"></a>构建词表</h3><p>词表决定了模型能”看懂”哪些文字。传统方案按空格切词后统计频次，但对中文效果很差，而且遇到训练集里没有的词就束手无策（Out-of-Vocabulary，OOV）。</p>
-<p>这里我们使用 <strong>Byte-Level BPE</strong>（字节对编码），它是 GPT-2&#x2F;GPT-4 等模型使用的分词方案，核心思路：</p>
+<h3 id="文本数据准备">文本数据准备</h3>
+<p>训练语言模型的第一步是加载原始文本。我们的数据集是一个 <code>.jsonl</code> 文件（数据来自 jingyaogong/minimind_dataset），每行是一个 JSON 对象，其中 <code>text</code> 字段存放了一条训练文本。</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># DataLoader.py</span></span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">load_texts</span>(<span class="params">path: <span class="built_in">str</span>, max_lines: <span class="built_in">int</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">str</span>]:</span><br><span class="line">    texts = []</span><br><span class="line">    <span class="keyword">with</span> <span class="built_in">open</span>(path, <span class="string">'r'</span>, encoding=<span class="string">'utf-8'</span>) <span class="keyword">as</span> f:</span><br><span class="line">        <span class="keyword">for</span> i, line <span class="keyword">in</span> <span class="built_in">enumerate</span>(f):</span><br><span class="line">            <span class="keyword">if</span> i &gt;= max_lines:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                data = json.loads(line)</span><br><span class="line">                text = data.get(<span class="string">"text"</span>, <span class="string">""</span>)</span><br><span class="line">                <span class="keyword">if</span> text:</span><br><span class="line">                    texts.append(text)</span><br><span class="line">            <span class="keyword">except</span> json.JSONDecodeError:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">    <span class="keyword">return</span> texts</span><br></pre></td></tr></tbody></table></figure>
+<h3 id="构建词表">构建词表</h3>
+<p>词表决定了模型能"看懂"哪些文字。传统方案按空格切词后统计频次，但对中文效果很差，而且遇到训练集里没有的词就束手无策（Out-of-Vocabulary，OOV）。</p>
+<p>这里我们使用 <strong>Byte-Level BPE</strong>（字节对编码），它是 GPT-2/GPT-4 等模型使用的分词方案，核心思路：</p>
 <ol>
 <li>把每个字符先映射成 UTF-8 字节（256 个基础 token，天然覆盖所有语言）；</li>
 <li>反复合并出现频率最高的相邻字节对，直到词表达到目标大小。</li>
 </ol>
 <p>这样做的好处是：任何文字都能被表示；对中文、英文、数字、标点全部友好，无需额外预处理。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># BPEVocab.py</span></span><br><span class="line"><span class="keyword">from</span> tokenizers <span class="keyword">import</span> Tokenizer</span><br><span class="line"><span class="keyword">from</span> tokenizers.models <span class="keyword">import</span> BPE</span><br><span class="line"><span class="keyword">from</span> tokenizers.trainers <span class="keyword">import</span> BpeTrainer</span><br><span class="line"><span class="keyword">from</span> tokenizers.pre_tokenizers <span class="keyword">import</span> ByteLevel</span><br><span class="line"><span class="keyword">from</span> tokenizers.decoders <span class="keyword">import</span> ByteLevel <span class="keyword">as</span> ByteLevelDecoder</span><br><span class="line"><span class="keyword">from</span> tokenizers.processors <span class="keyword">import</span> TemplateProcessing</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">BPEVocab</span>:</span><br><span class="line">    PAD_TOKEN = <span class="string">&quot;&lt;pad&gt;&quot;</span></span><br><span class="line">    BOS_TOKEN = <span class="string">&quot;&lt;bos&gt;&quot;</span>   <span class="comment"># Beginning of Sequence</span></span><br><span class="line">    EOS_TOKEN = <span class="string">&quot;&lt;eos&gt;&quot;</span>   <span class="comment"># End of Sequence</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, texts: <span class="built_in">list</span>[<span class="built_in">str</span>], vocab_size: <span class="built_in">int</span> = <span class="number">6000</span></span>):</span><br><span class="line">        tokenizer = Tokenizer(BPE(unk_token=<span class="literal">None</span>))</span><br><span class="line">        tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=<span class="literal">False</span>)</span><br><span class="line">        tokenizer.decoder       = ByteLevelDecoder()</span><br><span class="line"></span><br><span class="line">        trainer = BpeTrainer(</span><br><span class="line">            vocab_size=vocab_size,</span><br><span class="line">            special_tokens=[<span class="variable language_">self</span>.PAD_TOKEN, <span class="variable language_">self</span>.BOS_TOKEN, <span class="variable language_">self</span>.EOS_TOKEN],</span><br><span class="line">        )</span><br><span class="line">        tokenizer.train_from_iterator(texts, trainer=trainer)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 训练后配置 post-processor，编码时自动加 BOS/EOS</span></span><br><span class="line">        bos_id = tokenizer.token_to_id(<span class="variable language_">self</span>.BOS_TOKEN)</span><br><span class="line">        eos_id = tokenizer.token_to_id(<span class="variable language_">self</span>.EOS_TOKEN)</span><br><span class="line">        tokenizer.post_processor = TemplateProcessing(</span><br><span class="line">            single=<span class="string">f&quot;<span class="subst">&#123;self.BOS_TOKEN&#125;</span> $A <span class="subst">&#123;self.EOS_TOKEN&#125;</span>&quot;</span>,</span><br><span class="line">            special_tokens=[</span><br><span class="line">                (<span class="variable language_">self</span>.BOS_TOKEN, bos_id),</span><br><span class="line">                (<span class="variable language_">self</span>.EOS_TOKEN, eos_id),</span><br><span class="line">            ],</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">        <span class="variable language_">self</span>.tokenizer = tokenizer</span><br><span class="line">        <span class="variable language_">self</span>.PAD = tokenizer.token_to_id(<span class="variable language_">self</span>.PAD_TOKEN)</span><br><span class="line">        <span class="variable language_">self</span>.BOS = bos_id</span><br><span class="line">        <span class="variable language_">self</span>.EOS = eos_id</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># BPEVocab.py</span></span><br><span class="line"><span class="keyword">from</span> tokenizers <span class="keyword">import</span> Tokenizer</span><br><span class="line"><span class="keyword">from</span> tokenizers.models <span class="keyword">import</span> BPE</span><br><span class="line"><span class="keyword">from</span> tokenizers.trainers <span class="keyword">import</span> BpeTrainer</span><br><span class="line"><span class="keyword">from</span> tokenizers.pre_tokenizers <span class="keyword">import</span> ByteLevel</span><br><span class="line"><span class="keyword">from</span> tokenizers.decoders <span class="keyword">import</span> ByteLevel <span class="keyword">as</span> ByteLevelDecoder</span><br><span class="line"><span class="keyword">from</span> tokenizers.processors <span class="keyword">import</span> TemplateProcessing</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">BPEVocab</span>:</span><br><span class="line">    PAD_TOKEN = <span class="string">"&lt;pad&gt;"</span></span><br><span class="line">    BOS_TOKEN = <span class="string">"&lt;bos&gt;"</span>   <span class="comment"># Beginning of Sequence</span></span><br><span class="line">    EOS_TOKEN = <span class="string">"&lt;eos&gt;"</span>   <span class="comment"># End of Sequence</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, texts: <span class="built_in">list</span>[<span class="built_in">str</span>], vocab_size: <span class="built_in">int</span> = <span class="number">6000</span></span>):</span><br><span class="line">        tokenizer = Tokenizer(BPE(unk_token=<span class="literal">None</span>))</span><br><span class="line">        tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=<span class="literal">False</span>)</span><br><span class="line">        tokenizer.decoder       = ByteLevelDecoder()</span><br><span class="line"></span><br><span class="line">        trainer = BpeTrainer(</span><br><span class="line">            vocab_size=vocab_size,</span><br><span class="line">            special_tokens=[<span class="variable language_">self</span>.PAD_TOKEN, <span class="variable language_">self</span>.BOS_TOKEN, <span class="variable language_">self</span>.EOS_TOKEN],</span><br><span class="line">        )</span><br><span class="line">        tokenizer.train_from_iterator(texts, trainer=trainer)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 训练后配置 post-processor，编码时自动加 BOS/EOS</span></span><br><span class="line">        bos_id = tokenizer.token_to_id(<span class="variable language_">self</span>.BOS_TOKEN)</span><br><span class="line">        eos_id = tokenizer.token_to_id(<span class="variable language_">self</span>.EOS_TOKEN)</span><br><span class="line">        tokenizer.post_processor = TemplateProcessing(</span><br><span class="line">            single=<span class="string">f"<span class="subst">{self.BOS_TOKEN}</span> $A <span class="subst">{self.EOS_TOKEN}</span>"</span>,</span><br><span class="line">            special_tokens=[</span><br><span class="line">                (<span class="variable language_">self</span>.BOS_TOKEN, bos_id),</span><br><span class="line">                (<span class="variable language_">self</span>.EOS_TOKEN, eos_id),</span><br><span class="line">            ],</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">        <span class="variable language_">self</span>.tokenizer = tokenizer</span><br><span class="line">        <span class="variable language_">self</span>.PAD = tokenizer.token_to_id(<span class="variable language_">self</span>.PAD_TOKEN)</span><br><span class="line">        <span class="variable language_">self</span>.BOS = bos_id</span><br><span class="line">        <span class="variable language_">self</span>.EOS = eos_id</span><br></pre></td></tr></tbody></table></figure>
 <p>三个核心方法：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, text: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;编码文本（含 BOS/EOS）→ token id 列表&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> <span class="variable language_">self</span>.tokenizer.encode(text).ids</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, ids: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;解码 token id 列表 → 文本（自动过滤特殊 token）&quot;&quot;&quot;</span></span><br><span class="line">    skip = &#123;<span class="variable language_">self</span>.PAD, <span class="variable language_">self</span>.BOS, <span class="variable language_">self</span>.EOS&#125;</span><br><span class="line">    filtered = [i <span class="keyword">for</span> i <span class="keyword">in</span> ids <span class="keyword">if</span> i <span class="keyword">not</span> <span class="keyword">in</span> skip]</span><br><span class="line">    <span class="keyword">return</span> <span class="variable language_">self</span>.tokenizer.decode(filtered)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">save</span>(<span class="params">self, path: <span class="built_in">str</span></span>):</span><br><span class="line">    <span class="variable language_">self</span>.tokenizer.save(path)</span><br><span class="line"></span><br><span class="line"><span class="meta">@classmethod</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">load</span>(<span class="params">cls, path: <span class="built_in">str</span></span>) -&gt; <span class="string">&quot;BPEVocab&quot;</span>:</span><br><span class="line">    obj = cls.__new__(cls)</span><br><span class="line">    obj.tokenizer = Tokenizer.from_file(path)</span><br><span class="line">    obj.PAD = obj.tokenizer.token_to_id(cls.PAD_TOKEN)</span><br><span class="line">    obj.BOS = obj.tokenizer.token_to_id(cls.BOS_TOKEN)</span><br><span class="line">    obj.EOS = obj.tokenizer.token_to_id(cls.EOS_TOKEN)</span><br><span class="line">    <span class="keyword">return</span> obj</span><br></pre></td></tr></table></figure>
-
-<h3 id="Decoder-实现"><a href="#Decoder-实现" class="headerlink" title="Decoder 实现"></a>Decoder 实现</h3><h4 id="位置嵌入"><a href="#位置嵌入" class="headerlink" title="位置嵌入"></a>位置嵌入</h4><p>Transformer 本身没有”顺序”的概念，所有位置是并行处理的。为了让模型知道每个 token 在序列中的位置，我们需要为每个位置加一个<strong>位置嵌入</strong>，位置嵌入在训练中得到，然后将它与词嵌入相加：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">最终嵌入 = 词嵌入 + 位置嵌入</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># TransformerDecoder.py</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PositionalEmbedding</span>(layers.Layer):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, sequence_length, input_dim, output_dim, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(**kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.token_embeddings    = layers.Embedding(input_dim=input_dim,        output_dim=output_dim)</span><br><span class="line">        <span class="variable language_">self</span>.position_embeddings = layers.Embedding(input_dim=sequence_length,  output_dim=output_dim)</span><br><span class="line">        <span class="variable language_">self</span>.sequence_length = sequence_length</span><br><span class="line">        <span class="variable language_">self</span>.input_dim  = input_dim</span><br><span class="line">        <span class="variable language_">self</span>.output_dim = output_dim</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, inputs</span>):</span><br><span class="line">        length    = tf.shape(inputs)[-<span class="number">1</span>]</span><br><span class="line">        positions = tf.<span class="built_in">range</span>(start=<span class="number">0</span>, limit=length, delta=<span class="number">1</span>)</span><br><span class="line">        embedded_tokens    = <span class="variable language_">self</span>.token_embeddings(inputs)</span><br><span class="line">        embedded_positions = <span class="variable language_">self</span>.position_embeddings(positions)</span><br><span class="line">        <span class="keyword">return</span> embedded_tokens + embedded_positions</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">compute_mask</span>(<span class="params">self, inputs, mask=<span class="literal">None</span></span>):</span><br><span class="line">        <span class="comment"># 告诉后续层哪些位置是真实 token（非 PAD）</span></span><br><span class="line">        <span class="keyword">return</span> ops.not_equal(inputs, <span class="number">0</span>)</span><br></pre></td></tr></table></figure>
-
-<h4 id="因果注意力掩码"><a href="#因果注意力掩码" class="headerlink" title="因果注意力掩码"></a>因果注意力掩码</h4><p>在语言模型训练时，我们希望位置 $i$ 的 token 只能”看到”它之前的 token（包括自身），不能看到未来的信息——否则模型直接把答案”抄”过来，根本学不到任何东西。</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, text: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">    <span class="string">"""编码文本（含 BOS/EOS）→ token id 列表"""</span></span><br><span class="line">    <span class="keyword">return</span> <span class="variable language_">self</span>.tokenizer.encode(text).ids</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, ids: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">    <span class="string">"""解码 token id 列表 → 文本（自动过滤特殊 token）"""</span></span><br><span class="line">    skip = {<span class="variable language_">self</span>.PAD, <span class="variable language_">self</span>.BOS, <span class="variable language_">self</span>.EOS}</span><br><span class="line">    filtered = [i <span class="keyword">for</span> i <span class="keyword">in</span> ids <span class="keyword">if</span> i <span class="keyword">not</span> <span class="keyword">in</span> skip]</span><br><span class="line">    <span class="keyword">return</span> <span class="variable language_">self</span>.tokenizer.decode(filtered)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">save</span>(<span class="params">self, path: <span class="built_in">str</span></span>):</span><br><span class="line">    <span class="variable language_">self</span>.tokenizer.save(path)</span><br><span class="line"></span><br><span class="line"><span class="meta">@classmethod</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">load</span>(<span class="params">cls, path: <span class="built_in">str</span></span>) -&gt; <span class="string">"BPEVocab"</span>:</span><br><span class="line">    obj = cls.__new__(cls)</span><br><span class="line">    obj.tokenizer = Tokenizer.from_file(path)</span><br><span class="line">    obj.PAD = obj.tokenizer.token_to_id(cls.PAD_TOKEN)</span><br><span class="line">    obj.BOS = obj.tokenizer.token_to_id(cls.BOS_TOKEN)</span><br><span class="line">    obj.EOS = obj.tokenizer.token_to_id(cls.EOS_TOKEN)</span><br><span class="line">    <span class="keyword">return</span> obj</span><br></pre></td></tr></tbody></table></figure>
+<h3 id="Decoder-实现">Decoder 实现</h3>
+<h4 id="位置嵌入">位置嵌入</h4>
+<p>Transformer 本身没有"顺序"的概念，所有位置是并行处理的。为了让模型知道每个 token 在序列中的位置，我们需要为每个位置加一个<strong>位置嵌入</strong>，位置嵌入在训练中得到，然后将它与词嵌入相加：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">最终嵌入 = 词嵌入 + 位置嵌入</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># TransformerDecoder.py</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PositionalEmbedding</span>(layers.Layer):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, sequence_length, input_dim, output_dim, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(**kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.token_embeddings    = layers.Embedding(input_dim=input_dim,        output_dim=output_dim)</span><br><span class="line">        <span class="variable language_">self</span>.position_embeddings = layers.Embedding(input_dim=sequence_length,  output_dim=output_dim)</span><br><span class="line">        <span class="variable language_">self</span>.sequence_length = sequence_length</span><br><span class="line">        <span class="variable language_">self</span>.input_dim  = input_dim</span><br><span class="line">        <span class="variable language_">self</span>.output_dim = output_dim</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, inputs</span>):</span><br><span class="line">        length    = tf.shape(inputs)[-<span class="number">1</span>]</span><br><span class="line">        positions = tf.<span class="built_in">range</span>(start=<span class="number">0</span>, limit=length, delta=<span class="number">1</span>)</span><br><span class="line">        embedded_tokens    = <span class="variable language_">self</span>.token_embeddings(inputs)</span><br><span class="line">        embedded_positions = <span class="variable language_">self</span>.position_embeddings(positions)</span><br><span class="line">        <span class="keyword">return</span> embedded_tokens + embedded_positions</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">compute_mask</span>(<span class="params">self, inputs, mask=<span class="literal">None</span></span>):</span><br><span class="line">        <span class="comment"># 告诉后续层哪些位置是真实 token（非 PAD）</span></span><br><span class="line">        <span class="keyword">return</span> ops.not_equal(inputs, <span class="number">0</span>)</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="因果注意力掩码">因果注意力掩码</h4>
+<p>在语言模型训练时，我们希望位置 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi></mrow><annotation encoding="application/x-tex">i</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6595em;"></span><span class="mord mathnormal">i</span></span></span></span> 的 token 只能"看到"它之前的 token（包括自身），不能看到未来的信息——否则模型直接把答案"抄"过来，根本学不到任何东西。</p>
 <p>这通过<strong>因果掩码</strong>（保留下三角）实现：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">get_causal_attention_mask</span>(<span class="params">self, inputs</span>):</span><br><span class="line">    input_shape = tf.shape(inputs)</span><br><span class="line">    batch_size, sequence_length = input_shape[<span class="number">0</span>], input_shape[<span class="number">1</span>]</span><br><span class="line">    i = tf.<span class="built_in">range</span>(sequence_length)[:, tf.newaxis]</span><br><span class="line">    j = tf.<span class="built_in">range</span>(sequence_length)</span><br><span class="line">    mask = tf.cast(i &gt;= j, dtype=<span class="string">&quot;int32&quot;</span>)          <span class="comment"># 下三角矩阵</span></span><br><span class="line">    mask = tf.reshape(mask, (<span class="number">1</span>, sequence_length, sequence_length))</span><br><span class="line">    mult = tf.concat([tf.expand_dims(batch_size, -<span class="number">1</span>),</span><br><span class="line">                      tf.constant([<span class="number">1</span>, <span class="number">1</span>], dtype=tf.int32)], axis=<span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> tf.tile(mask, mult)                      <span class="comment"># 扩展到 batch 维度</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="Transformer-Decoder-层"><a href="#Transformer-Decoder-层" class="headerlink" title="Transformer Decoder 层"></a>Transformer Decoder 层</h4><p>标准 Decoder 有两个注意力子层：一个用于自注意力，一个用于交叉注意力（与 Encoder 交互）。在 <strong>Decoder-Only</strong> 架构中，我们没有 Encoder，所以把交叉注意力的 key&#x2F;value 也换成自身，退化为第二次自注意力（实际上两次都作用于同一输入 <code>x</code>）：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TransformerDecoder</span>(layers.Layer):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, embed_dim, dense_dim, num_heads, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(**kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.attention_1   = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)</span><br><span class="line">        <span class="variable language_">self</span>.attention_2   = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)</span><br><span class="line">        <span class="variable language_">self</span>.dense_proj    = keras.Sequential([</span><br><span class="line">            layers.Dense(dense_dim, activation=<span class="string">&quot;relu&quot;</span>),</span><br><span class="line">            layers.Dense(embed_dim),</span><br><span class="line">        ])</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_1   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_2   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_3   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.supports_masking = <span class="literal">True</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, inputs, encoder_outputs, mask=<span class="literal">None</span></span>):</span><br><span class="line">        causal_mask = <span class="variable language_">self</span>.get_causal_attention_mask(inputs)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># padding mask 与 causal mask 取交集</span></span><br><span class="line">        <span class="keyword">if</span> mask <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">            padding_mask = tf.cast(mask[:, tf.newaxis, :], dtype=<span class="string">&quot;int32&quot;</span>)</span><br><span class="line">            padding_mask = tf.minimum(padding_mask, causal_mask)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            padding_mask = causal_mask</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 第一个注意力：因果自注意力</span></span><br><span class="line">        attn1 = <span class="variable language_">self</span>.attention_1(query=inputs, value=inputs, key=inputs,</span><br><span class="line">                                 attention_mask=causal_mask)</span><br><span class="line">        attn1 = <span class="variable language_">self</span>.layernorm_1(inputs + attn1)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 第二个注意力：Decoder-Only 中 key/value 也来自自身</span></span><br><span class="line">        attn2 = <span class="variable language_">self</span>.attention_2(query=attn1, value=encoder_outputs, key=encoder_outputs,</span><br><span class="line">                                 attention_mask=padding_mask)</span><br><span class="line">        attn2 = <span class="variable language_">self</span>.layernorm_2(attn1 + attn2)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 前馈网络</span></span><br><span class="line">        proj = <span class="variable language_">self</span>.dense_proj(attn2)</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.layernorm_3(attn2 + proj)</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">get_causal_attention_mask</span>(<span class="params">self, inputs</span>):</span><br><span class="line">    input_shape = tf.shape(inputs)</span><br><span class="line">    batch_size, sequence_length = input_shape[<span class="number">0</span>], input_shape[<span class="number">1</span>]</span><br><span class="line">    i = tf.<span class="built_in">range</span>(sequence_length)[:, tf.newaxis]</span><br><span class="line">    j = tf.<span class="built_in">range</span>(sequence_length)</span><br><span class="line">    mask = tf.cast(i &gt;= j, dtype=<span class="string">"int32"</span>)          <span class="comment"># 下三角矩阵</span></span><br><span class="line">    mask = tf.reshape(mask, (<span class="number">1</span>, sequence_length, sequence_length))</span><br><span class="line">    mult = tf.concat([tf.expand_dims(batch_size, -<span class="number">1</span>),</span><br><span class="line">                      tf.constant([<span class="number">1</span>, <span class="number">1</span>], dtype=tf.int32)], axis=<span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> tf.tile(mask, mult)                      <span class="comment"># 扩展到 batch 维度</span></span><br></pre></td></tr></tbody></table></figure>
+<h4 id="Transformer-Decoder-层">Transformer Decoder 层</h4>
+<p>标准 Decoder 有两个注意力子层：一个用于自注意力，一个用于交叉注意力（与 Encoder 交互）。在 <strong>Decoder-Only</strong> 架构中，我们没有 Encoder，所以把交叉注意力的 key/value 也换成自身，退化为第二次自注意力（实际上两次都作用于同一输入 <code>x</code>）：</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TransformerDecoder</span>(layers.Layer):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, embed_dim, dense_dim, num_heads, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(**kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.attention_1   = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)</span><br><span class="line">        <span class="variable language_">self</span>.attention_2   = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)</span><br><span class="line">        <span class="variable language_">self</span>.dense_proj    = keras.Sequential([</span><br><span class="line">            layers.Dense(dense_dim, activation=<span class="string">"relu"</span>),</span><br><span class="line">            layers.Dense(embed_dim),</span><br><span class="line">        ])</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_1   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_2   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.layernorm_3   = layers.LayerNormalization()</span><br><span class="line">        <span class="variable language_">self</span>.supports_masking = <span class="literal">True</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, inputs, encoder_outputs, mask=<span class="literal">None</span></span>):</span><br><span class="line">        causal_mask = <span class="variable language_">self</span>.get_causal_attention_mask(inputs)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># padding mask 与 causal mask 取交集</span></span><br><span class="line">        <span class="keyword">if</span> mask <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">            padding_mask = tf.cast(mask[:, tf.newaxis, :], dtype=<span class="string">"int32"</span>)</span><br><span class="line">            padding_mask = tf.minimum(padding_mask, causal_mask)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            padding_mask = causal_mask</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 第一个注意力：因果自注意力</span></span><br><span class="line">        attn1 = <span class="variable language_">self</span>.attention_1(query=inputs, value=inputs, key=inputs,</span><br><span class="line">                                 attention_mask=causal_mask)</span><br><span class="line">        attn1 = <span class="variable language_">self</span>.layernorm_1(inputs + attn1)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 第二个注意力：Decoder-Only 中 key/value 也来自自身</span></span><br><span class="line">        attn2 = <span class="variable language_">self</span>.attention_2(query=attn1, value=encoder_outputs, key=encoder_outputs,</span><br><span class="line">                                 attention_mask=padding_mask)</span><br><span class="line">        attn2 = <span class="variable language_">self</span>.layernorm_2(attn1 + attn2)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 前馈网络</span></span><br><span class="line">        proj = <span class="variable language_">self</span>.dense_proj(attn2)</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.layernorm_3(attn2 + proj)</span><br></pre></td></tr></tbody></table></figure>
 <blockquote>
 <p>每个子层之后都有<strong>残差连接</strong>（<code>inputs + attn</code>）和<strong>层归一化</strong>，这是 Transformer 保持训练稳定的关键设计。</p>
 </blockquote>
-<h3 id="训练"><a href="#训练" class="headerlink" title="训练"></a>训练</h3><h4 id="构造训练数据对"><a href="#构造训练数据对" class="headerlink" title="构造训练数据对"></a>构造训练数据对</h4><p>语言模型的训练目标是：<strong>给定前 $n$ 个 token，预测第 $n+1$ 个 token</strong>。</p>
+<h3 id="训练">训练</h3>
+<h4 id="构造训练数据对">构造训练数据对</h4>
+<p>语言模型的训练目标是：<strong>给定前 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi></mrow><annotation encoding="application/x-tex">n</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">n</span></span></span></span> 个 token，预测第 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n+1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6667em;vertical-align:-0.0833em;"></span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span> 个 token</strong>。</p>
 <p>因此，对于一段编码后的序列 <code>[&lt;bos&gt;, t1, t2, ..., tn, &lt;eos&gt;]</code>，我们把它切成一对：</p>
 <ul>
 <li><strong>input</strong>：<code>[&lt;bos&gt;, t1, t2, ..., tn]</code>（去掉最后一个）</li>
 <li><strong>target</strong>：<code>[t1, t2, ..., tn, &lt;eos&gt;]</code>（去掉第一个）</li>
 </ul>
-<p>这样模型在每个位置 $i$ 的输出，就是对应位置 $i+1$ 的真实 token。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">encode_texts</span>(<span class="params">texts, vocab, seq_len</span>):</span><br><span class="line">    pad_id = vocab.PAD</span><br><span class="line">    inputs_list, targets_list = [], []</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> text <span class="keyword">in</span> texts:</span><br><span class="line">        ids = vocab.encode(text)          <span class="comment"># 含 BOS … EOS</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(ids) &gt; seq_len:</span><br><span class="line">            ids = ids[:seq_len]</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(ids) &lt; <span class="number">2</span>:</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">        inp = ids[:-<span class="number">1</span>]                    <span class="comment"># input:  去掉最后一个 token</span></span><br><span class="line">        tgt = ids[<span class="number">1</span>:]                     <span class="comment"># target: 去掉第一个 token</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># 不足 seq_len-1 的部分用 PAD 补齐</span></span><br><span class="line">        pad_len = (seq_len - <span class="number">1</span>) - <span class="built_in">len</span>(inp)</span><br><span class="line">        inp = inp + [pad_id] * pad_len</span><br><span class="line">        tgt = tgt + [pad_id] * pad_len</span><br><span class="line"></span><br><span class="line">        inputs_list.append(inp)</span><br><span class="line">        targets_list.append(tgt)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> np.array(inputs_list, dtype=np.int32), np.array(targets_list, dtype=np.int32)</span><br></pre></td></tr></table></figure>
-
-<h4 id="构建训练数据集"><a href="#构建训练数据集" class="headerlink" title="构建训练数据集"></a>构建训练数据集</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">make_dataset</span>(<span class="params">inputs, targets, batch_size, shuffle=<span class="literal">True</span></span>):</span><br><span class="line">    <span class="comment"># sparse_categorical_crossentropy 要求 target 有最后一个维度</span></span><br><span class="line">    targets_expanded = targets[..., np.newaxis]</span><br><span class="line">    dataset = tf.data.Dataset.from_tensor_slices((inputs, targets_expanded))</span><br><span class="line">    <span class="keyword">if</span> shuffle:</span><br><span class="line">        dataset = dataset.shuffle(buffer_size=<span class="built_in">min</span>(<span class="built_in">len</span>(inputs), <span class="number">10000</span>))</span><br><span class="line">    <span class="keyword">return</span> dataset.batch(batch_size, drop_remainder=<span class="literal">True</span>).prefetch(tf.data.AUTOTUNE)</span><br></pre></td></tr></table></figure>
-
-<h4 id="搭建模型"><a href="#搭建模型" class="headerlink" title="搭建模型"></a>搭建模型</h4><p>把位置嵌入层和多层 Decoder 堆叠起来，顶层加一个 <code>Dense</code> 层输出每个位置上词表所有词的概率分布：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">build_model</span>(<span class="params">vocab_size, seq_len, embed_dim, dense_dim, num_heads, num_layers</span>):</span><br><span class="line">    inputs = keras.Input(shape=(<span class="literal">None</span>,), dtype=<span class="string">&quot;int64&quot;</span>, name=<span class="string">&quot;token_ids&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 位置嵌入</span></span><br><span class="line">    x = PositionalEmbedding(seq_len, vocab_size, embed_dim)(inputs)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 堆叠 Decoder 层（Decoder-Only：传入 x, x）</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(num_layers):</span><br><span class="line">        x = TransformerDecoder(embed_dim, dense_dim, num_heads)(x, x)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 语言模型头：输出词表上的概率分布</span></span><br><span class="line">    outputs = layers.Dense(vocab_size, activation=<span class="string">&quot;softmax&quot;</span>)(x)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> keras.Model(inputs, outputs)</span><br></pre></td></tr></table></figure>
-
-<h4 id="训练配置与启动"><a href="#训练配置与启动" class="headerlink" title="训练配置与启动"></a>训练配置与启动</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">train</span>():</span><br><span class="line">    os.makedirs(SAVE_DIR, exist_ok=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 1. 加载文本</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;[1/5] 加载数据：<span class="subst">&#123;DATA_PATH&#125;</span>&quot;</span>)</span><br><span class="line">    texts = load_texts(DATA_PATH, max_lines=MAX_LINES)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      共加载 <span class="subst">&#123;<span class="built_in">len</span>(texts)&#125;</span> 条文本&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 训练 BPE 词表</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[2/5] 训练 BPE 分词器 ...&quot;</span>)</span><br><span class="line">    vocab = BPEVocab(texts, vocab_size=VOCAB_SIZE)</span><br><span class="line">    vocab.save(TOKENIZER_PATH)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      词表已保存至 <span class="subst">&#123;TOKENIZER_PATH&#125;</span>&quot;</span>)</span><br><span class="line">    actual_vocab_size = <span class="built_in">len</span>(vocab)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 编码 &amp; 构造训练对</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[3/5] 编码文本，构造自回归训练对 ...&quot;</span>)</span><br><span class="line">    inputs_arr, targets_arr = encode_texts(texts, vocab, SEQUENCE_LENGTH)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      训练样本数：<span class="subst">&#123;<span class="built_in">len</span>(inputs_arr)&#125;</span>，序列长度：<span class="subst">&#123;inputs_arr.shape[<span class="number">1</span>]&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 4. 划分训练 / 验证集（90% / 10%）</span></span><br><span class="line">    split = <span class="built_in">int</span>(<span class="built_in">len</span>(inputs_arr) * <span class="number">0.9</span>)</span><br><span class="line">    train_ds = make_dataset(inputs_arr[:split],  targets_arr[:split],  BATCH_SIZE, shuffle=<span class="literal">True</span>)</span><br><span class="line">    val_ds   = make_dataset(inputs_arr[split:],  targets_arr[split:],  BATCH_SIZE, shuffle=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 5. 构建模型</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[4/5] 构建模型 ...&quot;</span>)</span><br><span class="line">    model = build_model(</span><br><span class="line">        vocab_size  = actual_vocab_size,</span><br><span class="line">        seq_len     = SEQUENCE_LENGTH,</span><br><span class="line">        embed_dim   = EMBED_DIM,</span><br><span class="line">        dense_dim   = DENSE_DIM,</span><br><span class="line">        num_heads   = NUM_HEADS,</span><br><span class="line">        num_layers  = NUM_LAYERS,</span><br><span class="line">    )</span><br><span class="line">    model.summary()</span><br><span class="line"></span><br><span class="line">    optimizer = keras.optimizers.Adam(learning_rate=LEARNING_RATE)</span><br><span class="line">    model.<span class="built_in">compile</span>(</span><br><span class="line">        optimizer = optimizer,</span><br><span class="line">        loss      = <span class="string">&quot;sparse_categorical_crossentropy&quot;</span>,</span><br><span class="line">        metrics   = [<span class="string">&quot;sparse_categorical_accuracy&quot;</span>],</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 回调：ModelCheckpoint + EarlyStopping</span></span><br><span class="line">    ckpt_path = os.path.join(SAVE_DIR, <span class="string">&quot;model_epoch&#123;epoch:02d&#125;_val&#123;val_loss:.4f&#125;.weights.h5&quot;</span>)</span><br><span class="line">    callbacks = [</span><br><span class="line">        <span class="comment">#保存验证集 loss 最低的权重</span></span><br><span class="line">        keras.callbacks.ModelCheckpoint(</span><br><span class="line">            filepath          = ckpt_path,</span><br><span class="line">            save_weights_only = <span class="literal">True</span>,</span><br><span class="line">            monitor           = <span class="string">&quot;val_loss&quot;</span>,</span><br><span class="line">            save_best_only    = <span class="literal">True</span>,</span><br><span class="line">            verbose           = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">        <span class="comment"># 验证集 loss 连续 3 轮不下降则停止</span></span><br><span class="line">        keras.callbacks.EarlyStopping(</span><br><span class="line">            monitor   = <span class="string">&quot;val_loss&quot;</span>,</span><br><span class="line">            patience  = <span class="number">3</span>,</span><br><span class="line">            restore_best_weights = <span class="literal">True</span>,</span><br><span class="line">            verbose   = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">        <span class="comment"># 验证集 loss 连续 2 轮不下降则学习率减半</span></span><br><span class="line">        keras.callbacks.ReduceLROnPlateau(</span><br><span class="line">            monitor  = <span class="string">&quot;val_loss&quot;</span>,</span><br><span class="line">            factor   = <span class="number">0.5</span>,</span><br><span class="line">            patience = <span class="number">2</span>,</span><br><span class="line">            min_lr   = <span class="number">1e-5</span>,</span><br><span class="line">            verbose  = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">    ]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 6. 训练</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[5/5] 开始训练 ...&quot;</span>)</span><br><span class="line">    model.fit(</span><br><span class="line">        train_ds,</span><br><span class="line">        epochs          = EPOCHS,</span><br><span class="line">        validation_data = val_ds,</span><br><span class="line">        callbacks       = callbacks,</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 保存最终权重</span></span><br><span class="line">    final_weights = os.path.join(SAVE_DIR, <span class="string">&quot;model_final.weights.h5&quot;</span>)</span><br><span class="line">    model.save_weights(final_weights)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;\n训练完成！最终权重已保存至 <span class="subst">&#123;final_weights&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
-
+<p>这样模型在每个位置 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi></mrow><annotation encoding="application/x-tex">i</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6595em;"></span><span class="mord mathnormal">i</span></span></span></span> 的输出，就是对应位置 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">i+1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7429em;vertical-align:-0.0833em;"></span><span class="mord mathnormal">i</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span> 的真实 token。</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">encode_texts</span>(<span class="params">texts, vocab, seq_len</span>):</span><br><span class="line">    pad_id = vocab.PAD</span><br><span class="line">    inputs_list, targets_list = [], []</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> text <span class="keyword">in</span> texts:</span><br><span class="line">        ids = vocab.encode(text)          <span class="comment"># 含 BOS … EOS</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(ids) &gt; seq_len:</span><br><span class="line">            ids = ids[:seq_len]</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(ids) &lt; <span class="number">2</span>:</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">        inp = ids[:-<span class="number">1</span>]                    <span class="comment"># input:  去掉最后一个 token</span></span><br><span class="line">        tgt = ids[<span class="number">1</span>:]                     <span class="comment"># target: 去掉第一个 token</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># 不足 seq_len-1 的部分用 PAD 补齐</span></span><br><span class="line">        pad_len = (seq_len - <span class="number">1</span>) - <span class="built_in">len</span>(inp)</span><br><span class="line">        inp = inp + [pad_id] * pad_len</span><br><span class="line">        tgt = tgt + [pad_id] * pad_len</span><br><span class="line"></span><br><span class="line">        inputs_list.append(inp)</span><br><span class="line">        targets_list.append(tgt)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> np.array(inputs_list, dtype=np.int32), np.array(targets_list, dtype=np.int32)</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="构建训练数据集">构建训练数据集</h4>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">make_dataset</span>(<span class="params">inputs, targets, batch_size, shuffle=<span class="literal">True</span></span>):</span><br><span class="line">    <span class="comment"># sparse_categorical_crossentropy 要求 target 有最后一个维度</span></span><br><span class="line">    targets_expanded = targets[..., np.newaxis]</span><br><span class="line">    dataset = tf.data.Dataset.from_tensor_slices((inputs, targets_expanded))</span><br><span class="line">    <span class="keyword">if</span> shuffle:</span><br><span class="line">        dataset = dataset.shuffle(buffer_size=<span class="built_in">min</span>(<span class="built_in">len</span>(inputs), <span class="number">10000</span>))</span><br><span class="line">    <span class="keyword">return</span> dataset.batch(batch_size, drop_remainder=<span class="literal">True</span>).prefetch(tf.data.AUTOTUNE)</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="搭建模型">搭建模型</h4>
+<p>把位置嵌入层和多层 Decoder 堆叠起来，顶层加一个 <code>Dense</code> 层输出每个位置上词表所有词的概率分布：</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">build_model</span>(<span class="params">vocab_size, seq_len, embed_dim, dense_dim, num_heads, num_layers</span>):</span><br><span class="line">    inputs = keras.Input(shape=(<span class="literal">None</span>,), dtype=<span class="string">"int64"</span>, name=<span class="string">"token_ids"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 位置嵌入</span></span><br><span class="line">    x = PositionalEmbedding(seq_len, vocab_size, embed_dim)(inputs)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 堆叠 Decoder 层（Decoder-Only：传入 x, x）</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(num_layers):</span><br><span class="line">        x = TransformerDecoder(embed_dim, dense_dim, num_heads)(x, x)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 语言模型头：输出词表上的概率分布</span></span><br><span class="line">    outputs = layers.Dense(vocab_size, activation=<span class="string">"softmax"</span>)(x)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> keras.Model(inputs, outputs)</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="训练配置与启动">训练配置与启动</h4>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">train</span>():</span><br><span class="line">    os.makedirs(SAVE_DIR, exist_ok=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 1. 加载文本</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"[1/5] 加载数据：<span class="subst">{DATA_PATH}</span>"</span>)</span><br><span class="line">    texts = load_texts(DATA_PATH, max_lines=MAX_LINES)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"      共加载 <span class="subst">{<span class="built_in">len</span>(texts)}</span> 条文本"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 训练 BPE 词表</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"[2/5] 训练 BPE 分词器 ..."</span>)</span><br><span class="line">    vocab = BPEVocab(texts, vocab_size=VOCAB_SIZE)</span><br><span class="line">    vocab.save(TOKENIZER_PATH)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"      词表已保存至 <span class="subst">{TOKENIZER_PATH}</span>"</span>)</span><br><span class="line">    actual_vocab_size = <span class="built_in">len</span>(vocab)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 编码 &amp; 构造训练对</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"[3/5] 编码文本，构造自回归训练对 ..."</span>)</span><br><span class="line">    inputs_arr, targets_arr = encode_texts(texts, vocab, SEQUENCE_LENGTH)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"      训练样本数：<span class="subst">{<span class="built_in">len</span>(inputs_arr)}</span>，序列长度：<span class="subst">{inputs_arr.shape[<span class="number">1</span>]}</span>"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 4. 划分训练 / 验证集（90% / 10%）</span></span><br><span class="line">    split = <span class="built_in">int</span>(<span class="built_in">len</span>(inputs_arr) * <span class="number">0.9</span>)</span><br><span class="line">    train_ds = make_dataset(inputs_arr[:split],  targets_arr[:split],  BATCH_SIZE, shuffle=<span class="literal">True</span>)</span><br><span class="line">    val_ds   = make_dataset(inputs_arr[split:],  targets_arr[split:],  BATCH_SIZE, shuffle=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 5. 构建模型</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"[4/5] 构建模型 ..."</span>)</span><br><span class="line">    model = build_model(</span><br><span class="line">        vocab_size  = actual_vocab_size,</span><br><span class="line">        seq_len     = SEQUENCE_LENGTH,</span><br><span class="line">        embed_dim   = EMBED_DIM,</span><br><span class="line">        dense_dim   = DENSE_DIM,</span><br><span class="line">        num_heads   = NUM_HEADS,</span><br><span class="line">        num_layers  = NUM_LAYERS,</span><br><span class="line">    )</span><br><span class="line">    model.summary()</span><br><span class="line"></span><br><span class="line">    optimizer = keras.optimizers.Adam(learning_rate=LEARNING_RATE)</span><br><span class="line">    model.<span class="built_in">compile</span>(</span><br><span class="line">        optimizer = optimizer,</span><br><span class="line">        loss      = <span class="string">"sparse_categorical_crossentropy"</span>,</span><br><span class="line">        metrics   = [<span class="string">"sparse_categorical_accuracy"</span>],</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 回调：ModelCheckpoint + EarlyStopping</span></span><br><span class="line">    ckpt_path = os.path.join(SAVE_DIR, <span class="string">"model_epoch{epoch:02d}_val{val_loss:.4f}.weights.h5"</span>)</span><br><span class="line">    callbacks = [</span><br><span class="line">        <span class="comment">#保存验证集 loss 最低的权重</span></span><br><span class="line">        keras.callbacks.ModelCheckpoint(</span><br><span class="line">            filepath          = ckpt_path,</span><br><span class="line">            save_weights_only = <span class="literal">True</span>,</span><br><span class="line">            monitor           = <span class="string">"val_loss"</span>,</span><br><span class="line">            save_best_only    = <span class="literal">True</span>,</span><br><span class="line">            verbose           = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">        <span class="comment"># 验证集 loss 连续 3 轮不下降则停止</span></span><br><span class="line">        keras.callbacks.EarlyStopping(</span><br><span class="line">            monitor   = <span class="string">"val_loss"</span>,</span><br><span class="line">            patience  = <span class="number">3</span>,</span><br><span class="line">            restore_best_weights = <span class="literal">True</span>,</span><br><span class="line">            verbose   = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">        <span class="comment"># 验证集 loss 连续 2 轮不下降则学习率减半</span></span><br><span class="line">        keras.callbacks.ReduceLROnPlateau(</span><br><span class="line">            monitor  = <span class="string">"val_loss"</span>,</span><br><span class="line">            factor   = <span class="number">0.5</span>,</span><br><span class="line">            patience = <span class="number">2</span>,</span><br><span class="line">            min_lr   = <span class="number">1e-5</span>,</span><br><span class="line">            verbose  = <span class="number">1</span>,</span><br><span class="line">        ),</span><br><span class="line">    ]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 6. 训练</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"[5/5] 开始训练 ..."</span>)</span><br><span class="line">    model.fit(</span><br><span class="line">        train_ds,</span><br><span class="line">        epochs          = EPOCHS,</span><br><span class="line">        validation_data = val_ds,</span><br><span class="line">        callbacks       = callbacks,</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 保存最终权重</span></span><br><span class="line">    final_weights = os.path.join(SAVE_DIR, <span class="string">"model_final.weights.h5"</span>)</span><br><span class="line">    model.save_weights(final_weights)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"\n训练完成！最终权重已保存至 <span class="subst">{final_weights}</span>"</span>)</span><br></pre></td></tr></tbody></table></figure>
 <p>损失函数选用 <code>sparse_categorical_crossentropy</code>：与 <code>categorical_crossentropy</code> 的区别在于，它直接接受整数形式的标签（token id），不需要提前做 one-hot 编码，对词表较大的场景更节省内存。</p>
-<h3 id="推理"><a href="#推理" class="headerlink" title="推理"></a>推理</h3><h4 id="温度采样"><a href="#温度采样" class="headerlink" title="温度采样"></a>温度采样</h4><p>模型输出的是词表上每个 token 的概率分布，最简单的做法是取概率最大的词（贪心解码），但这样生成的文本往往重复、单调。<strong>温度采样</strong>通过调整分布来控制随机性：</p>
+<h3 id="推理">推理</h3>
+<h4 id="温度采样">温度采样</h4>
+<p>模型输出的是词表上每个 token 的概率分布，最简单的做法是取概率最大的词（贪心解码），但这样生成的文本往往重复、单调。<strong>温度采样</strong>通过调整分布来控制随机性：</p>
 <ul>
-<li>$T &lt; 1$：分布变尖锐，高概率词被进一步放大，输出更保守；</li>
-<li>$T &#x3D; 1$：保持原始分布；</li>
-<li>$T &gt; 1$：分布变平坦，低概率词也有机会被选中，输出更随机、更有创意。</li>
+<li><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T &lt; 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7224em;vertical-align:-0.0391em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&lt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span>：分布变尖锐，高概率词被进一步放大，输出更保守；</li>
+<li><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T = 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span>：保持原始分布；</li>
+<li><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T &gt; 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7224em;vertical-align:-0.0391em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span>：分布变平坦，低概率词也有机会被选中，输出更随机、更有创意。</li>
 </ul>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">sample_next</span>(<span class="params">predictions, temperature=<span class="number">1.0</span></span>):</span><br><span class="line">    predictions = np.asarray(predictions).astype(<span class="string">&quot;float64&quot;</span>)</span><br><span class="line">    predictions = np.log(predictions + <span class="number">1e-8</span>) / temperature  <span class="comment"># 避免 log(0)</span></span><br><span class="line">    exp_preds   = np.exp(predictions - predictions.<span class="built_in">max</span>())   <span class="comment"># 减 max 防数值溢出</span></span><br><span class="line">    predictions = exp_preds / exp_preds.<span class="built_in">sum</span>()</span><br><span class="line">    probas = np.random.multinomial(<span class="number">1</span>, predictions, <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">return</span> np.argmax(probas)</span><br></pre></td></tr></table></figure>
-
-<h4 id="自回归生成"><a href="#自回归生成" class="headerlink" title="自回归生成"></a>自回归生成</h4><p>推理时，我们把输入(prompt)编码为 token id 序列，然后循环地：</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">sample_next</span>(<span class="params">predictions, temperature=<span class="number">1.0</span></span>):</span><br><span class="line">    predictions = np.asarray(predictions).astype(<span class="string">"float64"</span>)</span><br><span class="line">    predictions = np.log(predictions + <span class="number">1e-8</span>) / temperature  <span class="comment"># 避免 log(0)</span></span><br><span class="line">    exp_preds   = np.exp(predictions - predictions.<span class="built_in">max</span>())   <span class="comment"># 减 max 防数值溢出</span></span><br><span class="line">    predictions = exp_preds / exp_preds.<span class="built_in">sum</span>()</span><br><span class="line">    probas = np.random.multinomial(<span class="number">1</span>, predictions, <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">return</span> np.argmax(probas)</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="自回归生成">自回归生成</h4>
+<p>推理时，我们把输入(prompt)编码为 token id 序列，然后循环地：</p>
 <ol>
 <li>把当前序列送入模型，得到每个位置的概率分布；</li>
 <li>取<strong>最后一个有效位置</strong>的概率分布，采样出下一个 token；</li>
 <li>把新 token 追加到序列末尾；</li>
 <li>重复，直到生成 <code>&lt;eos&gt;</code> 或达到最大长度。</li>
 </ol>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">generate</span>(<span class="params">model, vocab, prompt, generate_length=<span class="number">100</span>,</span></span><br><span class="line"><span class="params">             model_input_length=<span class="number">127</span>, temperature=<span class="number">1.0</span></span>):</span><br><span class="line"></span><br><span class="line">    prompt_ids    = vocab.encode(prompt)      <span class="comment"># 含 BOS</span></span><br><span class="line">    generated_ids = <span class="built_in">list</span>(prompt_ids)</span><br><span class="line">    prompt_length = <span class="built_in">len</span>(prompt_ids)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(generate_length):</span><br><span class="line">        <span class="comment"># 超出窗口时，只取最近的 model_input_length 个 token</span></span><br><span class="line">        window    = generated_ids[-model_input_length:]</span><br><span class="line">        pad_len   = model_input_length - <span class="built_in">len</span>(window)</span><br><span class="line">        padded    = window + [vocab.PAD] * pad_len</span><br><span class="line">        inp       = np.array([padded], dtype=np.int32)</span><br><span class="line"></span><br><span class="line">        predictions = model(inp, training=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 当前&quot;下一个 token&quot;对应的预测位置</span></span><br><span class="line">        pred_pos         = <span class="built_in">min</span>(prompt_length - <span class="number">1</span> + i, model_input_length - <span class="number">1</span>)</span><br><span class="line">        next_token_probs = predictions[<span class="number">0</span>, pred_pos, :].numpy()</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 屏蔽特殊 token，不让模型生成 PAD 或 BOS</span></span><br><span class="line">        next_token_probs[vocab.PAD] = <span class="number">0.0</span></span><br><span class="line">        next_token_probs[vocab.BOS] = <span class="number">0.0</span></span><br><span class="line"></span><br><span class="line">        next_id = sample_next(next_token_probs, temperature)</span><br><span class="line">        generated_ids.append(<span class="built_in">int</span>(next_id))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">int</span>(next_id) == vocab.EOS:</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> vocab.decode(generated_ids)</span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">generate</span>(<span class="params">model, vocab, prompt, generate_length=<span class="number">100</span>,</span></span><br><span class="line"><span class="params">             model_input_length=<span class="number">127</span>, temperature=<span class="number">1.0</span></span>):</span><br><span class="line"></span><br><span class="line">    prompt_ids    = vocab.encode(prompt)      <span class="comment"># 含 BOS</span></span><br><span class="line">    generated_ids = <span class="built_in">list</span>(prompt_ids)</span><br><span class="line">    prompt_length = <span class="built_in">len</span>(prompt_ids)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(generate_length):</span><br><span class="line">        <span class="comment"># 超出窗口时，只取最近的 model_input_length 个 token</span></span><br><span class="line">        window    = generated_ids[-model_input_length:]</span><br><span class="line">        pad_len   = model_input_length - <span class="built_in">len</span>(window)</span><br><span class="line">        padded    = window + [vocab.PAD] * pad_len</span><br><span class="line">        inp       = np.array([padded], dtype=np.int32)</span><br><span class="line"></span><br><span class="line">        predictions = model(inp, training=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 当前"下一个 token"对应的预测位置</span></span><br><span class="line">        pred_pos         = <span class="built_in">min</span>(prompt_length - <span class="number">1</span> + i, model_input_length - <span class="number">1</span>)</span><br><span class="line">        next_token_probs = predictions[<span class="number">0</span>, pred_pos, :].numpy()</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 屏蔽特殊 token，不让模型生成 PAD 或 BOS</span></span><br><span class="line">        next_token_probs[vocab.PAD] = <span class="number">0.0</span></span><br><span class="line">        next_token_probs[vocab.BOS] = <span class="number">0.0</span></span><br><span class="line"></span><br><span class="line">        next_id = sample_next(next_token_probs, temperature)</span><br><span class="line">        generated_ids.append(<span class="built_in">int</span>(next_id))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">int</span>(next_id) == vocab.EOS:</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> vocab.decode(generated_ids)</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="文本生成">文本生成</h4>
+<p>加载词表和模型权重，重建模型来生成文本：</p>
+<figure class="highlight python"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">inference</span>():</span><br><span class="line">    args = parse_args()</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 1. 加载词表</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"[1/3] 加载词表：<span class="subst">{args.tokenizer}</span>"</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> os.path.exists(args.tokenizer):</span><br><span class="line">        <span class="keyword">raise</span> FileNotFoundError(<span class="string">f"词表不存在：<span class="subst">{args.tokenizer}</span>，请先运行 pre_train.py"</span>)</span><br><span class="line">    vocab = BPEVocab.load(args.tokenizer)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"      词表大小：<span class="subst">{<span class="built_in">len</span>(vocab)}</span>"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 重建模型并加载权重</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f"[2/3] 加载权重：<span class="subst">{args.weights}</span>"</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> os.path.exists(args.weights):</span><br><span class="line">        <span class="keyword">raise</span> FileNotFoundError(<span class="string">f"权重不存在：<span class="subst">{args.weights}</span>，请先运行 pre_train.py"</span>)</span><br><span class="line">    model = build_model(<span class="built_in">len</span>(vocab), SEQUENCE_LENGTH, EMBED_DIM,</span><br><span class="line">                        DENSE_DIM, NUM_HEADS, NUM_LAYERS)</span><br><span class="line">    model(np.zeros((<span class="number">1</span>, <span class="number">10</span>), dtype=np.int32), training=<span class="literal">False</span>)  <span class="comment"># 触发初始化</span></span><br><span class="line">    model.load_weights(args.weights)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"      权重加载完成。\n"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 推理</span></span><br><span class="line">    model_input_length = SEQUENCE_LENGTH - <span class="number">1</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">run_prompt</span>(<span class="params">prompt: <span class="built_in">str</span></span>):</span><br><span class="line">        <span class="keyword">for</span> temperature <span class="keyword">in</span> args.temperatures:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f"== Generating with temperature <span class="subst">{temperature}</span>"</span>)</span><br><span class="line">            result = generate(model, vocab, prompt,</span><br><span class="line">                              generate_length    = args.generate_length,</span><br><span class="line">                              model_input_length = model_input_length,</span><br><span class="line">                              temperature        = temperature)</span><br><span class="line">            <span class="built_in">print</span>(result)</span><br><span class="line">        <span class="built_in">print</span>()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> args.prompt:</span><br><span class="line">        run_prompt(args.prompt)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="comment"># 交互模式</span></span><br><span class="line">        <span class="built_in">print</span>(<span class="string">"交互模式（输入 quit 退出）"</span>)</span><br><span class="line">        <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                prompt = <span class="built_in">input</span>(<span class="string">"\n&gt;&gt;&gt; Prompt: "</span>).strip()</span><br><span class="line">            <span class="keyword">except</span> (EOFError, KeyboardInterrupt):</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> prompt:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            <span class="keyword">if</span> prompt.lower() <span class="keyword">in</span> {<span class="string">"quit"</span>, <span class="string">"exit"</span>}:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            run_prompt(prompt)</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></tbody></table></figure>
+</article>
+<div class="article-tags slide-up"><a class="tag" href="/tags/Transformer/"><svg class="icon" viewBox="0 0 1 1" data-icon="default:hashtag" aria-hidden="true"></svg>Transformer</a><a class="tag" href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/"><svg class="icon" viewBox="0 0 1 1" data-icon="default:hashtag" aria-hidden="true"></svg>深度学习</a></div>
 
-<h4 id="文本生成"><a href="#文本生成" class="headerlink" title="文本生成"></a>文本生成</h4><p>加载词表和模型权重，重建模型来生成文本：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">inference</span>():</span><br><span class="line">    args = parse_args()</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 1. 加载词表</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;[1/3] 加载词表：<span class="subst">&#123;args.tokenizer&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> os.path.exists(args.tokenizer):</span><br><span class="line">        <span class="keyword">raise</span> FileNotFoundError(<span class="string">f&quot;词表不存在：<span class="subst">&#123;args.tokenizer&#125;</span>，请先运行 pre_train.py&quot;</span>)</span><br><span class="line">    vocab = BPEVocab.load(args.tokenizer)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;      词表大小：<span class="subst">&#123;<span class="built_in">len</span>(vocab)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 重建模型并加载权重</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;[2/3] 加载权重：<span class="subst">&#123;args.weights&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> os.path.exists(args.weights):</span><br><span class="line">        <span class="keyword">raise</span> FileNotFoundError(<span class="string">f&quot;权重不存在：<span class="subst">&#123;args.weights&#125;</span>，请先运行 pre_train.py&quot;</span>)</span><br><span class="line">    model = build_model(<span class="built_in">len</span>(vocab), SEQUENCE_LENGTH, EMBED_DIM,</span><br><span class="line">                        DENSE_DIM, NUM_HEADS, NUM_LAYERS)</span><br><span class="line">    model(np.zeros((<span class="number">1</span>, <span class="number">10</span>), dtype=np.int32), training=<span class="literal">False</span>)  <span class="comment"># 触发初始化</span></span><br><span class="line">    model.load_weights(args.weights)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;      权重加载完成。\n&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 推理</span></span><br><span class="line">    model_input_length = SEQUENCE_LENGTH - <span class="number">1</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">run_prompt</span>(<span class="params">prompt: <span class="built_in">str</span></span>):</span><br><span class="line">        <span class="keyword">for</span> temperature <span class="keyword">in</span> args.temperatures:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f&quot;== Generating with temperature <span class="subst">&#123;temperature&#125;</span>&quot;</span>)</span><br><span class="line">            result = generate(model, vocab, prompt,</span><br><span class="line">                              generate_length    = args.generate_length,</span><br><span class="line">                              model_input_length = model_input_length,</span><br><span class="line">                              temperature        = temperature)</span><br><span class="line">            <span class="built_in">print</span>(result)</span><br><span class="line">        <span class="built_in">print</span>()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> args.prompt:</span><br><span class="line">        run_prompt(args.prompt)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="comment"># 交互模式</span></span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;交互模式（输入 quit 退出）&quot;</span>)</span><br><span class="line">        <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                prompt = <span class="built_in">input</span>(<span class="string">&quot;\n&gt;&gt;&gt; Prompt: &quot;</span>).strip()</span><br><span class="line">            <span class="keyword">except</span> (EOFError, KeyboardInterrupt):</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> prompt:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            <span class="keyword">if</span> prompt.lower() <span class="keyword">in</span> &#123;<span class="string">&quot;quit&quot;</span>, <span class="string">&quot;exit&quot;</span>&#125;:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            run_prompt(prompt)</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
+  <div class="article-share slide-up" id="share">
+    <div class="body">
+      <div class="social-wrap dis-select"><a class="social share-item qrcode ui-interactive is-icon-only" onclick="util.toggle(&quot;share-qrcode&quot;)" aria-label="分享文章: QR Code" title="分享文章: QR Code"><span class="share-item__icon ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="M10.553 13.447c-.424-.424-.95-.596-1.535-.675c-.553-.074-1.25-.074-2.086-.074H5.827c-.58 0-1.065 0-1.459.037c-.411.04-.795.124-1.146.34c-.345.21-.634.5-.845.844c-.216.352-.3.735-.34 1.147C2 15.459 2 15.944 2 16.525v.068c0 .884 0 1.597.055 2.17c.056.592.175 1.108.459 1.571c.288.47.682.864 1.152 1.152c.463.284.979.403 1.57.46C5.81 22 6.524 22 7.407 22h.07c.58 0 1.064 0 1.458-.037c.412-.04.795-.124 1.147-.34c.344-.21.633-.5.844-.844c.216-.352.3-.736.34-1.147c.037-.394.037-.879.037-1.46v-1.104c0-.836 0-1.533-.074-2.086c-.079-.584-.251-1.111-.675-1.535m-1.62-11.41c.412.04.795.124 1.147.34c.344.21.633.5.844.845c.216.351.3.735.34 1.146c.037.394.037.879.037 1.46v1.104c0 .836 0 1.533-.074 2.086c-.079.584-.251 1.111-.675 1.535s-.95.596-1.535.675c-.553.074-1.25.074-2.086.074H5.827c-.58 0-1.065 0-1.459-.037c-.411-.04-.795-.124-1.146-.34a2.56 2.56 0 0 1-.845-.844c-.216-.352-.3-.735-.34-1.147C2 8.54 2 8.056 2 7.475v-.068c0-.884 0-1.597.055-2.17c.056-.592.175-1.108.459-1.571c.288-.47.682-.864 1.152-1.152c.463-.284.979-.403 1.57-.46C5.81 2 6.524 2 7.407 2h.07c.58 0 1.064 0 1.458.037M16.593 2h-.068c-.58 0-1.065 0-1.46.037c-.41.04-.794.124-1.146.34c-.344.21-.633.5-.844.845c-.216.351-.3.735-.34 1.146c-.037.394-.037.879-.037 1.46v1.104c0 .836 0 1.533.074 2.086c.079.584.251 1.111.675 1.535s.95.596 1.535.675c.553.074 1.25.074 2.086.074h1.105c.58 0 1.065 0 1.459-.037c.411-.04.795-.124 1.146-.34c.345-.21.634-.5.845-.844c.216-.352.3-.735.34-1.147C22 8.54 22 8.056 22 7.475v-.068c0-.884 0-1.597-.055-2.17c-.056-.592-.175-1.108-.459-1.571a3.5 3.5 0 0 0-1.152-1.152c-.463-.284-.979-.403-1.57-.46C18.19 2 17.477 2 16.594 2" opacity=".5"></path><path fill="currentColor" d="M14.093 21.302a.698.698 0 1 1-1.396 0v-2.79h1.396z" opacity=".4"></path><path fill="currentColor" d="M21.302 12.698a.7.7 0 0 0-.697.697v3.256H22v-3.256a.7.7 0 0 0-.698-.697" opacity=".5"></path><path fill="currentColor" d="M16.076 16.617c-.076.184-.076.417-.076.883s0 .699.076.883a1 1 0 0 0 .541.54c.184.077.417.077.883.077s.699 0 .883-.076a1 1 0 0 0 .54-.541c.077-.184.077-.417.077-.883s0-.699-.076-.883a1 1 0 0 0-.541-.54C18.199 16 17.966 16 17.5 16s-.699 0-.883.076a1 1 0 0 0-.54.541"></path><path fill="currentColor" d="M22 18.535v-.023h-1.396c0 .443 0 .74-.016.97c-.015.224-.043.333-.073.405a1.16 1.16 0 0 1-.629.63c-.072.029-.18.056-.405.072c-.23.015-.527.016-.97.016h-1.86V22h1.883c.414 0 .759 0 1.042-.02a2.6 2.6 0 0 0 .844-.175a2.56 2.56 0 0 0 1.384-1.384c.112-.27.156-.549.176-.844c.02-.283.02-.628.02-1.042" opacity=".7"></path><path fill="currentColor" d="M12.697 16.616v.035h1.396c0-.668 0-1.116.035-1.458c.034-.33.093-.482.16-.583a1.2 1.2 0 0 1 .321-.32c.101-.068.254-.128.584-.161c.342-.035.79-.036 1.458-.036h1.86v-1.395h-1.896c-.623 0-1.142 0-1.563.043c-.44.044-.85.142-1.218.388c-.28.187-.519.426-.706.706c-.246.368-.343.777-.388 1.217c-.043.421-.043.94-.043 1.564" opacity=".6"></path><path fill="currentColor" d="M5.508 18.69c.219.155.528.155 1.146.155c.619 0 .928 0 1.146-.155a.8.8 0 0 0 .2-.199c.154-.218.154-.527.154-1.146s0-.927-.155-1.146A.8.8 0 0 0 7.8 16c-.218-.155-.527-.155-1.146-.155s-.927 0-1.146.155a.8.8 0 0 0-.199.2c-.155.218-.155.527-.155 1.145c0 .619 0 .928.155 1.146a.8.8 0 0 0 .2.2M6.654 8.155c-.618 0-.927 0-1.146-.155a.8.8 0 0 1-.199-.2c-.155-.217-.155-.527-.155-1.145c0-.619 0-.928.155-1.146a.8.8 0 0 1 .2-.2c.218-.154.527-.154 1.145-.154c.619 0 .928 0 1.146.155a.8.8 0 0 1 .2.199c.154.218.154.527.154 1.146s0 .928-.155 1.146A.8.8 0 0 1 7.8 8c-.218.155-.527.155-1.146.155M16.2 8c.218.155.527.155 1.146.155s.927 0 1.146-.155a.8.8 0 0 0 .199-.199c.155-.218.155-.528.155-1.146c0-.619 0-.928-.155-1.146a.8.8 0 0 0-.2-.2c-.218-.154-.527-.154-1.145-.154c-.619 0-.928 0-1.146.155a.8.8 0 0 0-.2.199c-.154.218-.154.527-.154 1.146s0 .928.155 1.146A.8.8 0 0 0 16.2 8"></path></svg></span></a><a class="social share-item x ui-interactive is-icon-only" href="https://x.com/intent/tweet?text=Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%20-%20%E8%B5%96%E5%B0%8F%E6%98%8E&amp;url=http%3A%2F%2Flaixiaoming.space%2F2026%2F11%2F15%2FTransformer%25EF%25BC%259A%25E5%25AE%259E%25E7%258E%25B0%25E4%25B8%2580%25E4%25B8%25AA%25E7%25AE%2580%25E5%258D%2595%25E7%259A%2584%25E5%25A4%25A7%25E8%25AF%25AD%25E8%25A8%2580%25E6%25A8%25A1%25E5%259E%258B%2F" target="_blank" rel="external nofollow noopener noreferrer" aria-label="分享文章: X" title="分享文章: X"><span class="share-item__icon ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Simple Icons - https://creativecommons.org/publicdomain/zero/1.0/ --><path fill="currentColor" d="M14.234 10.162L22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299l-.929-1.329L3.076 1.56h3.182l5.965 8.532l.929 1.329l7.754 11.09h-3.182z"></path></svg></span></a></div>
+      <div class="share-qrcode" id="share-qrcode" style="opacity:0;height:0"><img class="lazy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAADa6r/EAAAAC0lEQVQIHWNgAAIAAAUAAY27m/MAAAAASUVORK5CYII=" data-src="https://api.qrserver.com/v1/create-qr-code/?size=256x256&amp;data=http%3A%2F%2Flaixiaoming.space%2F2026%2F11%2F15%2FTransformer%25EF%25BC%259A%25E5%25AE%259E%25E7%258E%25B0%25E4%25B8%2580%25E4%25B8%25AA%25E7%25AE%2580%25E5%258D%2595%25E7%259A%2584%25E5%25A4%25A7%25E8%25AF%25AD%25E8%25A8%2580%25E6%25A8%25A1%25E5%259E%258B%2F" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;"></div>
     </div>
+  </div>
 
+<div class="article-footer slide-up">
+    <section id="license">
+      <div class="header"><span>许可协议</span></div>
+      <div class="body"><p>本文采用 <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">署名-非商业性使用-相同方式共享 4.0 国际</a> 许可协议，转载请注明出处。</p>
+</div>
+    </section></div>
+
+<div class="related-wrap slide-up" id="read-next"><section class="body"><div class="item" id="prev"></div><div class="item" id="next"><div class="note">较早文章 <svg class="icon" viewBox="0 0 1 1" data-icon="default:arrow-right" aria-hidden="true"></svg></div><a href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" data-stellar-navigation="">Transformer 的整体架构</a></div></section></div>
+
+
+
+
+  <div class="related-wrap md-text slide-up" id="comments">
     
     
-    
+    <section class="body cmt-body giscus">
+      
 
-      <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/Transformer/" rel="tag"># Transformer</a>
-              <a href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/" rel="tag"># 深度学习</a>
-          </div>
+<div class="lazy-icon"></div>
 
-        
+<div id="giscus" data-repo="crazylai1996/crazylai1996.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzNDA5MzA3ODI=" data-category="General" data-category-id="DIC_kwDOFFIw3s4DLs7v" data-mapping="pathname" data-strict="0" data-reactions-enabled="1" data-emit-metadata="0" data-input-position="bottom" data-theme="preferred_color_scheme" data-lang="zh-CN" data-loading="lazy" crossorigin="anonymous"></div>
+
+    </section>
+  </div>
 
 
-        
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" rel="prev" title="Transformer 的整体架构">
-      <i class="fa fa-chevron-left"></i> Transformer 的整体架构
-    </a></div>
-      <div class="post-nav-item"></div>
+
+<footer class="page-footer slide-up footnote"><hr><div class="text"><p>本站由 <a href="/">laixiaoming</a> 使用 <a target="_blank" rel="noopener" href="https://github.com/xaoxuu/hexo-theme-stellar/tree/2.0.0">Stellar 2.0.0</a> 主题创建。<br>
+本博客所有文章除特别声明外，均采用 <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议，转载请注明出处。</p>
+</div></footer>
+</main>
+<aside data-stellar-runtime-region="" id="rightbar-region" class="site-region site-region--rightbar" data-region="rightbar" aria-label="Rightbar"><div class="site-region__surface ui-drawer-surface"><div class="site-region__viewport"><div class="widgets widget-stack widget-stack--rightbar widget-stack--rightbar"><div class="widget-instance widget-instance--toc" data-widget-id="rightbar:0:toc" data-presentation="rightbar">
+
+
+<widget class="widget-wrapper slide-up toc" id="data-toc" collapse="false">
+  
+    <div class="widget-header dis-select">
+      <span class="name">本文目录</span>
+      <button type="button" class="cap-action ui-interactive card-hover card-hover--spotlight" data-shell-action="toggle-toc" aria-label="Toggle table of contents" aria-pressed="false"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h11m-11 6h11m-11 6h11M4 6h1v4m-1 0h2m0 8H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg></span></button>
     </div>
-      </footer>
+  
+  <div class="widget-body"><ol class="toc ui-collection-adapter"><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E5%89%8D%E8%A8%80" data-stellar-navigation=""><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E5%87%86%E5%A4%87" data-stellar-navigation=""><span class="toc-text">文本数据准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%9E%84%E5%BB%BA%E8%AF%8D%E8%A1%A8" data-stellar-navigation=""><span class="toc-text">构建词表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#Decoder-%E5%AE%9E%E7%8E%B0" data-stellar-navigation=""><span class="toc-text">Decoder 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E4%BD%8D%E7%BD%AE%E5%B5%8C%E5%85%A5" data-stellar-navigation=""><span class="toc-text">位置嵌入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E5%9B%A0%E6%9E%9C%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%8E%A9%E7%A0%81" data-stellar-navigation=""><span class="toc-text">因果注意力掩码</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#Transformer-Decoder-%E5%B1%82" data-stellar-navigation=""><span class="toc-text">Transformer Decoder 层</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E8%AE%AD%E7%BB%83" data-stellar-navigation=""><span class="toc-text">训练</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E6%9E%84%E9%80%A0%E8%AE%AD%E7%BB%83%E6%95%B0%E6%8D%AE%E5%AF%B9" data-stellar-navigation=""><span class="toc-text">构造训练数据对</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E6%9E%84%E5%BB%BA%E8%AE%AD%E7%BB%83%E6%95%B0%E6%8D%AE%E9%9B%86" data-stellar-navigation=""><span class="toc-text">构建训练数据集</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E6%90%AD%E5%BB%BA%E6%A8%A1%E5%9E%8B" data-stellar-navigation=""><span class="toc-text">搭建模型</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E8%AE%AD%E7%BB%83%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%90%AF%E5%8A%A8" data-stellar-navigation=""><span class="toc-text">训练配置与启动</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%8E%A8%E7%90%86" data-stellar-navigation=""><span class="toc-text">推理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E6%B8%A9%E5%BA%A6%E9%87%87%E6%A0%B7" data-stellar-navigation=""><span class="toc-text">温度采样</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E8%87%AA%E5%9B%9E%E5%BD%92%E7%94%9F%E6%88%90" data-stellar-navigation=""><span class="toc-text">自回归生成</span></a></li><li class="toc-item toc-level-4"><a class="toc-link ui-interactive" href="#%E6%96%87%E6%9C%AC%E7%94%9F%E6%88%90" data-stellar-navigation=""><span class="toc-text">文本生成</span></a></li></ol></li></ol></div>
+  <div class="widget-footer"><a class="top ui-interactive" onclick="util.scrollTop()"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="M20.536 3.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464" opacity=".5"></path><path fill="currentColor" d="M9.53 12.03a.75.75 0 0 1-1.06-1.06l3-3a.75.75 0 0 1 1.06 0l3 3a.75.75 0 1 1-1.06 1.06L12 9.56z"></path><path fill="currentColor" d="M9.53 16.03a.75.75 0 0 1-1.06-1.06l3-3a.75.75 0 0 1 1.06 0l3 3a.75.75 0 1 1-1.06 1.06L12 13.56z"></path></svg></span><span>回到顶部</span></a><a class="buttom ui-interactive" onclick="util.scrollComment()"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="m13.629 20.472l-.542.916c-.483.816-1.69.816-2.174 0l-.542-.916c-.42-.71-.63-1.066-.968-1.262c-.338-.197-.763-.204-1.613-.219c-1.256-.021-2.043-.098-2.703-.372a5 5 0 0 1-2.706-2.706C2 14.995 2 13.83 2 11.5v-1c0-3.273 0-4.91.737-6.112a5 5 0 0 1 1.65-1.651C5.59 2 7.228 2 10.5 2h3c3.273 0 4.91 0 6.113.737a5 5 0 0 1 1.65 1.65C22 5.59 22 7.228 22 10.5v1c0 2.33 0 3.495-.38 4.413a5 5 0 0 1-2.707 2.706c-.66.274-1.447.35-2.703.372c-.85.015-1.275.022-1.613.219c-.338.196-.548.551-.968 1.262" opacity=".5"></path><path fill="currentColor" d="M7.25 9A.75.75 0 0 1 8 8.25h8a.75.75 0 0 1 0 1.5H8A.75.75 0 0 1 7.25 9m0 3.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75"></path></svg></span><span>参与讨论</span></a></div>
+</widget>
+
+
+</div></div></div></div></aside>
+</div><button type="button" class="site-scrim" data-shell-action="dismiss-drawer" aria-label="Close navigation" tabindex="-1"></button><div data-stellar-runtime-region="" class="site-dock" role="group" aria-label="Layout panels">
+  <button type="button" class="site-dock__button site-dock__button--rightbar ui-interactive" aria-label="Open rightbar" aria-controls="rightbar-region" aria-expanded="false" data-shell-action="toggle-rightbar-drawer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h11m-11 6h11m-11 6h11M4 6h1v4m-1 0h2m0 8H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+  </button>
+  <button type="button" class="site-dock__button site-dock__button--leftbar ui-interactive" aria-label="Open leftbar" aria-controls="leftbar-region" aria-expanded="false" data-shell-action="toggle-leftbar-drawer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 11c0-3.771 0-5.657 1.172-6.828C4.343 3 6.229 3 10 3h4c3.771 0 5.657 0 6.828 1.172C22 5.343 22 7.229 22 11v2c0 3.771 0 5.657-1.172 6.828C19.657 21 17.771 21 14 21h-4c-3.771 0-5.657 0-6.828-1.172C2 18.657 2 16.771 2 13z"></path><path id="sep" stroke-linecap="round" d="M5.5 10h6m-5 4h4m4.5 7V3"></path></g></svg>
+  </button>
+</div>
+
+<dialog data-stellar-runtime-region="" class="search-dialog" id="site-search-dialog" aria-labelledby="site-search-title">
+  <div class="search-dialog__panel search-wrapper" id="site-search-wrapper" searching="false">
+    <div class="search-dialog__header">
+      <div class="search-form" role="search">
+        <span class="search-button" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Adapted from Google Material Icons by Material Design Authors - https://github.com/material-icons/material-icons/blob/master/LICENSE --><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3M3 13h3M3 18h8M16.83 13.83l3.76 3.76"></path><circle cx="14" cy="11" r="4"></circle></g></svg></span>
+        <input type="search" class="search-input" id="site-search-input" aria-labelledby="site-search-title" placeholder="搜索">
+      </div>
+      <button type="button" class="search-dialog__close" data-shell-action="close-search" aria-label="关闭搜索">×</button>
+    </div>
     
-  </article>
-  
-  
-  
+      <div class="search-dialog__scope" role="radiogroup" aria-labelledby="site-search-title" hidden="">
+        <label class="search-dialog__scope-option" data-search-scope-option="all">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="all">
+          <span>全站</span>
+        </label>
+        <label class="search-dialog__scope-option" data-search-scope-option="blog" hidden="">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="blog">
+          <span>博客</span>
+        </label>
+        <label class="search-dialog__scope-option" data-search-scope-option="current" hidden="">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="current">
+          <span data-search-scope-current-label=""></span>
+        </label>
+      </div>
+    
+    <h2 class="search-dialog__title" id="site-search-title">站内搜索</h2>
+    <div class="search-result" id="site-search-result"></div>
+    <div class="search-no-result">没有找到内容！</div>
+  </div>
+</dialog>
+</div><div class="site-scripts">
+<script data-stellar-script="core" src="/js/stellar-icons.js?v=39c6ac17e854ffe2"></script>
 
-
-
-          </div>
-          
-
-<script>
-  window.addEventListener('tabs:register', () => {
-    let { activeClass } = CONFIG.comments;
-    if (CONFIG.comments.storage) {
-      activeClass = localStorage.getItem('comments_active') || activeClass;
-    }
-    if (activeClass) {
-      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
-      if (activeTab) {
-        activeTab.click();
-      }
-    }
-  });
-  if (CONFIG.comments.storage) {
-    window.addEventListener('tabs:click', event => {
-      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
-      let commentClass = event.target.classList[1];
-      localStorage.setItem('comments_active', commentClass);
-    });
-  }
+<script data-stellar-script="defines">
+  window.canonical = window.stellarClientData.canonical;
+  const ctx = window.stellarClientData.ctx;
+  window.canonical.param = {permalink: "http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/", checklink: ctx.services.video.js};
+  ctx.date_suffix = {"just":"刚刚","min":"分钟前","hour":"小时前","day":"天前"};
+  if (ctx.search) Object.assign(ctx.search, {"more":"更多","no_more":"没有更多了"});
+  const def = window.stellarClientData.def;
+  window.ctx = ctx;
+  window.def = def;
 </script>
 
-        </div>
-          
-  
-  <div class="toggle sidebar-toggle">
-    <span class="toggle-line toggle-line-first"></span>
-    <span class="toggle-line toggle-line-middle"></span>
-    <span class="toggle-line toggle-line-last"></span>
-  </div>
 
-  <aside class="sidebar">
-    <div class="sidebar-inner">
+<!-- core: 迁移期 DOM/资源兼容工具；Extension 注册与生命周期由 ESM runtime 所有 -->
+<script data-stellar-script="core" src="/js/utils.js?v=2.0.0"></script>
+<script data-stellar-script="core" src="/js/main.js?v=2.0.0" defer=""></script>
+<script data-stellar-script="core" defer="" src="/js/profile.js?v=2.0.0"></script>
 
-      <ul class="sidebar-nav motion-element">
-        <li class="sidebar-nav-toc">
-          文章目录
-        </li>
-        <li class="sidebar-nav-overview">
-          站点概览
-        </li>
-      </ul>
 
-      <!--noindex-->
-      <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E5%87%86%E5%A4%87"><span class="nav-number">2.</span> <span class="nav-text">文本数据准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E8%AF%8D%E8%A1%A8"><span class="nav-number">3.</span> <span class="nav-text">构建词表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Decoder-%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.</span> <span class="nav-text">Decoder 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BD%8D%E7%BD%AE%E5%B5%8C%E5%85%A5"><span class="nav-number">4.1.</span> <span class="nav-text">位置嵌入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9B%A0%E6%9E%9C%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%8E%A9%E7%A0%81"><span class="nav-number">4.2.</span> <span class="nav-text">因果注意力掩码</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Transformer-Decoder-%E5%B1%82"><span class="nav-number">4.3.</span> <span class="nav-text">Transformer Decoder 层</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%AD%E7%BB%83"><span class="nav-number">5.</span> <span class="nav-text">训练</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E9%80%A0%E8%AE%AD%E7%BB%83%E6%95%B0%E6%8D%AE%E5%AF%B9"><span class="nav-number">5.1.</span> <span class="nav-text">构造训练数据对</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E8%AE%AD%E7%BB%83%E6%95%B0%E6%8D%AE%E9%9B%86"><span class="nav-number">5.2.</span> <span class="nav-text">构建训练数据集</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%90%AD%E5%BB%BA%E6%A8%A1%E5%9E%8B"><span class="nav-number">5.3.</span> <span class="nav-text">搭建模型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%AD%E7%BB%83%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%90%AF%E5%8A%A8"><span class="nav-number">5.4.</span> <span class="nav-text">训练配置与启动</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A8%E7%90%86"><span class="nav-number">6.</span> <span class="nav-text">推理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B8%A9%E5%BA%A6%E9%87%87%E6%A0%B7"><span class="nav-number">6.1.</span> <span class="nav-text">温度采样</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%87%AA%E5%9B%9E%E5%BD%92%E7%94%9F%E6%88%90"><span class="nav-number">6.2.</span> <span class="nav-text">自回归生成</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%87%E6%9C%AC%E7%94%9F%E6%88%90"><span class="nav-number">6.3.</span> <span class="nav-text">文本生成</span></a></li></ol></li></ol></div>
-      </div>
-      <!--/noindex-->
 
-      <div class="site-overview-wrap sidebar-panel">
-        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-    <img class="site-author-image" itemprop="image" alt="laixiaoming"
-      src="/images/avatar.gif">
-  <p class="site-author-name" itemprop="name">laixiaoming</p>
-  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
-</div>
-<div class="site-state-wrap motion-element">
-  <nav class="site-state">
-      <div class="site-state-item site-state-posts">
-          <a href="/archives/">
-        
-          <span class="site-state-item-count">38</span>
-          <span class="site-state-item-name">日志</span>
-        </a>
-      </div>
-      <div class="site-state-item site-state-tags">
-            <a href="/tags/">
-          
-        <span class="site-state-item-count">14</span>
-        <span class="site-state-item-name">标签</span></a>
-      </div>
-  </nav>
+
+
+<link data-stellar-page-style="" rel="stylesheet" href="/css/katex/katex.min.css">
+
+<script data-stellar-script="core" type="application/json" id="stellar-runtime-config">{"version":1,"root":"/","policy":{"cache":{"enabled":true,"defaultTtl":3600,"ttl":{"giscus":600,"waline":600,"artalk":600,"memos":600,"memos-user":86400,"sites":86400,"friends":86400,"friends_and_posts":86400,"siteinfo":86400},"maxEntries":200},"request":{"retries":2,"timeoutMs":5000,"idleTimeoutMs":3000,"maxCacheEntryBytes":204800},"features":{"codeCopyToastMs":2500},"providers":{"linkPrefetch":"flying_pages","lightbox":"fancybox","diagrams":"mermaid"}},"extensions":[{"id":"pin-slider","module":"/js/runtime/extensions/pin-slider.js","scope":"region","when":{"selector":".pin-slider"},"config":{}},{"id":"page-controls","module":"/js/runtime/extensions/page-controls.js","scope":"region","when":{"always":true},"config":{"highlight":"/js/search/highlight.js","tagtree":"/js/tagtree.js"}},{"id":"partial-navigation","module":"/js/runtime/extensions/partial-navigation.js","scope":"document","when":{"always":true},"config":{}},{"id":"search","module":"/js/runtime/extensions/search.js","scope":"document","when":{"selector":".search-input"},"config":{"provider":"local","options":{"scope":"all","includeContent":true,"cacheTtlSeconds":86400},"assets":{"client":null,"provider":"/js/search/local-search.js","shortcut":"/js/search/shortcut.js"}}},{"id":"hero-parallax","module":"/js/runtime/extensions/hero-parallax.js","scope":"region","when":{"selector":".wiki-hero"},"config":{}},{"id":"hero-effect","module":"/js/runtime/extensions/hero-effect.js","scope":"region","when":{"selector":"canvas[data-hero-effect]"},"config":{}},{"id":"lazy-loading","module":"/js/runtime/extensions/lazy-loading.js","scope":"document","when":{"always":true},"config":{"asset":"https://gcore.jsdelivr.net/npm/vanilla-lazyload@19.1/dist/lazyload.min.js"}},{"id":"deferred-icons","module":"/js/runtime/extensions/deferred-icons.js","scope":"region","when":{"selector":"svg.icon[data-icon]"},"config":{}},{"id":"dropdown","module":"/js/runtime/extensions/dropdown.js","scope":"region","when":{"selector":"details.dropdown"},"config":{}},{"id":"services","module":"/js/runtime/extensions/services.js","scope":"region","when":{"selector":"#artalk_container, #twikoo_container, #waline_container, .data-service, [class*='ds-'], a[cardlink], a[data-md-link][data-siteinfo-api], .site-card [data-siteinfo-api], .voice\u003eaudio, .video\u003evideo, .chat-file"},"config":{"marked":"https://gcore.jsdelivr.net/npm/marked@13.0/lib/marked.umd.min.js"}},{"id":"comments","module":"/js/runtime/extensions/comments.js","scope":"region","when":{"selector":"#comments"},"config":{"provider":"giscus","options":{"data-repo":"crazylai1996/crazylai1996.github.io","data-repo-id":"MDEwOlJlcG9zaXRvcnkzNDA5MzA3ODI=","data-category":"General","data-category-id":"DIC_kwDOFFIw3s4DLs7v","data-mapping":"pathname","data-strict":0,"data-reactions-enabled":1,"data-emit-metadata":0,"data-input-position":"bottom","data-theme":"preferred_color_scheme","data-lang":"zh-CN","data-loading":"lazy","crossorigin":"anonymous"},"pageTitle":"Transformer：实现一个简单的大语言模型","assets":{"js":"https://giscus.app/client.js"}}},{"id":"settings","module":"/js/runtime/extensions/settings.js","scope":"region","when":{"selector":".settings-page"},"config":{}},{"id":"link-prefetch","module":"/js/runtime/extensions/link-prefetch.js","scope":"document","when":{"always":true},"config":{"asset":"https://gcore.jsdelivr.net/npm/flying-pages@2/flying-pages.min.js"}},{"id":"lightbox","module":"/js/runtime/extensions/lightbox.js","scope":"region","when":{"selector":"[data-fancybox]:not(.error), .with-fancybox, .ds-memos, .timenode p\u003eimg"},"config":{"enabled":true,"selector":".timenode p\u003eimg","assets":{"localCss":"/css/plugins/fancybox.css","js":"https://gcore.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js","css":"https://gcore.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"}}},{"id":"reveal","module":"/js/runtime/extensions/reveal.js","scope":"region","when":{"selector":".slide-up"},"config":{"enabled":true,"duration":800,"interval":200,"distance":8,"blur":4}},{"id":"diagrams","module":"/js/runtime/extensions/diagrams.js","scope":"region","when":{"selector":".mermaid"},"config":{"theme":"neutral","provider":"mermaid","assets":{"js":"https://gcore.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"},"colorScheme":"auto"}},{"id":"code-copy","module":"/js/runtime/extensions/code-copy.js","scope":"region","when":{"selector":".code"},"config":{"assets":{"js":"/js/plugins/copycode.js"},"messages":{"label":"复制","copied":"复制成功","denied":"未获得剪贴板权限","unsupported":"当前浏览器不支持剪贴板或页面不是 HTTPS"}}},{"id":"adaptive-text","module":"/js/runtime/extensions/adaptive-text.js","scope":"region","when":{"selector":"[data-text-adaptive]"},"config":{"assets":{"colorJs":"/js/color.js","js":"/js/plugins/adaptive-text.js"}}},{"id":"swiper","module":"/js/runtime/extensions/swiper.js","scope":"region","when":{"selector":"#swiper-api"},"config":{"assets":{"localCss":"/css/plugins/swiper.css","js":"https://unpkg.com/swiper@10.3/swiper-bundle.min.js","css":"https://unpkg.com/swiper@10.3/swiper-bundle.min.css"}}}]}</script>
+<script data-stellar-script="core" type="module" src="/js/runtime/index.js?v=2.0.0&amp;runtime=1"></script>
+
+
+<!-- inject -->
+
+
+<script data-stellar-script="core" defer="" src="/js/navigation-init.js?v=2.0.0"></script>
 </div>
 
-
-
-      </div>
-
-    </div>
-  </aside>
-  <div id="sidebar-dimmer"></div>
-
-
-      </div>
-    </main>
-
-    <footer class="footer">
-      <div class="footer-inner">
-        
-
-        
-
-<div class="copyright">
-  
-  &copy; 
-  <span itemprop="copyrightYear">2026</span>
-  <span class="with-love">
-    <i class="fa fa-heart"></i>
-  </span>
-  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
-</div>
-  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
-  </div>
-
-        
-
-
-
-
-
-
-
-
-      </div>
-    </footer>
-  </div>
-
-  
-  <script src="/lib/anime.min.js"></script>
-  <script src="/lib/velocity/velocity.min.js"></script>
-  <script src="/lib/velocity/velocity.ui.min.js"></script>
-
-<script src="/js/utils.js"></script>
-
-<script src="/js/motion.js"></script>
-
-
-<script src="/js/schemes/pisces.js"></script>
-
-
-<script src="/js/next-boot.js"></script>
-
-
-
-
-  
-
-
-
-
-  
-<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
-<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
-<script src="/js/algolia-search.js"></script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-  
-
-  
-  
-    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
-  
-</body>
-</html>
+<script type="application/json" id="stellar-navigation-config">{"collection":"[\"post\",\"post\"]","url":"http://laixiaoming.space/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/","signature":"59bccb58adc8c037ecefe78a167e7a8a4a1163abd3dded25fcec82ce0451e9e3"}</script></body></html>

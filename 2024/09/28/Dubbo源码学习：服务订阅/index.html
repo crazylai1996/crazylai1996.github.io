@@ -1,278 +1,442 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
-<meta name="theme-color" content="#222">
-<meta name="generator" content="Hexo 8.1.1">
-  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
-  <link rel="mask-icon" href="/images/logo.jpg" color="#222">
-
-<link rel="stylesheet" href="/css/main.css">
-
-
-<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
-
-<script id="hexo-configurations">
-    var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"laixiaoming.space","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"appID":"AT64P6OJ8G","apiKey":"0fe5a76c65503aa1e49ff34206b789ec","indexName":"laixiaoming.space","hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+<!DOCTYPE html><html lang="zh-CN"><head>
+  
+  <meta charset="utf-8">
+  <meta name="hexo-theme" content="https://github.com/xaoxuu/hexo-theme-stellar/tree/2.0.0" theme-name="Stellar" theme-version="2.0.0">
+  
+  
+  <meta name="generator" content="Hexo 8.1.1">
+  <meta http-equiv="x-dns-prefetch-control" content="on">
+  
+  <meta name="renderer" content="webkit">
+  <meta name="force-rendering" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <meta name="HandheldFriendly" content="True">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000">
+  <meta name="theme-color" content="#f9fafb">
+  <title data-stellar-page-meta="">Dubbo源码学习：服务订阅 - 赖小明</title>
+  <script data-stellar-script="core">
+    (function () {
+      var key = 'stellar:v2:leftbar-state';
+      var fallback = "expanded";
+      try {
+        var value = localStorage.getItem(key);
+        document.documentElement.dataset.leftbarState = value === 'collapsed' || value === 'expanded' ? value : fallback;
+      } catch (error) {
+        document.documentElement.dataset.leftbarState = fallback;
+      }
+    })();
   </script>
 
-  <meta name="description" content="在前一篇 Dubbo源码学习：服务引用 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？ 在深入了解之前，我们需要先了解下服务目录的概念。">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Dubbo源码学习：服务订阅">
-<meta property="og:url" content="http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/index.html">
-<meta property="og:site_name" content="赖小明">
-<meta property="og:description" content="在前一篇 Dubbo源码学习：服务引用 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？ 在深入了解之前，我们需要先了解下服务目录的概念。">
-<meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20240928154310365.png">
-<meta property="article:published_time" content="2024-09-28T03:49:43.000Z">
-<meta property="article:modified_time" content="2025-01-09T15:36:46.000Z">
-<meta property="article:author" content="laixiaoming">
-<meta property="article:tag" content="Dubbo">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://storage.laixiaoming.space/blog/image-20240928154310365.png">
+  <meta name="description" content="在前一篇 Dubbo源码学习：服务引用 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？ 在深入了解之前，我们需要先了解下服务目录的概念。" data-stellar-page-meta="">
+<meta property="og:type" content="article" data-stellar-page-meta="">
+<meta property="og:title" content="Dubbo源码学习：服务订阅" data-stellar-page-meta="">
+<meta property="og:url" content="http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/" data-stellar-page-meta="">
+<meta property="og:site_name" content="赖小明" data-stellar-page-meta="">
+<meta property="og:description" content="在前一篇 Dubbo源码学习：服务引用 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？ 在深入了解之前，我们需要先了解下服务目录的概念。" data-stellar-page-meta="">
+<meta property="og:locale" content="zh_CN" data-stellar-page-meta="">
+<meta property="og:image" content="http://storage.laixiaoming.space/blog/image-20240928154310365.png" data-stellar-page-meta="">
+<meta property="article:author" content="laixiaoming" data-stellar-page-meta="">
+<meta property="article:published_time" content="2024-09-28T03:49:43.000Z" data-stellar-page-meta="">
+<meta property="article:modified_time" content="2025-01-09T15:36:46.000Z" data-stellar-page-meta="">
+<meta property="article:tag" content="Dubbo" data-stellar-page-meta="">
+<meta name="twitter:card" content="summary" data-stellar-page-meta="">
+<meta name="twitter:image" content="http://storage.laixiaoming.space/blog/image-20240928154310365.png" data-stellar-page-meta=""><meta name="twitter:title" content="Dubbo源码学习：服务订阅" data-stellar-page-meta="">
+  
+  
+  <meta name="keywords" content="Dubbo" data-stellar-page-meta="">
 
-<link rel="canonical" href="http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/">
-
-
-<script id="page-configurations">
-  // https://hexo.io/docs/variables.html
-  CONFIG.page = {
-    sidebar: "",
-    isHome : false,
-    isPost : true,
-    lang   : 'zh-CN'
-  };
-</script>
-
-  <title>Dubbo源码学习：服务订阅 | 赖小明</title>
+  <!-- feed -->
   
 
+  <link rel="preload" href="/css/main.css?v=2.0.0" as="style">
+  <link rel="stylesheet" href="/css/main.css?v=2.0.0">
+  <style>:root{--text-loading:"正在加载";--text-loading-error:"加载失败，请稍后重试。"}</style>
 
 
+  
 
+  
 
+  <script type="application/ld+json" data-stellar-page-meta="">{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"laixiaoming","sameAs":[]},"dateCreated":"2024-09-28T11:49:43+08:00","dateModified":"2025-01-09T23:36:46+08:00","datePublished":"2024-09-28T11:49:43+08:00","description":"在前一篇 Dubbo源码学习：服务引用 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？\n在深入了解之前，我们需要先了解下服务目录的概念。","headline":"Dubbo源码学习：服务订阅","mainEntityOfPage":{"@type":"WebPage","@id":"http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/"},"publisher":{"@type":"Organization","name":"laixiaoming","sameAs":[]},"url":"http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/","image":["http://storage.laixiaoming.space/blog/image-20240928154310365.png"],"keywords":"Dubbo","thumbnailUrl":"http://storage.laixiaoming.space/blog/image-20240928154310365.png"}</script>
+  
 
-  <noscript>
-  <style>
-  .use-motion .brand,
-  .use-motion .menu-item,
-  .sidebar-inner,
-  .use-motion .post-block,
-  .use-motion .pagination,
-  .use-motion .comments,
-  .use-motion .post-header,
-  .use-motion .post-body,
-  .use-motion .collection-header { opacity: initial; }
-
-  .use-motion .site-title,
-  .use-motion .site-subtitle {
-    opacity: initial;
-    top: initial;
-  }
-
-  .use-motion .logo-line-before i { left: initial; }
-  .use-motion .logo-line-after i { right: initial; }
-  </style>
-</noscript>
-
+  <link rel="stylesheet" href="/css/stellar-icons.css?v=7c185ad1a9a79674">
+  <link rel="preload" as="script" href="/js/stellar-icons.js?v=39c6ac17e854ffe2">
+  
+  
 </head>
+<body data-page-type="content" data-page-layout="post" data-article-style="tech"><div data-stellar-runtime-region="" id="site-cover" class="site-cover"></div><div class="site-shell" id="start" data-regions="leftbar rightbar"><div class="site-workspace">
+<aside data-stellar-runtime-region="" id="leftbar-region" class="site-region site-region--leftbar" data-region="leftbar" aria-label="Leftbar"><div class="site-region__surface ui-surface"><div class="site-region__decoration" aria-hidden="true"></div><div class="site-region__viewport"><header class="site-region__header site-region__zone site-region__zone--top">
+    <div class="widget-instance widget-instance--brand" data-widget-id="leftbar:fixed:brand" data-presentation="leftbar" data-leftbar-rail="">
+<header class="brand-header brand-header--regular brand-header--site"><div class="brand-wrap"><a class="brand-image brand-image--avatar" href="/"><img no-lazy="" src="https://github.com/crazylai1996.png" alt="" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;"></a><a class="brand-title" href="/"><div class="brand-name">赖小明</div><div class="brand-tagline cap">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div></a></div><div class="brand-search">
 
-<body itemscope itemtype="http://schema.org/WebPage">
-  <div class="container use-motion">
-    <div class="headband"></div>
+<div class="ui-collection" data-layout="list" data-variant="nav" data-density="auto">
+  
+    
+<button class="ui-collection__item ui-interactive card-hover card-hover--spotlight search-trigger has-hover-surface" type="button" title="搜索" aria-label="搜索" data-shell-action="open-search" data-search-instance="leftbar-brand-search" data-search-domain="blog" data-search-domain-label="博客" data-search-domain-blog="true">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Adapted from Google Material Icons by Material Design Authors - https://github.com/material-icons/material-icons/blob/master/LICENSE --><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3M3 13h3M3 18h8M16.83 13.83l3.76 3.76"></path><circle cx="14" cy="11" r="4"></circle></g></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">搜索</span>
+      
+      
+    </span>
+  
+  <kbd class="search-shortcut" aria-hidden="true">⌘K</kbd>
 
-    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-container">
-  <div class="site-nav-toggle">
-    <div class="toggle" aria-label="切换导航栏">
-      <span class="toggle-line toggle-line-first"></span>
-      <span class="toggle-line toggle-line-middle"></span>
-      <span class="toggle-line toggle-line-last"></span>
-    </div>
-  </div>
+  
+</button>
 
-  <div class="site-meta">
-
-    <a href="/" class="brand" rel="start">
-      <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">赖小明</h1>
-      <span class="logo-line-after"><i></i></span>
-    </a>
-  </div>
-
-  <div class="site-nav-right">
-    <div class="toggle popup-trigger">
-        <i class="fa fa-search fa-fw fa-lg"></i>
-    </div>
-  </div>
+  
 </div>
 
 
+</div></header>
+</div>
+  </header>
+  <div class="site-region__body site-region__zone site-region__zone--body">
+    <div class="widget-instance widget-instance--menu" data-widget-id="leftbar:fixed:menu" data-presentation="leftbar" data-leftbar-rail="">
 
 
-<nav class="site-nav">
-  <ul id="menu" class="main-menu menu">
-        <li class="menu-item menu-item-home">
+<nav class="menu dis-select">
+<div class="ui-collection" data-layout="list" data-variant="nav" data-density="auto">
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight is-active" href="/" title="博客" aria-current="page">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M5.879 2.879C5 3.757 5 5.172 5 8v8c0 2.828 0 4.243.879 5.121C6.757 22 8.172 22 11 22h2c2.828 0 4.243 0 5.121-.879C19 20.243 19 18.828 19 16V8c0-2.828 0-4.243-.879-5.121C17.243 2 15.828 2 13 2h-2c-2.828 0-4.243 0-5.121.879M8.25 17a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75M9 12.25a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zM8.25 9A.75.75 0 0 1 9 8.25h6a.75.75 0 0 1 0 1.5H9A.75.75 0 0 1 8.25 9" clip-rule="evenodd"></path><path fill="currentColor" d="M5.235 4.058C5 4.941 5 6.177 5 8v8c0 1.823 0 3.058.235 3.942L5 19.924c-.975-.096-1.631-.313-2.121-.803C2 18.243 2 16.828 2 14v-4c0-2.829 0-4.243.879-5.121c.49-.49 1.146-.707 2.121-.803zm13.53 15.884C19 19.058 19 17.822 19 16V8c0-1.823 0-3.059-.235-3.942l.235.018c.975.096 1.631.313 2.121.803C22 5.757 22 7.17 22 9.999v4c0 2.83 0 4.243-.879 5.122c-.49.49-1.146.707-2.121.803z" opacity=".5"></path></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">博客</span>
+      
+      
+    </span>
+  
+  
+  <span class="ui-collection__indicator"></span>
+</a>
 
-    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/tags/" title="标签">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" fill-rule="evenodd" d="M10.7226 3.20068C10.8335 2.80158 10.5998 2.38817 10.2007 2.27731C9.80163 2.16645 9.38822 2.40011 9.27736 2.79921L7.76327 8.24995H4C3.58579 8.24995 3.25 8.58573 3.25 8.99995C3.25 9.41416 3.58579 9.74995 4 9.74995H7.3466L5.81882 15.2499H2C1.58579 15.2499 1.25 15.5857 1.25 15.9999C1.25 16.4142 1.58579 16.7499 2 16.7499H5.40216L4.27736 20.7992C4.1665 21.1983 4.40016 21.6117 4.79927 21.7226C5.19837 21.8334 5.61178 21.5998 5.72264 21.2007L6.95895 16.7499H14.4022L13.2774 20.7992C13.1665 21.1983 13.4002 21.6117 13.7993 21.7226C14.1984 21.8334 14.6118 21.5998 14.7226 21.2007L15.959 16.7499H20C20.4142 16.7499 20.75 16.4142 20.75 15.9999C20.75 15.5857 20.4142 15.2499 20 15.2499H16.3756L17.9034 9.74995H22C22.4142 9.74995 22.75 9.41416 22.75 8.99995C22.75 8.58573 22.4142 8.24995 22 8.24995H18.3201L19.7226 3.20068C19.8335 2.80158 19.5998 2.38817 19.2007 2.27731C18.8016 2.16645 18.3882 2.40011 18.2774 2.79921L16.7633 8.24995H9.32006L10.7226 3.20068ZM14.8188 15.2499L16.3466 9.74995H8.9034L7.37562 15.2499H14.8188Z" clip-rule="evenodd"></path></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">标签</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
-  </li>
-        <li class="menu-item menu-item-tags">
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/archives/" title="归档">
+  
+  <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><g fill="currentColor"><path d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"></path><path d="M21.9995 14.0001V12.0001C21.9995 11.161 21.9963 9.66527 21.9834 9H2.00917C1.99626 9.66527 1.99953 11.161 1.99953 12.0001V14.0001C1.99953 17.7713 1.99953 19.6569 3.1711 20.8285C4.34267 22.0001 6.22829 22.0001 9.99953 22.0001H13.9995C17.7708 22.0001 19.6564 22.0001 20.828 20.8285C21.9995 19.6569 21.9995 17.7713 21.9995 14.0001Z" opacity=".5"></path><path d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z"></path><path d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z"></path><path d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z"></path><path d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z"></path><path d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z"></path><path d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z"></path></g></svg></span>
+  
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">归档</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+  
+</div>
 
-  </li>
-        <li class="menu-item menu-item-archives">
-
-    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
-
-  </li>
-      <li class="menu-item menu-item-search">
-        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
-        </a>
-      </li>
-  </ul>
 </nav>
 
-
-
-  <div class="search-pop-overlay">
-    <div class="popup search-popup">
-        <div class="search-header">
-  <span class="search-icon">
-    <i class="fa fa-search"></i>
-  </span>
-  <div class="search-input-container"></div>
-  <span class="popup-btn-close">
-    <i class="fa fa-times-circle"></i>
-  </span>
 </div>
-<div class="algolia-results">
-  <div id="algolia-stats"></div>
-  <div id="algolia-hits"></div>
-  <div id="algolia-pagination" class="algolia-pagination"></div>
-</div>
+    <div class="widgets widget-stack widget-stack--leftbar widget-stack--body"><div class="widget-instance widget-instance--recent" data-widget-id="leftbar:0:recent" data-presentation="leftbar">
 
+<widget class="widget-wrapper slide-up recent-widget">
+  
+    <div class="widget-header dis-select">
+      <span class="name">最近更新</span>
       
     </div>
-  </div>
-
-</div>
-    </header>
-
+  
+  <div class="widget-body"><div class="ui-collection" data-layout="list" data-variant="nav" data-density="compact">
+  
     
-  <div class="back-to-top">
-    <i class="fa fa-arrow-up"></i>
-    <span>0%</span>
-  </div>
-
-
-    <main class="main">
-      <div class="main-inner">
-        <div class="content-wrap">
-          
-
-          <div class="content post posts-expand">
-            
-
-    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/07/Transformer%20%E6%9E%B6%E6%9E%84%EF%BC%9A%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6/" title="Transformer 架构：自注意力机制" data-stellar-navigation="">
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="laixiaoming">
-      <meta itemprop="description" content="就算红尘劫数都是空幻，也必须经历一遍才能领悟">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="赖小明">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          Dubbo源码学习：服务订阅
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2024-09-28 11:49:43" itemprop="dateCreated datePublished" datetime="2024-09-28T11:49:43+08:00">2024-09-28</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-01-09 23:36:46" itemprop="dateModified" datetime="2025-01-09T23:36:46+08:00">2025-01-09</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
       
-        <p>在前一篇 <a href="https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more">Dubbo源码学习：服务引用</a> 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？</p>
+      <span class="ui-collection__title">Transformer 架构：自注意力机制</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/15/Transformer%EF%BC%9A%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/" title="Transformer：实现一个简单的大语言模型" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Transformer：实现一个简单的大语言模型</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/11/14/Transformer%20%E7%9A%84%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" title="Transformer 的整体架构" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">T</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Transformer 的整体架构</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/10/28/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%96%87%E6%9C%AC%E6%95%B0%E6%8D%AE%E7%9A%84%E8%A1%A8%E7%A4%BA%E6%96%B9%E6%B3%95/" title="深度学习：文本数据的表示方法" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">深</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">深度学习：文本数据的表示方法</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/10/11/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E5%85%A5%E9%97%A8%EF%BC%9A%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E4%B8%AD%E7%9A%84%E6%95%B0%E5%AD%A6%E5%9F%BA%E7%A1%80/" title="深度学习入门：神经网络中的数学基础" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">深</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">深度学习入门：神经网络中的数学基础</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2026/08/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%80%97%E5%B0%BD/" title="问题记录：数据库连接池耗尽" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">问</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">问题记录：数据库连接池耗尽</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/06/29/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9AController%20%E6%B3%A8%E5%85%A5%E7%A9%BA%E6%8C%87%E9%92%88%E5%BC%82%E5%B8%B8/" title="问题记录：Controller 注入空指针异常" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">问</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">问题记录：Controller 注入空指针异常</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/04/04/Nacos%20%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0/" title="Nacos 客户端高可用机制学习" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">N</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Nacos 客户端高可用机制学习</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/01/18/%E9%AB%98%E6%80%A7%E8%83%BD%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0HikariCP%EF%BC%9A%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0/" title="高性能数据库连接池HikariCP：源码学习" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">高</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">高性能数据库连接池HikariCP：源码学习</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+    
+<a class="ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/2025/01/12/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E4%BC%98%E9%9B%85%E5%85%B3%E9%97%AD/" title="Dubbo源码学习：优雅关闭" data-stellar-navigation="">
+  
+  
+  <span class="ui-collection__initial" aria-hidden="true">D</span>
+  
+    <span class="ui-collection__content">
+      
+      <span class="ui-collection__title">Dubbo源码学习：优雅关闭</span>
+      
+      
+    </span>
+  
+  
+  
+</a>
+
+  
+</div></div>
+  
+</widget>
+
+
+</div></div>
+  </div>
+  <footer class="site-region__footer">
+    
+    <div class="site-region__system ui-collection" data-layout="inline" data-variant="nav" data-density="compact">
+      <div class="site-region__settings"><div class="widget-instance widget-instance--settings" data-widget-id="leftbar:fixed:settings" data-presentation="leftbar" data-leftbar-rail="">
+<a class="settings-widget ui-collection__item ui-interactive card-hover card-hover--spotlight" href="/settings/" data-profile-provider="giscus" data-profile-identity-enabled="false" data-profile-fallback-avatar="https://gcore.jsdelivr.net/gh/cdn-x/placeholder@1.0.12/avatar/round/3442075.svg" data-settings-placement="leftbar" data-settings-label="设置" aria-label="设置" title="设置">
+  <span class="settings-widget__avatar" aria-hidden="true">
+    <span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="currentColor"><path fill-rule="evenodd" d="M12.4277 2C11.3139 2 10.2995 2.6007 8.27081 3.80211L7.58466 4.20846C5.55594 5.40987 4.54158 6.01057 3.98466 7C3.42773 7.98943 3.42773 9.19084 3.42773 11.5937V12.4063C3.42773 14.8092 3.42773 16.0106 3.98466 17C4.54158 17.9894 5.55594 18.5901 7.58466 19.7915L8.27081 20.1979C10.2995 21.3993 11.3139 22 12.4277 22C13.5416 22 14.5559 21.3993 16.5847 20.1979L17.2708 19.7915C19.2995 18.5901 20.3139 17.9894 20.8708 17C21.4277 16.0106 21.4277 14.8092 21.4277 12.4063V11.5937C21.4277 9.19084 21.4277 7.98943 20.8708 7C20.3139 6.01057 19.2995 5.40987 17.2708 4.20846L16.5847 3.80211C14.5559 2.6007 13.5416 2 12.4277 2Z" clip-rule="evenodd" opacity=".5"></path><path d="M12.4277 8.25C10.3567 8.25 8.67773 9.92893 8.67773 12C8.67773 14.0711 10.3567 15.75 12.4277 15.75C14.4988 15.75 16.1777 14.0711 16.1777 12C16.1777 9.92893 14.4988 8.25 12.4277 8.25Z"></path></g></svg></span>
+  </span>
+  <span class="settings-widget__name ui-collection__title">设置</span>
+</a>
+</div></div>
+      <button type="button" class="leftbar-state-toggle ui-collection__item ui-interactive card-hover card-hover--spotlight is-icon-only" aria-label="Collapse leftbar" aria-expanded="true" data-shell-action="toggle-leftbar"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M3.172 4.172C2 5.343 2 7.229 2 11v2c0 3.771 0 5.657 1.172 6.828S6.229 21 10 21h5V3h-5C6.229 3 4.343 3 3.172 4.172" clip-rule="evenodd" opacity=".5"></path><path fill="currentColor" d="M5.5 9.25a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zm1 4a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5zM22 13v-2c0-3.771 0-5.657-1.172-6.828c-.974-.975-3.192-1.139-5.828-1.166v17.988c2.636-.027 4.854-.191 5.828-1.166C22 18.657 22 16.771 22 13"></path></svg></span></button>
+    </div>
+  </footer></div></div></aside>
+<main data-stellar-runtime-region="" class="site-main" id="main">
+
+
+<div class="article-banner-wrap slide-up"><div class="article banner top">
+  <div class="content">
+    
+    <div class="top bread-nav footnote"><div class="top-row"><div class="left" id="breadcrumb"><a class="cap breadcrumb" href="/">主页</a>
+<span class="sep"></span><a class="cap breadcrumb" href="/">文章</a>
+</div><div class="right"><span class="cap reading">3177 字 · 预计阅读 11 分钟</span></div></div><div class="meta-row">
+<div class="flex-row" id="post-meta"><span class="text created">发布于：<time datetime="2024-09-28T03:49:43.000Z">2024-09-28</time></span><span class="sep updated"></span><span class="text updated">更新于：<time datetime="2025-01-09T15:36:46.000Z">2025-01-09</time></span></div>
+</div></div>
+    
+    <div class="bottom only-title">
+      
+      <div class="text-area">
+        <h1 class="text title"><span>Dubbo源码学习：服务订阅</span></h1>
+        
+      </div>
+    </div>
+    
+  </div>
+  </div></div>
+<article class="md-text content slide-up"><p>在前一篇 <a href="https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more" data-md-link=""><span class="md-link-icon ui-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="currentColor"><g opacity=".5"><path d="M19.7388 4.26118C17.0572 1.57961 12.7095 1.57961 10.0279 4.26118L9.30707 4.98203C9.01418 5.27492 9.01418 5.7498 9.30707 6.04269C9.59997 6.33558 10.0748 6.33558 10.3677 6.04269L11.0886 5.32184C13.1844 3.22605 16.5823 3.22605 18.6781 5.32184C20.7739 7.41763 20.7739 10.8156 18.6781 12.9114L17.9573 13.6322C17.6644 13.9251 17.6644 14.4 17.9573 14.6929C18.2502 14.9858 18.725 14.9858 19.0179 14.6929L19.7388 13.972C22.4203 11.2905 22.4203 6.94276 19.7388 4.26118Z"></path><path d="M6.04269 9.30707C6.33558 9.59997 6.33558 10.0748 6.04269 10.3677L5.32184 11.0886C3.22605 13.1844 3.22605 16.5823 5.32184 18.6781C7.41763 20.7739 10.8156 20.7739 12.9114 18.6781L13.6322 17.9573C13.9251 17.6644 14.4 17.6644 14.6929 17.9573C14.9858 18.2501 14.9858 18.725 14.6929 19.0179L13.972 19.7388C11.2905 22.4203 6.94276 22.4203 4.26118 19.7388C1.57961 17.0572 1.57961 12.7095 4.26118 10.0279L4.98203 9.30707C5.27492 9.01418 5.7498 9.01418 6.04269 9.30707Z"></path></g><path d="M14.6933 9.30707C14.9862 9.59997 14.9862 10.0748 14.6933 10.3677L10.3682 14.6928C10.0753 14.9857 9.60045 14.9857 9.30756 14.6928C9.01467 14.3999 9.01467 13.9251 9.30756 13.6322L13.6327 9.30707C13.9255 9.01418 14.4004 9.01418 14.6933 9.30707Z"></path></g></svg></span>Dubbo源码学习：服务引用</a> 中我们了解到，在Dubbo服务消费端，Invoker对象具有远程调用的功能，但服务消费端是如何感知服务端的地址呢？在实际使用时，同一个服务提供者往往具有多个实例，在服务提供者实例上下线或实例数量发生变更时，服务消费端会如何做出相应的更新？</p>
 <p>在深入了解之前，我们需要先了解下服务目录的概念。</p>
 <span id="more"></span>
-
 <blockquote>
 <p>以下内容基于Dubbo 2.7.12版本</p>
 </blockquote>
-<h3 id="服务目录Directory"><a href="#服务目录Directory" class="headerlink" title="服务目录Directory"></a>服务目录Directory</h3><p>服务目录是服务提供者的集合，包含了多个Invoker，其中存储了与服务提供者有关的信息，通过服务目录，服务消费者可以获取到服务提供者的地址等信息。服务目录分为<strong>StaticDirectory</strong>和<strong>DynamicDirectory</strong>，其类继承体系图如下：</p>
-<p><img src="http://storage.laixiaoming.space/blog/image-20240928154310365.png" alt="image-20240928154310365"></p>
+<h3 id="服务目录Directory">服务目录Directory</h3>
+<p>服务目录是服务提供者的集合，包含了多个Invoker，其中存储了与服务提供者有关的信息，通过服务目录，服务消费者可以获取到服务提供者的地址等信息。服务目录分为<strong>StaticDirectory</strong>和<strong>DynamicDirectory</strong>，其类继承体系图如下：</p>
+<p><img class="lazy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAADa6r/EAAAAC0lEQVQIHWNgAAIAAAUAAY27m/MAAAAASUVORK5CYII=" data-src="http://storage.laixiaoming.space/blog/image-20240928154310365.png" alt="image-20240928154310365" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;" width="1513" height="881" data-stellar-image-dimensions="true" data-stellar-image-color="{&quot;size&quot;:64,&quot;hsla&quot;:[195.7348,0.752,18.4337,1]}" data-stellar-image-source="http://storage.laixiaoming.space/blog/image-20240928154310365.png"></p>
 <ol>
 <li><strong>StaticDirectory</strong> 是静态服务目录，其服务提供者列表是静态的，在创建完成之后不会在运行期间发生变化。</li>
 <li><strong>DynamicDirectory</strong> 是动态服务目录，其维护的提供者列表是动态变化的。动态服务目录实现了 <strong>NotifyListener</strong> 接口，在创建后向注册中心订阅服务提供者的变化信息，当收到来自注册中心的服务提供者变更通知后，会根据变更内容更新其中维护的服务提供者列表。</li>
 <li>动态服务目录有两种：<strong>RegistryDirectory</strong> 和 <strong>ServiceDiscoveryRegistryDirectory</strong> 。<strong>RegistryDirectory</strong> 用于记录和监听接口级服务提供者，而 <strong>ServiceDiscoveryRegistryDirectory</strong> 则用来记录和监听应用级服务提供者。</li>
 </ol>
 <p>本文主要以 <strong>RegistryDirectory</strong> 为例进行深入了解。</p>
-<h3 id="服务订阅"><a href="#服务订阅" class="headerlink" title="服务订阅"></a>服务订阅</h3><p>在前一篇 <a href="https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more">Dubbo源码学习：服务引用</a> 中我们了解到，远程调用的Invoker是通过 <strong>InterfaceCompatibleRegistryProtocol#getInvoker</strong> 创建的：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; ClusterInvoker&lt;T&gt; <span class="title function_">getInvoker</span><span class="params">(Cluster cluster, Registry registry, Class&lt;T&gt; type, URL url)</span> &#123;</span><br><span class="line">    <span class="comment">//创建RegistryDirectory实例</span></span><br><span class="line">    DynamicDirectory&lt;T&gt; directory = <span class="keyword">new</span> <span class="title class_">RegistryDirectory</span>&lt;&gt;(type, url);</span><br><span class="line">    <span class="keyword">return</span> doCreateInvoker(directory, cluster, registry, type);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
+<h3 id="服务订阅">服务订阅</h3>
+<p>在前一篇 <a href="https://laixiaoming.space/2024/07/13/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E5%BC%95%E7%94%A8/#more" data-md-link=""><span class="md-link-icon ui-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="currentColor"><g opacity=".5"><path d="M19.7388 4.26118C17.0572 1.57961 12.7095 1.57961 10.0279 4.26118L9.30707 4.98203C9.01418 5.27492 9.01418 5.7498 9.30707 6.04269C9.59997 6.33558 10.0748 6.33558 10.3677 6.04269L11.0886 5.32184C13.1844 3.22605 16.5823 3.22605 18.6781 5.32184C20.7739 7.41763 20.7739 10.8156 18.6781 12.9114L17.9573 13.6322C17.6644 13.9251 17.6644 14.4 17.9573 14.6929C18.2502 14.9858 18.725 14.9858 19.0179 14.6929L19.7388 13.972C22.4203 11.2905 22.4203 6.94276 19.7388 4.26118Z"></path><path d="M6.04269 9.30707C6.33558 9.59997 6.33558 10.0748 6.04269 10.3677L5.32184 11.0886C3.22605 13.1844 3.22605 16.5823 5.32184 18.6781C7.41763 20.7739 10.8156 20.7739 12.9114 18.6781L13.6322 17.9573C13.9251 17.6644 14.4 17.6644 14.6929 17.9573C14.9858 18.2501 14.9858 18.725 14.6929 19.0179L13.972 19.7388C11.2905 22.4203 6.94276 22.4203 4.26118 19.7388C1.57961 17.0572 1.57961 12.7095 4.26118 10.0279L4.98203 9.30707C5.27492 9.01418 5.7498 9.01418 6.04269 9.30707Z"></path></g><path d="M14.6933 9.30707C14.9862 9.59997 14.9862 10.0748 14.6933 10.3677L10.3682 14.6928C10.0753 14.9857 9.60045 14.9857 9.30756 14.6928C9.01467 14.3999 9.01467 13.9251 9.30756 13.6322L13.6327 9.30707C13.9255 9.01418 14.4004 9.01418 14.6933 9.30707Z"></path></g></svg></span>Dubbo源码学习：服务引用</a> 中我们了解到，远程调用的Invoker是通过 <strong>InterfaceCompatibleRegistryProtocol#getInvoker</strong> 创建的：</p>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; ClusterInvoker&lt;T&gt; <span class="title function_">getInvoker</span><span class="params">(Cluster cluster, Registry registry, Class&lt;T&gt; type, URL url)</span> {</span><br><span class="line">    <span class="comment">//创建RegistryDirectory实例</span></span><br><span class="line">    DynamicDirectory&lt;T&gt; directory = <span class="keyword">new</span> <span class="title class_">RegistryDirectory</span>&lt;&gt;(type, url);</span><br><span class="line">    <span class="keyword">return</span> doCreateInvoker(directory, cluster, registry, type);</span><br><span class="line">}</span><br><span class="line"></span><br></pre></td></tr></tbody></table></figure>
 <p><strong>RegistryProtocol#doCreateInvoker</strong> ：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> &lt;T&gt; ClusterInvoker&lt;T&gt; <span class="title function_">doCreateInvoker</span><span class="params">(DynamicDirectory&lt;T&gt; directory, Cluster cluster, Registry registry, Class&lt;T&gt; type)</span> &#123;</span><br><span class="line">    directory.setRegistry(registry);</span><br><span class="line">    directory.setProtocol(protocol);</span><br><span class="line">    <span class="comment">// all attributes of REFER_KEY</span></span><br><span class="line">    Map&lt;String, String&gt; parameters = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;String, String&gt;(directory.getConsumerUrl().getParameters());</span><br><span class="line">    <span class="type">URL</span> <span class="variable">urlToRegistry</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">URL</span>(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), <span class="number">0</span>, type.getName(), parameters);</span><br><span class="line">    <span class="keyword">if</span> (directory.isShouldRegister()) &#123;</span><br><span class="line">        directory.setRegisteredConsumerUrl(urlToRegistry);</span><br><span class="line">        registry.register(directory.getRegisteredConsumerUrl());</span><br><span class="line">    &#125;</span><br><span class="line">    directory.buildRouterChain(urlToRegistry);</span><br><span class="line">    <span class="comment">//订阅服务变更通知</span></span><br><span class="line">    directory.subscribe(toSubscribeUrl(urlToRegistry));</span><br><span class="line">	<span class="comment">//cluster类型为MockClusterWrapper</span></span><br><span class="line">    <span class="keyword">return</span> (ClusterInvoker&lt;T&gt;) cluster.join(directory);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> &lt;T&gt; ClusterInvoker&lt;T&gt; <span class="title function_">doCreateInvoker</span><span class="params">(DynamicDirectory&lt;T&gt; directory, Cluster cluster, Registry registry, Class&lt;T&gt; type)</span> {</span><br><span class="line">    directory.setRegistry(registry);</span><br><span class="line">    directory.setProtocol(protocol);</span><br><span class="line">    <span class="comment">// all attributes of REFER_KEY</span></span><br><span class="line">    Map&lt;String, String&gt; parameters = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;String, String&gt;(directory.getConsumerUrl().getParameters());</span><br><span class="line">    <span class="type">URL</span> <span class="variable">urlToRegistry</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">URL</span>(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), <span class="number">0</span>, type.getName(), parameters);</span><br><span class="line">    <span class="keyword">if</span> (directory.isShouldRegister()) {</span><br><span class="line">        directory.setRegisteredConsumerUrl(urlToRegistry);</span><br><span class="line">        registry.register(directory.getRegisteredConsumerUrl());</span><br><span class="line">    }</span><br><span class="line">    directory.buildRouterChain(urlToRegistry);</span><br><span class="line">    <span class="comment">//订阅服务变更通知</span></span><br><span class="line">    directory.subscribe(toSubscribeUrl(urlToRegistry));</span><br><span class="line">	<span class="comment">//cluster类型为MockClusterWrapper</span></span><br><span class="line">    <span class="keyword">return</span> (ClusterInvoker&lt;T&gt;) cluster.join(directory);</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p><strong>MockClusterWrapper#join</strong>：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MockClusterWrapper</span> <span class="keyword">implements</span> <span class="title class_">Cluster</span> &#123;</span><br><span class="line">	<span class="comment">//FailoverCluster实现类</span></span><br><span class="line">    <span class="keyword">private</span> Cluster cluster;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">MockClusterWrapper</span><span class="params">(Cluster cluster)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.cluster = cluster;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">join</span><span class="params">(Directory&lt;T&gt; directory)</span> <span class="keyword">throws</span> RpcException &#123;</span><br><span class="line">    	<span class="comment">//返回MockClusterInvoker实例</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">MockClusterInvoker</span>&lt;T&gt;(directory,</span><br><span class="line">                <span class="built_in">this</span>.cluster.join(directory));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MockClusterWrapper</span> <span class="keyword">implements</span> <span class="title class_">Cluster</span> {</span><br><span class="line">	<span class="comment">//FailoverCluster实现类</span></span><br><span class="line">    <span class="keyword">private</span> Cluster cluster;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">MockClusterWrapper</span><span class="params">(Cluster cluster)</span> {</span><br><span class="line">        <span class="built_in">this</span>.cluster = cluster;</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">join</span><span class="params">(Directory&lt;T&gt; directory)</span> <span class="keyword">throws</span> RpcException {</span><br><span class="line">    	<span class="comment">//返回MockClusterInvoker实例</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">MockClusterInvoker</span>&lt;T&gt;(directory,</span><br><span class="line">                <span class="built_in">this</span>.cluster.join(directory));</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p><strong>AbstractCluster#join</strong>：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">join</span><span class="params">(Directory&lt;T&gt; directory)</span> <span class="keyword">throws</span> RpcException &#123;</span><br><span class="line">	<span class="comment">//doJoin返回FailoverClusterInvoker实例</span></span><br><span class="line">    <span class="keyword">return</span> buildClusterInterceptors(doJoin(directory), directory.getUrl().getParameter(REFERENCE_INTERCEPTOR_KEY));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">join</span><span class="params">(Directory&lt;T&gt; directory)</span> <span class="keyword">throws</span> RpcException {</span><br><span class="line">	<span class="comment">//doJoin返回FailoverClusterInvoker实例</span></span><br><span class="line">    <span class="keyword">return</span> buildClusterInterceptors(doJoin(directory), directory.getUrl().getParameter(REFERENCE_INTERCEPTOR_KEY));</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>在创建 <strong>RegistryDirectory</strong> 实例后，则通过 <strong>RegistryDirectory#subscribe</strong> 订阅服务提供方变更通知：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">subscribe</span><span class="params">(URL url)</span> &#123;</span><br><span class="line">    setConsumerUrl(url);</span><br><span class="line">    <span class="comment">//将当前RegistryDirectory作为配置监听器注册</span></span><br><span class="line">    CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(<span class="built_in">this</span>);</span><br><span class="line">    referenceConfigurationListener = <span class="keyword">new</span> <span class="title class_">ReferenceConfigurationListener</span>(<span class="built_in">this</span>, url);</span><br><span class="line">    <span class="comment">//订阅服务变更通知</span></span><br><span class="line">    registry.subscribe(url, <span class="built_in">this</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">subscribe</span><span class="params">(URL url)</span> {</span><br><span class="line">    setConsumerUrl(url);</span><br><span class="line">    <span class="comment">//将当前RegistryDirectory作为配置监听器注册</span></span><br><span class="line">    CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(<span class="built_in">this</span>);</span><br><span class="line">    referenceConfigurationListener = <span class="keyword">new</span> <span class="title class_">ReferenceConfigurationListener</span>(<span class="built_in">this</span>, url);</span><br><span class="line">    <span class="comment">//订阅服务变更通知</span></span><br><span class="line">    registry.subscribe(url, <span class="built_in">this</span>);</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>深入subscribe方法，这里以 Nacos 注册中心为例，来到 <strong>NacosRegistry#doSubscribe</strong> ：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">doSubscribe</span><span class="params">(<span class="keyword">final</span> URL url, <span class="keyword">final</span> NotifyListener listener)</span> &#123;</span><br><span class="line">	<span class="comment">//获取服务名，这里为了兼容旧版本服务，同一个服务会生成两个服务名</span></span><br><span class="line">    Set&lt;String&gt; serviceNames = getServiceNames(url, listener);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//将新旧版本的同一个服务名关联起来，以便于后续一起处理</span></span><br><span class="line">    <span class="keyword">if</span> (isServiceNamesWithCompatibleMode(url)) &#123;</span><br><span class="line">        <span class="keyword">for</span> (String serviceName : serviceNames) &#123;</span><br><span class="line">            NacosInstanceManageUtil.setCorrespondingServiceNames(serviceName, serviceNames);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    doSubscribe(url, listener, serviceNames);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">doSubscribe</span><span class="params">(<span class="keyword">final</span> URL url, <span class="keyword">final</span> NotifyListener listener, <span class="keyword">final</span> Set&lt;String&gt; serviceNames)</span> &#123;</span><br><span class="line">    execute(namingService -&gt; &#123;</span><br><span class="line">        <span class="comment">//服务名称兼容模式</span></span><br><span class="line">        <span class="keyword">if</span> (isServiceNamesWithCompatibleMode(url)) &#123;</span><br><span class="line">            List&lt;Instance&gt; allCorrespondingInstanceList = Lists.newArrayList();</span><br><span class="line"></span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * Get all instances with serviceNames to avoid instance overwrite and but with empty instance mentioned</span></span><br><span class="line"><span class="comment">             * in https://github.com/apache/dubbo/issues/5885 and https://github.com/apache/dubbo/issues/5899</span></span><br><span class="line"><span class="comment">             *</span></span><br><span class="line"><span class="comment">             * namingService.getAllInstances with &#123;<span class="doctag">@link</span> org.apache.dubbo.registry.support.AbstractRegistry#registryUrl&#125;</span></span><br><span class="line"><span class="comment">             * default &#123;<span class="doctag">@link</span> DEFAULT_GROUP&#125;</span></span><br><span class="line"><span class="comment">             *</span></span><br><span class="line"><span class="comment">             * in https://github.com/apache/dubbo/issues/5978</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="keyword">for</span> (String serviceName : serviceNames) &#123;</span><br><span class="line">                <span class="comment">//从nacos获取所有已有实例</span></span><br><span class="line">                List&lt;Instance&gt; instances = namingService.getAllInstances(serviceName,</span><br><span class="line">                        getUrl().getParameter(GROUP_KEY, Constants.DEFAULT_GROUP));</span><br><span class="line">                NacosInstanceManageUtil.initOrRefreshServiceInstanceList(serviceName, instances);</span><br><span class="line">                allCorrespondingInstanceList.addAll(instances);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//以当前获取到的所有实例通知到directory进行刷新</span></span><br><span class="line">            notifySubscriber(url, listener, allCorrespondingInstanceList);</span><br><span class="line">            <span class="keyword">for</span> (String serviceName : serviceNames) &#123;</span><br><span class="line">                <span class="comment">//订阅服务变更</span></span><br><span class="line">                subscribeEventListener(serviceName, url, listener);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            List&lt;Instance&gt; instances = <span class="keyword">new</span> <span class="title class_">LinkedList</span>&lt;&gt;();</span><br><span class="line">            <span class="keyword">for</span> (String serviceName : serviceNames) &#123;</span><br><span class="line">                instances.addAll(namingService.getAllInstances(serviceName</span><br><span class="line">                        , getUrl().getParameter(GROUP_KEY, Constants.DEFAULT_GROUP)));</span><br><span class="line">                notifySubscriber(url, listener, instances);</span><br><span class="line">                subscribeEventListener(serviceName, url, listener);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">doSubscribe</span><span class="params">(<span class="keyword">final</span> URL url, <span class="keyword">final</span> NotifyListener listener)</span> {</span><br><span class="line">	<span class="comment">//获取服务名，这里为了兼容旧版本服务，同一个服务会生成两个服务名</span></span><br><span class="line">    Set&lt;String&gt; serviceNames = getServiceNames(url, listener);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//将新旧版本的同一个服务名关联起来，以便于后续一起处理</span></span><br><span class="line">    <span class="keyword">if</span> (isServiceNamesWithCompatibleMode(url)) {</span><br><span class="line">        <span class="keyword">for</span> (String serviceName : serviceNames) {</span><br><span class="line">            NacosInstanceManageUtil.setCorrespondingServiceNames(serviceName, serviceNames);</span><br><span class="line">        }</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">    doSubscribe(url, listener, serviceNames);</span><br><span class="line">}</span><br><span class="line"></span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">doSubscribe</span><span class="params">(<span class="keyword">final</span> URL url, <span class="keyword">final</span> NotifyListener listener, <span class="keyword">final</span> Set&lt;String&gt; serviceNames)</span> {</span><br><span class="line">    execute(namingService -&gt; {</span><br><span class="line">        <span class="comment">//服务名称兼容模式</span></span><br><span class="line">        <span class="keyword">if</span> (isServiceNamesWithCompatibleMode(url)) {</span><br><span class="line">            List&lt;Instance&gt; allCorrespondingInstanceList = Lists.newArrayList();</span><br><span class="line"></span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * Get all instances with serviceNames to avoid instance overwrite and but with empty instance mentioned</span></span><br><span class="line"><span class="comment">             * in https://github.com/apache/dubbo/issues/5885 and https://github.com/apache/dubbo/issues/5899</span></span><br><span class="line"><span class="comment">             *</span></span><br><span class="line"><span class="comment">             * namingService.getAllInstances with {<span class="doctag">@link</span> org.apache.dubbo.registry.support.AbstractRegistry#registryUrl}</span></span><br><span class="line"><span class="comment">             * default {<span class="doctag">@link</span> DEFAULT_GROUP}</span></span><br><span class="line"><span class="comment">             *</span></span><br><span class="line"><span class="comment">             * in https://github.com/apache/dubbo/issues/5978</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="keyword">for</span> (String serviceName : serviceNames) {</span><br><span class="line">                <span class="comment">//从nacos获取所有已有实例</span></span><br><span class="line">                List&lt;Instance&gt; instances = namingService.getAllInstances(serviceName,</span><br><span class="line">                        getUrl().getParameter(GROUP_KEY, Constants.DEFAULT_GROUP));</span><br><span class="line">                NacosInstanceManageUtil.initOrRefreshServiceInstanceList(serviceName, instances);</span><br><span class="line">                allCorrespondingInstanceList.addAll(instances);</span><br><span class="line">            }</span><br><span class="line">            <span class="comment">//以当前获取到的所有实例通知到directory进行刷新</span></span><br><span class="line">            notifySubscriber(url, listener, allCorrespondingInstanceList);</span><br><span class="line">            <span class="keyword">for</span> (String serviceName : serviceNames) {</span><br><span class="line">                <span class="comment">//订阅服务变更</span></span><br><span class="line">                subscribeEventListener(serviceName, url, listener);</span><br><span class="line">            }</span><br><span class="line">        } <span class="keyword">else</span> {</span><br><span class="line">            List&lt;Instance&gt; instances = <span class="keyword">new</span> <span class="title class_">LinkedList</span>&lt;&gt;();</span><br><span class="line">            <span class="keyword">for</span> (String serviceName : serviceNames) {</span><br><span class="line">                instances.addAll(namingService.getAllInstances(serviceName</span><br><span class="line">                        , getUrl().getParameter(GROUP_KEY, Constants.DEFAULT_GROUP)));</span><br><span class="line">                notifySubscriber(url, listener, instances);</span><br><span class="line">                subscribeEventListener(serviceName, url, listener);</span><br><span class="line">            }</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">    });</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>可以看到，服务订阅主要做了以下3个事：</p>
 <ol>
 <li>从注册中心获取所有实例；</li>
 <li>以获取到的所有实例，通知并刷新（初始化）服务目录；</li>
 <li>订阅服务变更通知。</li>
 </ol>
-<h3 id="接收服务变更通知"><a href="#接收服务变更通知" class="headerlink" title="接收服务变更通知"></a>接收服务变更通知</h3><p>当注册中心的服务配置变更时，将通过 <strong>NotifyListener#notify</strong> 方法接口通知，而 <strong>NacosDirectory</strong> 实现了该接口：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title function_">notify</span><span class="params">(List&lt;URL&gt; urls)</span> &#123;</span><br><span class="line">    <span class="comment">//按照category分成configurators、routers、providers三类</span></span><br><span class="line">    Map&lt;String, List&lt;URL&gt;&gt; categoryUrls = urls.stream()</span><br><span class="line">            .filter(Objects::nonNull)</span><br><span class="line">            .filter(<span class="built_in">this</span>::isValidCategory)</span><br><span class="line">            .filter(<span class="built_in">this</span>::isNotCompatibleFor26x)</span><br><span class="line">            .collect(Collectors.groupingBy(<span class="built_in">this</span>::judgeCategory));</span><br><span class="line">	<span class="comment">//取configurators类型的URL，并转换成Configurator对象</span></span><br><span class="line">    List&lt;URL&gt; configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());</span><br><span class="line">    <span class="built_in">this</span>.configurators = Configurator.toConfigurators(configuratorURLs).orElse(<span class="built_in">this</span>.configurators);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//获取routers类型的URL，并转成Router对象，添加到RouterChain中</span></span><br><span class="line">    List&lt;URL&gt; routerURLs = categoryUrls.getOrDefault(ROUTERS_CATEGORY, Collections.emptyList());</span><br><span class="line">    toRouters(routerURLs).ifPresent(<span class="built_in">this</span>::addRouters);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取providers类型的URL，调用refreshOverrideAndInvoker方法进行处理</span></span><br><span class="line">    List&lt;URL&gt; providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 3.x added for extend URL address</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ExtensionLoader&lt;AddressListener&gt; addressListenerExtensionLoader = ExtensionLoader.getExtensionLoader(AddressListener.class);</span><br><span class="line">    List&lt;AddressListener&gt; supportedListeners = addressListenerExtensionLoader.getActivateExtension(getUrl(), (String[]) <span class="literal">null</span>);</span><br><span class="line">    <span class="keyword">if</span> (supportedListeners != <span class="literal">null</span> &amp;&amp; !supportedListeners.isEmpty()) &#123;</span><br><span class="line">        <span class="keyword">for</span> (AddressListener addressListener : supportedListeners) &#123;</span><br><span class="line">            providerURLs = addressListener.notify(providerURLs, getConsumerUrl(), <span class="built_in">this</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    refreshOverrideAndInvoker(providerURLs);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<h3 id="接收服务变更通知">接收服务变更通知</h3>
+<p>当注册中心的服务配置变更时，将通过 <strong>NotifyListener#notify</strong> 方法接口通知，而 <strong>NacosDirectory</strong> 实现了该接口：</p>
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title function_">notify</span><span class="params">(List&lt;URL&gt; urls)</span> {</span><br><span class="line">    <span class="comment">//按照category分成configurators、routers、providers三类</span></span><br><span class="line">    Map&lt;String, List&lt;URL&gt;&gt; categoryUrls = urls.stream()</span><br><span class="line">            .filter(Objects::nonNull)</span><br><span class="line">            .filter(<span class="built_in">this</span>::isValidCategory)</span><br><span class="line">            .filter(<span class="built_in">this</span>::isNotCompatibleFor26x)</span><br><span class="line">            .collect(Collectors.groupingBy(<span class="built_in">this</span>::judgeCategory));</span><br><span class="line">	<span class="comment">//取configurators类型的URL，并转换成Configurator对象</span></span><br><span class="line">    List&lt;URL&gt; configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());</span><br><span class="line">    <span class="built_in">this</span>.configurators = Configurator.toConfigurators(configuratorURLs).orElse(<span class="built_in">this</span>.configurators);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//获取routers类型的URL，并转成Router对象，添加到RouterChain中</span></span><br><span class="line">    List&lt;URL&gt; routerURLs = categoryUrls.getOrDefault(ROUTERS_CATEGORY, Collections.emptyList());</span><br><span class="line">    toRouters(routerURLs).ifPresent(<span class="built_in">this</span>::addRouters);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取providers类型的URL，调用refreshOverrideAndInvoker方法进行处理</span></span><br><span class="line">    List&lt;URL&gt; providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 3.x added for extend URL address</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ExtensionLoader&lt;AddressListener&gt; addressListenerExtensionLoader = ExtensionLoader.getExtensionLoader(AddressListener.class);</span><br><span class="line">    List&lt;AddressListener&gt; supportedListeners = addressListenerExtensionLoader.getActivateExtension(getUrl(), (String[]) <span class="literal">null</span>);</span><br><span class="line">    <span class="keyword">if</span> (supportedListeners != <span class="literal">null</span> &amp;&amp; !supportedListeners.isEmpty()) {</span><br><span class="line">        <span class="keyword">for</span> (AddressListener addressListener : supportedListeners) {</span><br><span class="line">            providerURLs = addressListener.notify(providerURLs, getConsumerUrl(), <span class="built_in">this</span>);</span><br><span class="line">        }</span><br><span class="line">    }</span><br><span class="line">    refreshOverrideAndInvoker(providerURLs);</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>在 <strong>RegistryDirectory#notify</strong> 方法中，首先会按照 category 将 URL 分成 configurators、routers、providers 三类，并分别对不同类型的 URL 进行处理：</p>
 <ol>
 <li>将 configurators 类型的 URL 转化为 Configurator，保存到 configurators 字段中；</li>
@@ -280,18 +444,16 @@
 <li>将 provider 类型的 URL 通过refreshOverrideAndInvoker方法进行刷新。</li>
 </ol>
 <p><strong>RegistryDirectory#refreshOverrideAndInvoker</strong> ：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title function_">refreshOverrideAndInvoker</span><span class="params">(List&lt;URL&gt; urls)</span> &#123;</span><br><span class="line">    <span class="comment">// mock zookeeper://xxx?mock=return null</span></span><br><span class="line">    overrideDirectoryUrl();</span><br><span class="line">    refreshInvoker(urls);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title function_">refreshOverrideAndInvoker</span><span class="params">(List&lt;URL&gt; urls)</span> {</span><br><span class="line">    <span class="comment">// mock zookeeper://xxx?mock=return null</span></span><br><span class="line">    overrideDirectoryUrl();</span><br><span class="line">    refreshInvoker(urls);</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>这里主要看 <strong>refreshInvoker</strong> 方法：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">refreshInvoker</span><span class="params">(List&lt;URL&gt; invokerUrls)</span> &#123;</span><br><span class="line">    Assert.notNull(invokerUrls, <span class="string">&quot;invokerUrls should not be null&quot;</span>);</span><br><span class="line">	<span class="comment">//invokerUrls长度为1，并且协议为empty，则销毁所有invoker</span></span><br><span class="line">    <span class="keyword">if</span> (invokerUrls.size() == <span class="number">1</span></span><br><span class="line">            &amp;&amp; invokerUrls.get(<span class="number">0</span>) != <span class="literal">null</span></span><br><span class="line">            &amp;&amp; EMPTY_PROTOCOL.equals(invokerUrls.get(<span class="number">0</span>).getProtocol())) &#123;</span><br><span class="line">        <span class="comment">//标记为禁止访问</span></span><br><span class="line">        <span class="built_in">this</span>.forbidden = <span class="literal">true</span>; <span class="comment">// Forbid to access</span></span><br><span class="line">        <span class="comment">//销毁所有invoker实例</span></span><br><span class="line">        <span class="built_in">this</span>.invokers = Collections.emptyList();</span><br><span class="line">        routerChain.setInvokers(<span class="built_in">this</span>.invokers);</span><br><span class="line">        destroyAllInvokers(); <span class="comment">// Close all invokers</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        Map&lt;URL, Invoker&lt;T&gt;&gt; oldUrlInvokerMap = <span class="built_in">this</span>.urlInvokerMap; <span class="comment">// local reference</span></span><br><span class="line">        <span class="keyword">if</span> (invokerUrls == Collections.&lt;URL&gt;emptyList()) &#123;</span><br><span class="line">            invokerUrls = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//如果invokerUrls为空，并且cachedInvokerUrls不为空，则使用cachedInvokerUrls</span></span><br><span class="line">        <span class="keyword">if</span> (invokerUrls.isEmpty() &amp;&amp; <span class="built_in">this</span>.cachedInvokerUrls != <span class="literal">null</span>) &#123;</span><br><span class="line">            invokerUrls.addAll(<span class="built_in">this</span>.cachedInvokerUrls);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">//缓存invokerUrls</span></span><br><span class="line">            <span class="built_in">this</span>.cachedInvokerUrls = <span class="keyword">new</span> <span class="title class_">HashSet</span>&lt;&gt;();</span><br><span class="line">            <span class="built_in">this</span>.cachedInvokerUrls.addAll(invokerUrls);<span class="comment">//Cached invoker urls, convenient for comparison</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (invokerUrls.isEmpty()) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">this</span>.forbidden = <span class="literal">false</span>; <span class="comment">// Allow to access</span></span><br><span class="line">        <span class="comment">//将url转换为invoker实例</span></span><br><span class="line">        Map&lt;URL, Invoker&lt;T&gt;&gt; newUrlInvokerMap = toInvokers(invokerUrls);<span class="comment">// Translate url list to Invoker map</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * If the calculation is wrong, it is not processed.</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * 1. The protocol configured by the client is inconsistent with the protocol of the server.</span></span><br><span class="line"><span class="comment">         *    eg: consumer protocol = dubbo, provider only has other protocol services(rest).</span></span><br><span class="line"><span class="comment">         * 2. The registration center is not robust and pushes illegal specification data.</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (CollectionUtils.isEmptyMap(newUrlInvokerMap)) &#123;</span><br><span class="line">            logger.error(<span class="keyword">new</span> <span class="title class_">IllegalStateException</span>(<span class="string">&quot;urls to invokers error .invokerUrls.size :&quot;</span> + invokerUrls.size() + <span class="string">&quot;, invoker.size :0. urls :&quot;</span> + invokerUrls</span><br><span class="line">                    .toString()));</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//更新服务目录中的invoker列表</span></span><br><span class="line">        List&lt;Invoker&lt;T&gt;&gt; newInvokers = Collections.unmodifiableList(<span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;(newUrlInvokerMap.values()));</span><br><span class="line">        <span class="comment">// pre-route and build cache, notice that route cache should build on original Invoker list.</span></span><br><span class="line">        <span class="comment">// toMergeMethodInvokerMap() will wrap some invokers having different groups, those wrapped invokers not should be routed.</span></span><br><span class="line">        routerChain.setInvokers(newInvokers);</span><br><span class="line">        <span class="built_in">this</span>.invokers = multiGroup ? toMergeInvokerList(newInvokers) : newInvokers;</span><br><span class="line">        <span class="built_in">this</span>.urlInvokerMap = newUrlInvokerMap;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//销毁无用的invoker</span></span><br><span class="line">        <span class="comment">// Close the unused Invoker</span></span><br><span class="line">        destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// notify invokers refreshed</span></span><br><span class="line">    <span class="built_in">this</span>.invokersChanged();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">refreshInvoker</span><span class="params">(List&lt;URL&gt; invokerUrls)</span> {</span><br><span class="line">    Assert.notNull(invokerUrls, <span class="string">"invokerUrls should not be null"</span>);</span><br><span class="line">	<span class="comment">//invokerUrls长度为1，并且协议为empty，则销毁所有invoker</span></span><br><span class="line">    <span class="keyword">if</span> (invokerUrls.size() == <span class="number">1</span></span><br><span class="line">            &amp;&amp; invokerUrls.get(<span class="number">0</span>) != <span class="literal">null</span></span><br><span class="line">            &amp;&amp; EMPTY_PROTOCOL.equals(invokerUrls.get(<span class="number">0</span>).getProtocol())) {</span><br><span class="line">        <span class="comment">//标记为禁止访问</span></span><br><span class="line">        <span class="built_in">this</span>.forbidden = <span class="literal">true</span>; <span class="comment">// Forbid to access</span></span><br><span class="line">        <span class="comment">//销毁所有invoker实例</span></span><br><span class="line">        <span class="built_in">this</span>.invokers = Collections.emptyList();</span><br><span class="line">        routerChain.setInvokers(<span class="built_in">this</span>.invokers);</span><br><span class="line">        destroyAllInvokers(); <span class="comment">// Close all invokers</span></span><br><span class="line">    } <span class="keyword">else</span> {</span><br><span class="line">        Map&lt;URL, Invoker&lt;T&gt;&gt; oldUrlInvokerMap = <span class="built_in">this</span>.urlInvokerMap; <span class="comment">// local reference</span></span><br><span class="line">        <span class="keyword">if</span> (invokerUrls == Collections.&lt;URL&gt;emptyList()) {</span><br><span class="line">            invokerUrls = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">        }</span><br><span class="line">        <span class="comment">//如果invokerUrls为空，并且cachedInvokerUrls不为空，则使用cachedInvokerUrls</span></span><br><span class="line">        <span class="keyword">if</span> (invokerUrls.isEmpty() &amp;&amp; <span class="built_in">this</span>.cachedInvokerUrls != <span class="literal">null</span>) {</span><br><span class="line">            invokerUrls.addAll(<span class="built_in">this</span>.cachedInvokerUrls);</span><br><span class="line">        } <span class="keyword">else</span> {</span><br><span class="line">            <span class="comment">//缓存invokerUrls</span></span><br><span class="line">            <span class="built_in">this</span>.cachedInvokerUrls = <span class="keyword">new</span> <span class="title class_">HashSet</span>&lt;&gt;();</span><br><span class="line">            <span class="built_in">this</span>.cachedInvokerUrls.addAll(invokerUrls);<span class="comment">//Cached invoker urls, convenient for comparison</span></span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">if</span> (invokerUrls.isEmpty()) {</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        }</span><br><span class="line">        <span class="built_in">this</span>.forbidden = <span class="literal">false</span>; <span class="comment">// Allow to access</span></span><br><span class="line">        <span class="comment">//将url转换为invoker实例</span></span><br><span class="line">        Map&lt;URL, Invoker&lt;T&gt;&gt; newUrlInvokerMap = toInvokers(invokerUrls);<span class="comment">// Translate url list to Invoker map</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * If the calculation is wrong, it is not processed.</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * 1. The protocol configured by the client is inconsistent with the protocol of the server.</span></span><br><span class="line"><span class="comment">         *    eg: consumer protocol = dubbo, provider only has other protocol services(rest).</span></span><br><span class="line"><span class="comment">         * 2. The registration center is not robust and pushes illegal specification data.</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (CollectionUtils.isEmptyMap(newUrlInvokerMap)) {</span><br><span class="line">            logger.error(<span class="keyword">new</span> <span class="title class_">IllegalStateException</span>(<span class="string">"urls to invokers error .invokerUrls.size :"</span> + invokerUrls.size() + <span class="string">", invoker.size :0. urls :"</span> + invokerUrls</span><br><span class="line">                    .toString()));</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        }</span><br><span class="line"></span><br><span class="line">        <span class="comment">//更新服务目录中的invoker列表</span></span><br><span class="line">        List&lt;Invoker&lt;T&gt;&gt; newInvokers = Collections.unmodifiableList(<span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;(newUrlInvokerMap.values()));</span><br><span class="line">        <span class="comment">// pre-route and build cache, notice that route cache should build on original Invoker list.</span></span><br><span class="line">        <span class="comment">// toMergeMethodInvokerMap() will wrap some invokers having different groups, those wrapped invokers not should be routed.</span></span><br><span class="line">        routerChain.setInvokers(newInvokers);</span><br><span class="line">        <span class="built_in">this</span>.invokers = multiGroup ? toMergeInvokerList(newInvokers) : newInvokers;</span><br><span class="line">        <span class="built_in">this</span>.urlInvokerMap = newUrlInvokerMap;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//销毁无用的invoker</span></span><br><span class="line">        <span class="comment">// Close the unused Invoker</span></span><br><span class="line">        destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap);</span><br><span class="line"></span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">    <span class="comment">// notify invokers refreshed</span></span><br><span class="line">    <span class="built_in">this</span>.invokersChanged();</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>其核心逻辑在于 <strong>toInvokers</strong> 方法，该方法用于将 invokerUrls 转换为 invoker实例集合：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> Map&lt;URL, Invoker&lt;T&gt;&gt; <span class="title function_">toInvokers</span><span class="params">(List&lt;URL&gt; urls)</span> &#123;</span><br><span class="line">    Map&lt;URL, Invoker&lt;T&gt;&gt; newUrlInvokerMap = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">if</span> (CollectionUtils.isEmpty(urls)) &#123;</span><br><span class="line">        <span class="keyword">return</span> newUrlInvokerMap;</span><br><span class="line">    &#125;</span><br><span class="line">    Set&lt;URL&gt; keys = <span class="keyword">new</span> <span class="title class_">HashSet</span>&lt;&gt;();</span><br><span class="line">    <span class="comment">//获取消费端支持的协议</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">queryProtocols</span> <span class="operator">=</span> <span class="built_in">this</span>.queryMap.get(PROTOCOL_KEY);</span><br><span class="line">    <span class="keyword">for</span> (URL providerUrl : urls) &#123;</span><br><span class="line">        <span class="comment">// If protocol is configured at the reference side, only the matching protocol is selected</span></span><br><span class="line">        <span class="keyword">if</span> (queryProtocols != <span class="literal">null</span> &amp;&amp; queryProtocols.length() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="type">boolean</span> <span class="variable">accept</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">            String[] acceptProtocols = queryProtocols.split(<span class="string">&quot;,&quot;</span>);</span><br><span class="line">            <span class="keyword">for</span> (String acceptProtocol : acceptProtocols) &#123;</span><br><span class="line">                <span class="keyword">if</span> (providerUrl.getProtocol().equals(acceptProtocol)) &#123;</span><br><span class="line">                    accept = <span class="literal">true</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//是否支持消费端协议，不支持则忽略</span></span><br><span class="line">            <span class="keyword">if</span> (!accept) &#123;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//忽略empty协议的URL</span></span><br><span class="line">        <span class="keyword">if</span> (EMPTY_PROTOCOL.equals(providerUrl.getProtocol())) &#123;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//通过SPI的方式检测消费端是否存在对应的扩展实现</span></span><br><span class="line">        <span class="keyword">if</span> (!ExtensionLoader.getExtensionLoader(Protocol.class).hasExtension(providerUrl.getProtocol())) &#123;</span><br><span class="line">            logger.error(<span class="keyword">new</span> <span class="title class_">IllegalStateException</span>(<span class="string">&quot;Unsupported protocol &quot;</span> + providerUrl.getProtocol() +</span><br><span class="line">                    <span class="string">&quot; in notified url: &quot;</span> + providerUrl + <span class="string">&quot; from registry &quot;</span> + getUrl().getAddress() +</span><br><span class="line">                    <span class="string">&quot; to consumer &quot;</span> + NetUtils.getLocalHost() + <span class="string">&quot;, supported protocol: &quot;</span> +</span><br><span class="line">                    ExtensionLoader.getExtensionLoader(Protocol.class).getSupportedExtensions()));</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//合并URL，按一定优先级合并配置</span></span><br><span class="line">        <span class="type">URL</span> <span class="variable">url</span> <span class="operator">=</span> mergeUrl(providerUrl);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (keys.contains(url)) &#123; <span class="comment">// Repeated url</span></span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        keys.add(url);</span><br><span class="line">        <span class="comment">// Cache key is url that does not merge with consumer side parameters, regardless of how the consumer combines parameters, if the server url changes, then refer again</span></span><br><span class="line">        Map&lt;URL, Invoker&lt;T&gt;&gt; localUrlInvokerMap = <span class="built_in">this</span>.urlInvokerMap; <span class="comment">// local reference</span></span><br><span class="line">        Invoker&lt;T&gt; invoker = localUrlInvokerMap == <span class="literal">null</span> ? <span class="literal">null</span> : localUrlInvokerMap.get(url);</span><br><span class="line">        <span class="keyword">if</span> (invoker == <span class="literal">null</span>) &#123; <span class="comment">// Not in the cache, refer again</span></span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="type">boolean</span> <span class="variable">enabled</span> <span class="operator">=</span> <span class="literal">true</span>;</span><br><span class="line">                <span class="comment">//根据URL参数决定是否创建invoker</span></span><br><span class="line">                <span class="keyword">if</span> (url.hasParameter(DISABLED_KEY)) &#123;</span><br><span class="line">                    enabled = !url.getParameter(DISABLED_KEY, <span class="literal">false</span>);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    enabled = url.getParameter(ENABLED_KEY, <span class="literal">true</span>);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">//通过Protocol#refer方法创建invoker实例</span></span><br><span class="line">                <span class="keyword">if</span> (enabled) &#123;</span><br><span class="line">                    invoker = <span class="keyword">new</span> <span class="title class_">InvokerDelegate</span>&lt;&gt;(protocol.refer(serviceType, url), url, providerUrl);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                logger.error(<span class="string">&quot;Failed to refer invoker for interface:&quot;</span> + serviceType + <span class="string">&quot;,url:(&quot;</span> + url + <span class="string">&quot;)&quot;</span> + t.getMessage(), t);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (invoker != <span class="literal">null</span>) &#123; <span class="comment">// Put new invoker in cache</span></span><br><span class="line">                newUrlInvokerMap.put(url, invoker);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            newUrlInvokerMap.put(url, invoker);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    keys.clear();</span><br><span class="line">    <span class="keyword">return</span> newUrlInvokerMap;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> Map&lt;URL, Invoker&lt;T&gt;&gt; <span class="title function_">toInvokers</span><span class="params">(List&lt;URL&gt; urls)</span> {</span><br><span class="line">    Map&lt;URL, Invoker&lt;T&gt;&gt; newUrlInvokerMap = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">if</span> (CollectionUtils.isEmpty(urls)) {</span><br><span class="line">        <span class="keyword">return</span> newUrlInvokerMap;</span><br><span class="line">    }</span><br><span class="line">    Set&lt;URL&gt; keys = <span class="keyword">new</span> <span class="title class_">HashSet</span>&lt;&gt;();</span><br><span class="line">    <span class="comment">//获取消费端支持的协议</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">queryProtocols</span> <span class="operator">=</span> <span class="built_in">this</span>.queryMap.get(PROTOCOL_KEY);</span><br><span class="line">    <span class="keyword">for</span> (URL providerUrl : urls) {</span><br><span class="line">        <span class="comment">// If protocol is configured at the reference side, only the matching protocol is selected</span></span><br><span class="line">        <span class="keyword">if</span> (queryProtocols != <span class="literal">null</span> &amp;&amp; queryProtocols.length() &gt; <span class="number">0</span>) {</span><br><span class="line">            <span class="type">boolean</span> <span class="variable">accept</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">            String[] acceptProtocols = queryProtocols.split(<span class="string">","</span>);</span><br><span class="line">            <span class="keyword">for</span> (String acceptProtocol : acceptProtocols) {</span><br><span class="line">                <span class="keyword">if</span> (providerUrl.getProtocol().equals(acceptProtocol)) {</span><br><span class="line">                    accept = <span class="literal">true</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                }</span><br><span class="line">            }</span><br><span class="line">            <span class="comment">//是否支持消费端协议，不支持则忽略</span></span><br><span class="line">            <span class="keyword">if</span> (!accept) {</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            }</span><br><span class="line">        }</span><br><span class="line">        <span class="comment">//忽略empty协议的URL</span></span><br><span class="line">        <span class="keyword">if</span> (EMPTY_PROTOCOL.equals(providerUrl.getProtocol())) {</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        }</span><br><span class="line">        <span class="comment">//通过SPI的方式检测消费端是否存在对应的扩展实现</span></span><br><span class="line">        <span class="keyword">if</span> (!ExtensionLoader.getExtensionLoader(Protocol.class).hasExtension(providerUrl.getProtocol())) {</span><br><span class="line">            logger.error(<span class="keyword">new</span> <span class="title class_">IllegalStateException</span>(<span class="string">"Unsupported protocol "</span> + providerUrl.getProtocol() +</span><br><span class="line">                    <span class="string">" in notified url: "</span> + providerUrl + <span class="string">" from registry "</span> + getUrl().getAddress() +</span><br><span class="line">                    <span class="string">" to consumer "</span> + NetUtils.getLocalHost() + <span class="string">", supported protocol: "</span> +</span><br><span class="line">                    ExtensionLoader.getExtensionLoader(Protocol.class).getSupportedExtensions()));</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        }</span><br><span class="line">        <span class="comment">//合并URL，按一定优先级合并配置</span></span><br><span class="line">        <span class="type">URL</span> <span class="variable">url</span> <span class="operator">=</span> mergeUrl(providerUrl);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (keys.contains(url)) { <span class="comment">// Repeated url</span></span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        }</span><br><span class="line">        keys.add(url);</span><br><span class="line">        <span class="comment">// Cache key is url that does not merge with consumer side parameters, regardless of how the consumer combines parameters, if the server url changes, then refer again</span></span><br><span class="line">        Map&lt;URL, Invoker&lt;T&gt;&gt; localUrlInvokerMap = <span class="built_in">this</span>.urlInvokerMap; <span class="comment">// local reference</span></span><br><span class="line">        Invoker&lt;T&gt; invoker = localUrlInvokerMap == <span class="literal">null</span> ? <span class="literal">null</span> : localUrlInvokerMap.get(url);</span><br><span class="line">        <span class="keyword">if</span> (invoker == <span class="literal">null</span>) { <span class="comment">// Not in the cache, refer again</span></span><br><span class="line">            <span class="keyword">try</span> {</span><br><span class="line">                <span class="type">boolean</span> <span class="variable">enabled</span> <span class="operator">=</span> <span class="literal">true</span>;</span><br><span class="line">                <span class="comment">//根据URL参数决定是否创建invoker</span></span><br><span class="line">                <span class="keyword">if</span> (url.hasParameter(DISABLED_KEY)) {</span><br><span class="line">                    enabled = !url.getParameter(DISABLED_KEY, <span class="literal">false</span>);</span><br><span class="line">                } <span class="keyword">else</span> {</span><br><span class="line">                    enabled = url.getParameter(ENABLED_KEY, <span class="literal">true</span>);</span><br><span class="line">                }</span><br><span class="line">                <span class="comment">//通过Protocol#refer方法创建invoker实例</span></span><br><span class="line">                <span class="keyword">if</span> (enabled) {</span><br><span class="line">                    invoker = <span class="keyword">new</span> <span class="title class_">InvokerDelegate</span>&lt;&gt;(protocol.refer(serviceType, url), url, providerUrl);</span><br><span class="line">                }</span><br><span class="line">            } <span class="keyword">catch</span> (Throwable t) {</span><br><span class="line">                logger.error(<span class="string">"Failed to refer invoker for interface:"</span> + serviceType + <span class="string">",url:("</span> + url + <span class="string">")"</span> + t.getMessage(), t);</span><br><span class="line">            }</span><br><span class="line">            <span class="keyword">if</span> (invoker != <span class="literal">null</span>) { <span class="comment">// Put new invoker in cache</span></span><br><span class="line">                newUrlInvokerMap.put(url, invoker);</span><br><span class="line">            }</span><br><span class="line">        } <span class="keyword">else</span> {</span><br><span class="line">            newUrlInvokerMap.put(url, invoker);</span><br><span class="line">        }</span><br><span class="line">    }</span><br><span class="line">    keys.clear();</span><br><span class="line">    <span class="keyword">return</span> newUrlInvokerMap;</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>总的来说， <strong>refreshInvoker</strong> 在刷新invoker列表过程中：</p>
 <ol>
 <li>校验 invokerUrls 中的 URL 协议是否为 “empty” ，是则代表该服务的实例数为0，此时将销毁所有已有的 invoker 实例，并将该服务标记为禁止访问；</li>
-<li>否则，则缓存 invokerUrls ，并将 invokerUrls 转换为 invoker 实例列表：<ol>
+<li>否则，则缓存 invokerUrls ，并将 invokerUrls 转换为 invoker 实例列表：
+<ol>
 <li>对 URL 进行检测，过滤消费端不支持的 URL ；</li>
 <li>合并 URL 配置；</li>
 <li>根据具体协议，通过Protocol#refer方法创建invoker实例；</li>
@@ -302,224 +464,150 @@
 </ol>
 <p>在创建 invoker 实例时，protocol 实例类型为自适应扩展实现类，而 url 协议类型为 dubbo ，可知最终使用的是 DubboProtocol实例，但通过 debug 会发现，会先经过多个 Protocol 的包装类（其中便包括用于构建Filter拦截器链的 ProtocolFilterWrapper 包装类）处理过后，最终才到 DubboProtocol ：</p>
 <p><strong>AbstractProtocol#refer</strong> ：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">refer</span><span class="params">(Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">AsyncToSyncInvoker</span>&lt;&gt;(protocolBindingRefer(type, url));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">refer</span><span class="params">(Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException {</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">AsyncToSyncInvoker</span>&lt;&gt;(protocolBindingRefer(type, url));</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>这里有一个点值得注意的是，在使用 protocolBindingRefer 生成 DubboInvoker 实例后，会将 DubboInovker 实例包装为 <strong>AsyncToSyncInvoker</strong> 实例，实际上 Dubbo 的调用是天然被设计为异步的，而该 Invoker 实例的作用则是将异步结果转化同步。</p>
 <p><strong>DubboProtocol#protocolBindingRefer</strong> ：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">protocolBindingRefer</span><span class="params">(Class&lt;T&gt; serviceType, URL url)</span> <span class="keyword">throws</span> RpcException &#123;</span><br><span class="line">    optimizeSerialization(url);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建dubbo invoker</span></span><br><span class="line">    DubboInvoker&lt;T&gt; invoker = <span class="keyword">new</span> <span class="title class_">DubboInvoker</span>&lt;T&gt;(serviceType, url, getClients(url), invokers);</span><br><span class="line">    invokers.add(invoker);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> invoker;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; Invoker&lt;T&gt; <span class="title function_">protocolBindingRefer</span><span class="params">(Class&lt;T&gt; serviceType, URL url)</span> <span class="keyword">throws</span> RpcException {</span><br><span class="line">    optimizeSerialization(url);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建dubbo invoker</span></span><br><span class="line">    DubboInvoker&lt;T&gt; invoker = <span class="keyword">new</span> <span class="title class_">DubboInvoker</span>&lt;T&gt;(serviceType, url, getClients(url), invokers);</span><br><span class="line">    invokers.add(invoker);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> invoker;</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p><strong>DubboProtocol#getClients</strong> ：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> ExchangeClient[] getClients(URL url) &#123;</span><br><span class="line">    <span class="comment">// 是否共享连接</span></span><br><span class="line">    <span class="type">int</span> <span class="variable">connections</span> <span class="operator">=</span> url.getParameter(CONNECTIONS_KEY, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// if not configured, connection is shared, otherwise, one connection for one service</span></span><br><span class="line">    <span class="keyword">if</span> (connections == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * The xml configuration should have a higher priority than properties.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">shareConnectionsStr</span> <span class="operator">=</span> url.getParameter(SHARE_CONNECTIONS_KEY, (String) <span class="literal">null</span>);</span><br><span class="line">        <span class="comment">//获取连接数</span></span><br><span class="line">        connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(SHARE_CONNECTIONS_KEY,</span><br><span class="line">                DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);</span><br><span class="line">        <span class="keyword">return</span> getSharedClient(url, connections).toArray(<span class="keyword">new</span> <span class="title class_">ExchangeClient</span>[<span class="number">0</span>]);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//初始化新的客户端</span></span><br><span class="line">        ExchangeClient[] clients = <span class="keyword">new</span> <span class="title class_">ExchangeClient</span>[connections];</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; clients.length; i++) &#123;</span><br><span class="line">            clients[i] = initClient(url);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> clients;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> ExchangeClient[] getClients(URL url) {</span><br><span class="line">    <span class="comment">// 是否共享连接</span></span><br><span class="line">    <span class="type">int</span> <span class="variable">connections</span> <span class="operator">=</span> url.getParameter(CONNECTIONS_KEY, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// if not configured, connection is shared, otherwise, one connection for one service</span></span><br><span class="line">    <span class="keyword">if</span> (connections == <span class="number">0</span>) {</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * The xml configuration should have a higher priority than properties.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">shareConnectionsStr</span> <span class="operator">=</span> url.getParameter(SHARE_CONNECTIONS_KEY, (String) <span class="literal">null</span>);</span><br><span class="line">        <span class="comment">//获取连接数</span></span><br><span class="line">        connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(SHARE_CONNECTIONS_KEY,</span><br><span class="line">                DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);</span><br><span class="line">        <span class="keyword">return</span> getSharedClient(url, connections).toArray(<span class="keyword">new</span> <span class="title class_">ExchangeClient</span>[<span class="number">0</span>]);</span><br><span class="line">    } <span class="keyword">else</span> {</span><br><span class="line">        <span class="comment">//初始化新的客户端</span></span><br><span class="line">        ExchangeClient[] clients = <span class="keyword">new</span> <span class="title class_">ExchangeClient</span>[connections];</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; clients.length; i++) {</span><br><span class="line">            clients[i] = initClient(url);</span><br><span class="line">        }</span><br><span class="line">        <span class="keyword">return</span> clients;</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
 <p>这里会先根据 connections 数量决定是获取共享客户端实例还是创建新的客户端实例，获取到客户端连接实例后，将其封装后创建 <strong>DubboInvoker</strong> 实例并返回。</p>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<h3 id="总结">总结</h3>
+<ol>
 <li>本文简单介绍了服务目录的概念，以及<strong>StaticDirectory</strong>  和 <strong>DynamicDirectory</strong>  两种服务目录类型的区别；</li>
 <li>以 Nacos 作为注册中心为例，针对 <strong>RegistryDirectory</strong> 的源码作了一定的学习，包括服务的订阅过程、服务变更的通知处理流程等；</li>
 <li>服务变更后将刷新内部维护的 invoker 列表，将根据实际配置初始连接或使用共享连接。</li>
 </ol>
+</article>
+<div class="article-tags slide-up"><a class="tag" href="/tags/Dubbo/"><svg class="icon" viewBox="0 0 1 1" data-icon="default:hashtag" aria-hidden="true"></svg>Dubbo</a></div>
 
+
+  <div class="article-share slide-up" id="share">
+    <div class="body">
+      <div class="social-wrap dis-select"><a class="social share-item qrcode ui-interactive is-icon-only" onclick="util.toggle(&quot;share-qrcode&quot;)" aria-label="分享文章: QR Code" title="分享文章: QR Code"><span class="share-item__icon ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="M10.553 13.447c-.424-.424-.95-.596-1.535-.675c-.553-.074-1.25-.074-2.086-.074H5.827c-.58 0-1.065 0-1.459.037c-.411.04-.795.124-1.146.34c-.345.21-.634.5-.845.844c-.216.352-.3.735-.34 1.147C2 15.459 2 15.944 2 16.525v.068c0 .884 0 1.597.055 2.17c.056.592.175 1.108.459 1.571c.288.47.682.864 1.152 1.152c.463.284.979.403 1.57.46C5.81 22 6.524 22 7.407 22h.07c.58 0 1.064 0 1.458-.037c.412-.04.795-.124 1.147-.34c.344-.21.633-.5.844-.844c.216-.352.3-.736.34-1.147c.037-.394.037-.879.037-1.46v-1.104c0-.836 0-1.533-.074-2.086c-.079-.584-.251-1.111-.675-1.535m-1.62-11.41c.412.04.795.124 1.147.34c.344.21.633.5.844.845c.216.351.3.735.34 1.146c.037.394.037.879.037 1.46v1.104c0 .836 0 1.533-.074 2.086c-.079.584-.251 1.111-.675 1.535s-.95.596-1.535.675c-.553.074-1.25.074-2.086.074H5.827c-.58 0-1.065 0-1.459-.037c-.411-.04-.795-.124-1.146-.34a2.56 2.56 0 0 1-.845-.844c-.216-.352-.3-.735-.34-1.147C2 8.54 2 8.056 2 7.475v-.068c0-.884 0-1.597.055-2.17c.056-.592.175-1.108.459-1.571c.288-.47.682-.864 1.152-1.152c.463-.284.979-.403 1.57-.46C5.81 2 6.524 2 7.407 2h.07c.58 0 1.064 0 1.458.037M16.593 2h-.068c-.58 0-1.065 0-1.46.037c-.41.04-.794.124-1.146.34c-.344.21-.633.5-.844.845c-.216.351-.3.735-.34 1.146c-.037.394-.037.879-.037 1.46v1.104c0 .836 0 1.533.074 2.086c.079.584.251 1.111.675 1.535s.95.596 1.535.675c.553.074 1.25.074 2.086.074h1.105c.58 0 1.065 0 1.459-.037c.411-.04.795-.124 1.146-.34c.345-.21.634-.5.845-.844c.216-.352.3-.735.34-1.147C22 8.54 22 8.056 22 7.475v-.068c0-.884 0-1.597-.055-2.17c-.056-.592-.175-1.108-.459-1.571a3.5 3.5 0 0 0-1.152-1.152c-.463-.284-.979-.403-1.57-.46C18.19 2 17.477 2 16.594 2" opacity=".5"></path><path fill="currentColor" d="M14.093 21.302a.698.698 0 1 1-1.396 0v-2.79h1.396z" opacity=".4"></path><path fill="currentColor" d="M21.302 12.698a.7.7 0 0 0-.697.697v3.256H22v-3.256a.7.7 0 0 0-.698-.697" opacity=".5"></path><path fill="currentColor" d="M16.076 16.617c-.076.184-.076.417-.076.883s0 .699.076.883a1 1 0 0 0 .541.54c.184.077.417.077.883.077s.699 0 .883-.076a1 1 0 0 0 .54-.541c.077-.184.077-.417.077-.883s0-.699-.076-.883a1 1 0 0 0-.541-.54C18.199 16 17.966 16 17.5 16s-.699 0-.883.076a1 1 0 0 0-.54.541"></path><path fill="currentColor" d="M22 18.535v-.023h-1.396c0 .443 0 .74-.016.97c-.015.224-.043.333-.073.405a1.16 1.16 0 0 1-.629.63c-.072.029-.18.056-.405.072c-.23.015-.527.016-.97.016h-1.86V22h1.883c.414 0 .759 0 1.042-.02a2.6 2.6 0 0 0 .844-.175a2.56 2.56 0 0 0 1.384-1.384c.112-.27.156-.549.176-.844c.02-.283.02-.628.02-1.042" opacity=".7"></path><path fill="currentColor" d="M12.697 16.616v.035h1.396c0-.668 0-1.116.035-1.458c.034-.33.093-.482.16-.583a1.2 1.2 0 0 1 .321-.32c.101-.068.254-.128.584-.161c.342-.035.79-.036 1.458-.036h1.86v-1.395h-1.896c-.623 0-1.142 0-1.563.043c-.44.044-.85.142-1.218.388c-.28.187-.519.426-.706.706c-.246.368-.343.777-.388 1.217c-.043.421-.043.94-.043 1.564" opacity=".6"></path><path fill="currentColor" d="M5.508 18.69c.219.155.528.155 1.146.155c.619 0 .928 0 1.146-.155a.8.8 0 0 0 .2-.199c.154-.218.154-.527.154-1.146s0-.927-.155-1.146A.8.8 0 0 0 7.8 16c-.218-.155-.527-.155-1.146-.155s-.927 0-1.146.155a.8.8 0 0 0-.199.2c-.155.218-.155.527-.155 1.145c0 .619 0 .928.155 1.146a.8.8 0 0 0 .2.2M6.654 8.155c-.618 0-.927 0-1.146-.155a.8.8 0 0 1-.199-.2c-.155-.217-.155-.527-.155-1.145c0-.619 0-.928.155-1.146a.8.8 0 0 1 .2-.2c.218-.154.527-.154 1.145-.154c.619 0 .928 0 1.146.155a.8.8 0 0 1 .2.199c.154.218.154.527.154 1.146s0 .928-.155 1.146A.8.8 0 0 1 7.8 8c-.218.155-.527.155-1.146.155M16.2 8c.218.155.527.155 1.146.155s.927 0 1.146-.155a.8.8 0 0 0 .199-.199c.155-.218.155-.528.155-1.146c0-.619 0-.928-.155-1.146a.8.8 0 0 0-.2-.2c-.218-.154-.527-.154-1.145-.154c-.619 0-.928 0-1.146.155a.8.8 0 0 0-.2.199c-.154.218-.154.527-.154 1.146s0 .928.155 1.146A.8.8 0 0 0 16.2 8"></path></svg></span></a><a class="social share-item x ui-interactive is-icon-only" href="https://x.com/intent/tweet?text=Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85%20-%20%E8%B5%96%E5%B0%8F%E6%98%8E&amp;url=http%3A%2F%2Flaixiaoming.space%2F2024%2F09%2F28%2FDubbo%25E6%25BA%2590%25E7%25A0%2581%25E5%25AD%25A6%25E4%25B9%25A0%25EF%25BC%259A%25E6%259C%258D%25E5%258A%25A1%25E8%25AE%25A2%25E9%2598%2585%2F" target="_blank" rel="external nofollow noopener noreferrer" aria-label="分享文章: X" title="分享文章: X"><span class="share-item__icon ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Simple Icons - https://creativecommons.org/publicdomain/zero/1.0/ --><path fill="currentColor" d="M14.234 10.162L22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299l-.929-1.329L3.076 1.56h3.182l5.965 8.532l.929 1.329l7.754 11.09h-3.182z"></path></svg></span></a></div>
+      <div class="share-qrcode" id="share-qrcode" style="opacity:0;height:0"><img class="lazy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAADa6r/EAAAAC0lEQVQIHWNgAAIAAAUAAY27m/MAAAAASUVORK5CYII=" data-src="https://api.qrserver.com/v1/create-qr-code/?size=256x256&amp;data=http%3A%2F%2Flaixiaoming.space%2F2024%2F09%2F28%2FDubbo%25E6%25BA%2590%25E7%25A0%2581%25E5%25AD%25A6%25E4%25B9%25A0%25EF%25BC%259A%25E6%259C%258D%25E5%258A%25A1%25E8%25AE%25A2%25E9%2598%2585%2F" onerror="this.onerror=null;this.src=&quot;/images/stellar-error.491ee870f4940739.svg&quot;"></div>
     </div>
+  </div>
 
+<div class="article-footer slide-up">
+    <section id="license">
+      <div class="header"><span>许可协议</span></div>
+      <div class="body"><p>本文采用 <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">署名-非商业性使用-相同方式共享 4.0 国际</a> 许可协议，转载请注明出处。</p>
+</div>
+    </section></div>
+
+<div class="related-wrap slide-up" id="read-next"><section class="body"><div class="item" id="prev"><div class="note"><svg class="icon" viewBox="0 0 1 1" data-icon="default:arrow-left" aria-hidden="true"></svg> 较新文章</div><a href="/2024/10/26/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B/" data-stellar-navigation="">Dubbo源码学习：服务调用过程</a></div><div class="item" id="next"><div class="note">较早文章 <svg class="icon" viewBox="0 0 1 1" data-icon="default:arrow-right" aria-hidden="true"></svg></div><a href="/2024/08/25/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9ASpring%20Cloud%20Gateway%E7%BA%BF%E7%A8%8B%E7%88%86%E6%BB%A1/" data-stellar-navigation="">问题记录：Spring Cloud Gateway线程爆满</a></div></section></div>
+
+
+
+
+  <div class="related-wrap md-text slide-up" id="comments">
     
     
-    
+    <section class="body cmt-body giscus">
+      
 
-      <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/Dubbo/" rel="tag"># Dubbo</a>
-          </div>
+<div class="lazy-icon"></div>
 
-        
+<div id="giscus" data-repo="crazylai1996/crazylai1996.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzNDA5MzA3ODI=" data-category="General" data-category-id="DIC_kwDOFFIw3s4DLs7v" data-mapping="pathname" data-strict="0" data-reactions-enabled="1" data-emit-metadata="0" data-input-position="bottom" data-theme="preferred_color_scheme" data-lang="zh-CN" data-loading="lazy" crossorigin="anonymous"></div>
+
+    </section>
+  </div>
 
 
-        
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2024/08/25/%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95%EF%BC%9ASpring%20Cloud%20Gateway%E7%BA%BF%E7%A8%8B%E7%88%86%E6%BB%A1/" rel="prev" title="问题记录：Spring Cloud Gateway线程爆满">
-      <i class="fa fa-chevron-left"></i> 问题记录：Spring Cloud Gateway线程爆满
-    </a></div>
-      <div class="post-nav-item">
-    <a href="/2024/10/26/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B/" rel="next" title="Dubbo源码学习：服务调用过程">
-      Dubbo源码学习：服务调用过程 <i class="fa fa-chevron-right"></i>
-    </a></div>
+
+<footer class="page-footer slide-up footnote"><hr><div class="text"><p>本站由 <a href="/">laixiaoming</a> 使用 <a target="_blank" rel="noopener" href="https://github.com/xaoxuu/hexo-theme-stellar/tree/2.0.0">Stellar 2.0.0</a> 主题创建。<br>
+本博客所有文章除特别声明外，均采用 <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议，转载请注明出处。</p>
+</div></footer>
+</main>
+<aside data-stellar-runtime-region="" id="rightbar-region" class="site-region site-region--rightbar" data-region="rightbar" aria-label="Rightbar"><div class="site-region__surface ui-drawer-surface"><div class="site-region__viewport"><div class="widgets widget-stack widget-stack--rightbar widget-stack--rightbar"><div class="widget-instance widget-instance--toc" data-widget-id="rightbar:0:toc" data-presentation="rightbar">
+
+
+<widget class="widget-wrapper slide-up toc" id="data-toc" collapse="false">
+  
+    <div class="widget-header dis-select">
+      <span class="name">本文目录</span>
+      <button type="button" class="cap-action ui-interactive card-hover card-hover--spotlight" data-shell-action="toggle-toc" aria-label="Toggle table of contents" aria-pressed="false"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h11m-11 6h11m-11 6h11M4 6h1v4m-1 0h2m0 8H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg></span></button>
     </div>
-      </footer>
+  
+  <div class="widget-body"><ol class="toc ui-collection-adapter"><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%9C%8D%E5%8A%A1%E7%9B%AE%E5%BD%95Directory" data-stellar-navigation=""><span class="toc-text">服务目录Directory</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85" data-stellar-navigation=""><span class="toc-text">服务订阅</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%8E%A5%E6%94%B6%E6%9C%8D%E5%8A%A1%E5%8F%98%E6%9B%B4%E9%80%9A%E7%9F%A5" data-stellar-navigation=""><span class="toc-text">接收服务变更通知</span></a></li><li class="toc-item toc-level-3"><a class="toc-link ui-interactive" href="#%E6%80%BB%E7%BB%93" data-stellar-navigation=""><span class="toc-text">总结</span></a></li></ol></div>
+  <div class="widget-footer"><a class="top ui-interactive" onclick="util.scrollTop()"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="M20.536 3.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464" opacity=".5"></path><path fill="currentColor" d="M9.53 12.03a.75.75 0 0 1-1.06-1.06l3-3a.75.75 0 0 1 1.06 0l3 3a.75.75 0 1 1-1.06 1.06L12 9.56z"></path><path fill="currentColor" d="M9.53 16.03a.75.75 0 0 1-1.06-1.06l3-3a.75.75 0 0 1 1.06 0l3 3a.75.75 0 1 1-1.06 1.06L12 13.56z"></path></svg></span><span>回到顶部</span></a><a class="buttom ui-interactive" onclick="util.scrollComment()"><span class="ui-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Solar by 480 Design - https://creativecommons.org/licenses/by/4.0/ --><path fill="currentColor" d="m13.629 20.472l-.542.916c-.483.816-1.69.816-2.174 0l-.542-.916c-.42-.71-.63-1.066-.968-1.262c-.338-.197-.763-.204-1.613-.219c-1.256-.021-2.043-.098-2.703-.372a5 5 0 0 1-2.706-2.706C2 14.995 2 13.83 2 11.5v-1c0-3.273 0-4.91.737-6.112a5 5 0 0 1 1.65-1.651C5.59 2 7.228 2 10.5 2h3c3.273 0 4.91 0 6.113.737a5 5 0 0 1 1.65 1.65C22 5.59 22 7.228 22 10.5v1c0 2.33 0 3.495-.38 4.413a5 5 0 0 1-2.707 2.706c-.66.274-1.447.35-2.703.372c-.85.015-1.275.022-1.613.219c-.338.196-.548.551-.968 1.262" opacity=".5"></path><path fill="currentColor" d="M7.25 9A.75.75 0 0 1 8 8.25h8a.75.75 0 0 1 0 1.5H8A.75.75 0 0 1 7.25 9m0 3.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75"></path></svg></span><span>参与讨论</span></a></div>
+</widget>
+
+
+</div></div></div></div></aside>
+</div><button type="button" class="site-scrim" data-shell-action="dismiss-drawer" aria-label="Close navigation" tabindex="-1"></button><div data-stellar-runtime-region="" class="site-dock" role="group" aria-label="Layout panels">
+  <button type="button" class="site-dock__button site-dock__button--rightbar ui-interactive" aria-label="Open rightbar" aria-controls="rightbar-region" aria-expanded="false" data-shell-action="toggle-rightbar-drawer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h11m-11 6h11m-11 6h11M4 6h1v4m-1 0h2m0 8H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+  </button>
+  <button type="button" class="site-dock__button site-dock__button--leftbar ui-interactive" aria-label="Open leftbar" aria-controls="leftbar-region" aria-expanded="false" data-shell-action="toggle-leftbar-drawer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 11c0-3.771 0-5.657 1.172-6.828C4.343 3 6.229 3 10 3h4c3.771 0 5.657 0 6.828 1.172C22 5.343 22 7.229 22 11v2c0 3.771 0 5.657-1.172 6.828C19.657 21 17.771 21 14 21h-4c-3.771 0-5.657 0-6.828-1.172C2 18.657 2 16.771 2 13z"></path><path id="sep" stroke-linecap="round" d="M5.5 10h6m-5 4h4m4.5 7V3"></path></g></svg>
+  </button>
+</div>
+
+<dialog data-stellar-runtime-region="" class="search-dialog" id="site-search-dialog" aria-labelledby="site-search-title">
+  <div class="search-dialog__panel search-wrapper" id="site-search-wrapper" searching="false">
+    <div class="search-dialog__header">
+      <div class="search-form" role="search">
+        <span class="search-button" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Adapted from Google Material Icons by Material Design Authors - https://github.com/material-icons/material-icons/blob/master/LICENSE --><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3M3 13h3M3 18h8M16.83 13.83l3.76 3.76"></path><circle cx="14" cy="11" r="4"></circle></g></svg></span>
+        <input type="search" class="search-input" id="site-search-input" aria-labelledby="site-search-title" placeholder="搜索">
+      </div>
+      <button type="button" class="search-dialog__close" data-shell-action="close-search" aria-label="关闭搜索">×</button>
+    </div>
     
-  </article>
-  
-  
-  
+      <div class="search-dialog__scope" role="radiogroup" aria-labelledby="site-search-title" hidden="">
+        <label class="search-dialog__scope-option" data-search-scope-option="all">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="all">
+          <span>全站</span>
+        </label>
+        <label class="search-dialog__scope-option" data-search-scope-option="blog" hidden="">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="blog">
+          <span>博客</span>
+        </label>
+        <label class="search-dialog__scope-option" data-search-scope-option="current" hidden="">
+          <input class="ui-radio" type="radio" name="site-search-scope" value="current">
+          <span data-search-scope-current-label=""></span>
+        </label>
+      </div>
+    
+    <h2 class="search-dialog__title" id="site-search-title">站内搜索</h2>
+    <div class="search-result" id="site-search-result"></div>
+    <div class="search-no-result">没有找到内容！</div>
+  </div>
+</dialog>
+</div><div class="site-scripts">
+<script data-stellar-script="core" src="/js/stellar-icons.js?v=39c6ac17e854ffe2"></script>
 
-
-
-          </div>
-          
-
-<script>
-  window.addEventListener('tabs:register', () => {
-    let { activeClass } = CONFIG.comments;
-    if (CONFIG.comments.storage) {
-      activeClass = localStorage.getItem('comments_active') || activeClass;
-    }
-    if (activeClass) {
-      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
-      if (activeTab) {
-        activeTab.click();
-      }
-    }
-  });
-  if (CONFIG.comments.storage) {
-    window.addEventListener('tabs:click', event => {
-      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
-      let commentClass = event.target.classList[1];
-      localStorage.setItem('comments_active', commentClass);
-    });
-  }
+<script data-stellar-script="defines">
+  window.canonical = window.stellarClientData.canonical;
+  const ctx = window.stellarClientData.ctx;
+  window.canonical.param = {permalink: "http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/", checklink: ctx.services.video.js};
+  ctx.date_suffix = {"just":"刚刚","min":"分钟前","hour":"小时前","day":"天前"};
+  if (ctx.search) Object.assign(ctx.search, {"more":"更多","no_more":"没有更多了"});
+  const def = window.stellarClientData.def;
+  window.ctx = ctx;
+  window.def = def;
 </script>
 
-        </div>
-          
-  
-  <div class="toggle sidebar-toggle">
-    <span class="toggle-line toggle-line-first"></span>
-    <span class="toggle-line toggle-line-middle"></span>
-    <span class="toggle-line toggle-line-last"></span>
-  </div>
 
-  <aside class="sidebar">
-    <div class="sidebar-inner">
+<!-- core: 迁移期 DOM/资源兼容工具；Extension 注册与生命周期由 ESM runtime 所有 -->
+<script data-stellar-script="core" src="/js/utils.js?v=2.0.0"></script>
+<script data-stellar-script="core" src="/js/main.js?v=2.0.0" defer=""></script>
+<script data-stellar-script="core" defer="" src="/js/profile.js?v=2.0.0"></script>
 
-      <ul class="sidebar-nav motion-element">
-        <li class="sidebar-nav-toc">
-          文章目录
-        </li>
-        <li class="sidebar-nav-overview">
-          站点概览
-        </li>
-      </ul>
 
-      <!--noindex-->
-      <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E7%9B%AE%E5%BD%95Directory"><span class="nav-number">1.</span> <span class="nav-text">服务目录Directory</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85"><span class="nav-number">2.</span> <span class="nav-text">服务订阅</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E6%94%B6%E6%9C%8D%E5%8A%A1%E5%8F%98%E6%9B%B4%E9%80%9A%E7%9F%A5"><span class="nav-number">3.</span> <span class="nav-text">接收服务变更通知</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
-      </div>
-      <!--/noindex-->
 
-      <div class="site-overview-wrap sidebar-panel">
-        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-    <img class="site-author-image" itemprop="image" alt="laixiaoming"
-      src="/images/avatar.gif">
-  <p class="site-author-name" itemprop="name">laixiaoming</p>
-  <div class="site-description" itemprop="description">就算红尘劫数都是空幻，也必须经历一遍才能领悟</div>
-</div>
-<div class="site-state-wrap motion-element">
-  <nav class="site-state">
-      <div class="site-state-item site-state-posts">
-          <a href="/archives/">
-        
-          <span class="site-state-item-count">38</span>
-          <span class="site-state-item-name">日志</span>
-        </a>
-      </div>
-      <div class="site-state-item site-state-tags">
-            <a href="/tags/">
-          
-        <span class="site-state-item-count">14</span>
-        <span class="site-state-item-name">标签</span></a>
-      </div>
-  </nav>
+
+
+<link data-stellar-page-style="" rel="stylesheet" href="/css/katex/katex.min.css">
+
+<script data-stellar-script="core" type="application/json" id="stellar-runtime-config">{"version":1,"root":"/","policy":{"cache":{"enabled":true,"defaultTtl":3600,"ttl":{"giscus":600,"waline":600,"artalk":600,"memos":600,"memos-user":86400,"sites":86400,"friends":86400,"friends_and_posts":86400,"siteinfo":86400},"maxEntries":200},"request":{"retries":2,"timeoutMs":5000,"idleTimeoutMs":3000,"maxCacheEntryBytes":204800},"features":{"codeCopyToastMs":2500},"providers":{"linkPrefetch":"flying_pages","lightbox":"fancybox","diagrams":"mermaid"}},"extensions":[{"id":"pin-slider","module":"/js/runtime/extensions/pin-slider.js","scope":"region","when":{"selector":".pin-slider"},"config":{}},{"id":"page-controls","module":"/js/runtime/extensions/page-controls.js","scope":"region","when":{"always":true},"config":{"highlight":"/js/search/highlight.js","tagtree":"/js/tagtree.js"}},{"id":"partial-navigation","module":"/js/runtime/extensions/partial-navigation.js","scope":"document","when":{"always":true},"config":{}},{"id":"search","module":"/js/runtime/extensions/search.js","scope":"document","when":{"selector":".search-input"},"config":{"provider":"local","options":{"scope":"all","includeContent":true,"cacheTtlSeconds":86400},"assets":{"client":null,"provider":"/js/search/local-search.js","shortcut":"/js/search/shortcut.js"}}},{"id":"hero-parallax","module":"/js/runtime/extensions/hero-parallax.js","scope":"region","when":{"selector":".wiki-hero"},"config":{}},{"id":"hero-effect","module":"/js/runtime/extensions/hero-effect.js","scope":"region","when":{"selector":"canvas[data-hero-effect]"},"config":{}},{"id":"lazy-loading","module":"/js/runtime/extensions/lazy-loading.js","scope":"document","when":{"always":true},"config":{"asset":"https://gcore.jsdelivr.net/npm/vanilla-lazyload@19.1/dist/lazyload.min.js"}},{"id":"deferred-icons","module":"/js/runtime/extensions/deferred-icons.js","scope":"region","when":{"selector":"svg.icon[data-icon]"},"config":{}},{"id":"dropdown","module":"/js/runtime/extensions/dropdown.js","scope":"region","when":{"selector":"details.dropdown"},"config":{}},{"id":"services","module":"/js/runtime/extensions/services.js","scope":"region","when":{"selector":"#artalk_container, #twikoo_container, #waline_container, .data-service, [class*='ds-'], a[cardlink], a[data-md-link][data-siteinfo-api], .site-card [data-siteinfo-api], .voice\u003eaudio, .video\u003evideo, .chat-file"},"config":{"marked":"https://gcore.jsdelivr.net/npm/marked@13.0/lib/marked.umd.min.js"}},{"id":"comments","module":"/js/runtime/extensions/comments.js","scope":"region","when":{"selector":"#comments"},"config":{"provider":"giscus","options":{"data-repo":"crazylai1996/crazylai1996.github.io","data-repo-id":"MDEwOlJlcG9zaXRvcnkzNDA5MzA3ODI=","data-category":"General","data-category-id":"DIC_kwDOFFIw3s4DLs7v","data-mapping":"pathname","data-strict":0,"data-reactions-enabled":1,"data-emit-metadata":0,"data-input-position":"bottom","data-theme":"preferred_color_scheme","data-lang":"zh-CN","data-loading":"lazy","crossorigin":"anonymous"},"pageTitle":"Dubbo源码学习：服务订阅","assets":{"js":"https://giscus.app/client.js"}}},{"id":"settings","module":"/js/runtime/extensions/settings.js","scope":"region","when":{"selector":".settings-page"},"config":{}},{"id":"link-prefetch","module":"/js/runtime/extensions/link-prefetch.js","scope":"document","when":{"always":true},"config":{"asset":"https://gcore.jsdelivr.net/npm/flying-pages@2/flying-pages.min.js"}},{"id":"lightbox","module":"/js/runtime/extensions/lightbox.js","scope":"region","when":{"selector":"[data-fancybox]:not(.error), .with-fancybox, .ds-memos, .timenode p\u003eimg"},"config":{"enabled":true,"selector":".timenode p\u003eimg","assets":{"localCss":"/css/plugins/fancybox.css","js":"https://gcore.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js","css":"https://gcore.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"}}},{"id":"reveal","module":"/js/runtime/extensions/reveal.js","scope":"region","when":{"selector":".slide-up"},"config":{"enabled":true,"duration":800,"interval":200,"distance":8,"blur":4}},{"id":"diagrams","module":"/js/runtime/extensions/diagrams.js","scope":"region","when":{"selector":".mermaid"},"config":{"theme":"neutral","provider":"mermaid","assets":{"js":"https://gcore.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"},"colorScheme":"auto"}},{"id":"code-copy","module":"/js/runtime/extensions/code-copy.js","scope":"region","when":{"selector":".code"},"config":{"assets":{"js":"/js/plugins/copycode.js"},"messages":{"label":"复制","copied":"复制成功","denied":"未获得剪贴板权限","unsupported":"当前浏览器不支持剪贴板或页面不是 HTTPS"}}},{"id":"adaptive-text","module":"/js/runtime/extensions/adaptive-text.js","scope":"region","when":{"selector":"[data-text-adaptive]"},"config":{"assets":{"colorJs":"/js/color.js","js":"/js/plugins/adaptive-text.js"}}},{"id":"swiper","module":"/js/runtime/extensions/swiper.js","scope":"region","when":{"selector":"#swiper-api"},"config":{"assets":{"localCss":"/css/plugins/swiper.css","js":"https://unpkg.com/swiper@10.3/swiper-bundle.min.js","css":"https://unpkg.com/swiper@10.3/swiper-bundle.min.css"}}}]}</script>
+<script data-stellar-script="core" type="module" src="/js/runtime/index.js?v=2.0.0&amp;runtime=1"></script>
+
+
+<!-- inject -->
+
+
+<script data-stellar-script="core" defer="" src="/js/navigation-init.js?v=2.0.0"></script>
 </div>
 
-
-
-      </div>
-
-    </div>
-  </aside>
-  <div id="sidebar-dimmer"></div>
-
-
-      </div>
-    </main>
-
-    <footer class="footer">
-      <div class="footer-inner">
-        
-
-        
-
-<div class="copyright">
-  
-  &copy; 
-  <span itemprop="copyrightYear">2026</span>
-  <span class="with-love">
-    <i class="fa fa-heart"></i>
-  </span>
-  <span class="author" itemprop="copyrightHolder">laixiaoming</span>
-</div>
-  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
-  </div>
-
-        
-
-
-
-
-
-
-
-
-      </div>
-    </footer>
-  </div>
-
-  
-  <script src="/lib/anime.min.js"></script>
-  <script src="/lib/velocity/velocity.min.js"></script>
-  <script src="/lib/velocity/velocity.ui.min.js"></script>
-
-<script src="/js/utils.js"></script>
-
-<script src="/js/motion.js"></script>
-
-
-<script src="/js/schemes/pisces.js"></script>
-
-
-<script src="/js/next-boot.js"></script>
-
-
-
-
-  
-
-
-
-
-  
-<script src="//cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
-<script src="//cdn.jsdelivr.net/npm/instantsearch.js@4/dist/instantsearch.production.min.js"></script>
-<script src="/js/algolia-search.js"></script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-  
-
-  
-  
-    <script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
-  
-</body>
-</html>
+<script type="application/json" id="stellar-navigation-config">{"collection":"[\"post\",\"post\"]","url":"http://laixiaoming.space/2024/09/28/Dubbo%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E8%AE%A2%E9%98%85/","signature":"df54fa6c68cf7bfe09c7a808d3bb717a321e150c2e9eafbacc6fb55b5590c1c8"}</script></body></html>
